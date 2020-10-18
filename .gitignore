@@ -23,15 +23,26 @@ aug_annotation*
 **/*.xls*
 **/*.txt
 **/*.TXT
+**/*.csv
+**/*.CSV
+**/*.pdf
+**/*.PDF
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 **/__pycache__
 *.py[cod]
 *$py.class
 
+# macOS
+.DS_Store
+
 # Tensorflow
 *.ckpt.*
 *.tfrecord
+
+# pycharm
+.idea/*
 
 # VST and Nano
 *.py.save
