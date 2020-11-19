@@ -1,0 +1,58 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.10.7
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.6.5
+batch_size:
+  desc: null
+  value: 128
+ci:
+  desc: null
+  value: 0
+client_num_in_total:
+  desc: null
+  value: 10
+client_num_per_round:
+  desc: null
+  value: 10
+client_optimizer:
+  desc: null
+  value: adam
+comm_round:
+  desc: null
+  value: 10
+data_dir:
+  desc: null
+  value: ./../../../data/cifar10
+dataset:
+  desc: null
+  value: cifar10
+epochs:
+  desc: null
+  value: 5
+frequency_of_the_test:
+  desc: null
+  value: 5
+gpu:
+  desc: null
+  value: 0
+lr:
+  desc: null
+  value: 0.001
+model:
+  desc: null
+  value: resnet56
+partition_alpha:
+  desc: null
+  value: 0.5
+partition_method:
+  desc: null
+  value: hetero
+wd:
+  desc: null
+  value: 0.001
