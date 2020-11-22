@@ -27,6 +27,21 @@ data_root_dir = '../data'
 model_path_root = "./model_files/"
 results_root_dir = '../results/AE'
 
+# ---------------------
+# Check GPU
+# ---------------------
+torch.cuda.is_available()
+device = torch.device("cuda:0")
+
+if torch.cuda.is_available():
+    device = torch.device("cuda:0")
+    print('runing on GPU')
+else:
+    device = torch.device("cpu")
+    print('runing on CPU')
+    
+torch.cuda.device_count()
+
 # ----------------------------------
 # Prepare data 
 # ----------------------------------
@@ -196,8 +211,8 @@ if convAE == 2:
             else:
                 return x
 
-# initialize the NN
-model = ConvAutoencoder()
+# initialize the NN (with GPU)
+model = ConvAutoencoder().to(device)
 print(model)
 
 # ----------------------------------
@@ -225,6 +240,7 @@ if TRAIN_FLAG:
             # _ stands in for labels, here
             # no need to flatten images
             images, _ = data
+            images = images.to(device)
             # clear the gradients of all optimized variables
             optimizer.zero_grad()
             # forward pass: compute predicted outputs by passing inputs to the model
@@ -270,11 +286,16 @@ loss = checkpoint['loss']
 # obtain one batch of test images
 dataiter = iter(test_loader)
 images, labels = dataiter.next()
+images = images.to(device)
+labels = labels.to(device)
 
 # get sample outputs
 output, latent = model(images)
 # prep images for display
-images = images.numpy()
+
+# back to cpu for numpy manipulations
+output = output.cpu()
+latent = latent.cpu()
 
 # output is resized into a batch of images
 output = output.view(batch_size, 1, 28, 28)
@@ -292,7 +313,10 @@ plt.savefig(f'{results_root_dir}/reconstructed_test_samples_{MODEL_NAME}.jpg')
 # ----------------------------------
 # Visualize the latent vector
 # ----------------------------------
-_, embeddings = model(test_data_tensor)
+_, embeddings = model(test_data_tensor.to(device))
+
+# back to cpu for numpy manipulation
+embeddings = embeddings.cpu()
 
 embeddings_np = embeddings.detach().numpy()
 test_labels_tensor_np = test_labels_tensor.numpy()
