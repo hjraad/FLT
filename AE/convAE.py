@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import os
 import time
 
@@ -6,11 +7,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import matplotlib.pyplot as plt
 from torch.utils.data.sampler import SubsetRandomSampler
-
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.manifold import TSNE
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -30,43 +33,55 @@ results_root_dir = '../results/AE'
 # convert data to torch.FloatTensor
 transform = transforms.ToTensor()
 
-# load the training and test datasets
-train_data = datasets.MNIST(root=data_root_dir, train=True,
+# download the training and test datasets
+dataset = datasets.MNIST(root=data_root_dir, train=True,
                                    download=True, transform=transform)
+train_data, val_data = torch.utils.data.random_split(dataset, [50000, 10000])
+
 test_data = datasets.MNIST(root=data_root_dir, train=False,
                                   download=True, transform=transform)
 
 # Create training and test dataloaders
-
 num_workers = 0
-# how many samples per batch to load
 batch_size = 20
 
 # prepare data loaders
-train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, num_workers=num_workers)
-test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, num_workers=num_workers)
+train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, 
+                                           num_workers=num_workers, shuffle=False)
+val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, 
+                                         num_workers=num_workers, shuffle=False)
+test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, 
+                                          num_workers=num_workers, shuffle=False)
+# specify the image classes
+classes = ['0', '1', '2', '3', '4',
+           '5', '6', '7', '8', '9']
+
+# This is a semi-supervised setting and labels are of no immediate use except for FL part
+train_data_list = [data[0] for data in train_loader]
+train_data_tensor = torch.cat(train_data_list, dim=0)
+train_labels_tensor = dataset.targets[train_data.indices]
+
+val_data_list = [data[0] for data in val_loader]
+val_data_tensor = torch.cat(val_data_list, dim=0)
+val_labels_tensor = dataset.targets[val_data.indices]
+
+test_data_list = [data[0] for data in test_loader]
+test_data_tensor = torch.cat(test_data_list, dim=0)
+test_labels_tensor = test_data.targets
 
 # ----------------------------------
 # Visualize data 
 # ----------------------------------
-import matplotlib.pyplot as plt
-# %matplotlib inline
-
 # helper function to un-normalize and display an image
 # def imshow(img):
 #     img = img / 2 + 0.5  # unnormalize
 #     plt.imshow(np.transpose(img, (1, 2, 0)))  # convert from Tensor image
-    
 
 def imshow(img):
     img = np.squeeze(img, axis=0) 
     plt.imshow(img)  # convert from Tensor image
     
-# specify the image classes
-classes = ['0', '1', '2', '3', '4',
-           '5', '6', '7', '8', '9']
-
-# obtain one batch of training images
+# get some training images
 dataiter = iter(train_loader)
 images, labels = dataiter.next()
 images = images.numpy() # convert images to numpy for display
@@ -83,9 +98,6 @@ plt.savefig(f'{results_root_dir}/train_data_samples.jpg')
 # ----------------------------------
 # Build a convolutional autoencoder (AE)
 # ----------------------------------
-import torch.nn as nn
-import torch.nn.functional as F
-
 if convAE == 1:
     latent_size = 2
     # define the NN architecture
@@ -191,11 +203,10 @@ print(model)
 # ----------------------------------
 # Train the AE
 # ----------------------------------
-import os
 if not os.path.exists(model_path_root):
     os.makedirs(model_path_root)
 
-# specify loss function
+# specify loss citerion
 criterion = nn.BCELoss()
 
 # specify loss function
@@ -225,16 +236,17 @@ if TRAIN_FLAG:
             # perform a single optimization step (parameter update)
             optimizer.step()
             # update running training loss
-            train_loss += loss.item()*images.size(0)
+            train_loss += loss.item()
                 
         # print avg training statistics 
         train_loss = train_loss/len(train_loader)
         print('Epoch: {} \tTraining Loss: {:.6f}'.format(epoch, train_loss))
 
+    # save model name
     MODEL_NAME = f"model-{int(time.time())}-epoch{epoch}-latent{latent_size}" # use time to make the name unique
-    print(MODEL_NAME)
+    print(f'Finished training for {MODEL_NAME} ...')
     
-    # save model
+    # save the model
     torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
@@ -243,7 +255,7 @@ if TRAIN_FLAG:
             }, model_path_root + MODEL_NAME)
 
 
-# Model class must be defined somewhere
+# load the model (inference or to continue training)
 if not TRAIN_FLAG:
     MODEL_NAME = "model-1606000037-epoch20-latent128"
 checkpoint = torch.load(model_path_root + MODEL_NAME)
@@ -253,7 +265,7 @@ epoch = checkpoint['epoch']
 loss = checkpoint['loss']
 
 # ----------------------------------
-# Test the AE
+# Test the AE on test data
 # ---------------------------------- 
 # obtain one batch of test images
 dataiter = iter(test_loader)
@@ -280,33 +292,31 @@ plt.savefig(f'{results_root_dir}/reconstructed_test_samples_{MODEL_NAME}.jpg')
 # ----------------------------------
 # Visualize the latent vector
 # ----------------------------------
-full_train_data = [data[0] for data in train_loader]
-full_train_data_tensor = torch.cat(full_train_data, dim=0)
-full_train_labels_tensor = train_data.targets
-
-full_test_data = [data[0] for data in test_loader]
-full_test_data_tensor = torch.cat(full_test_data, dim=0)
-full_test_labels_tensor = test_data.targets
-
-_, embeddings = model(full_test_data_tensor)
+_, embeddings = model(test_data_tensor)
 
 embeddings_np = embeddings.detach().numpy()
-full_test_labels_tensor_np = full_test_labels_tensor.numpy()
+test_labels_tensor_np = test_labels_tensor.numpy()
 
 if latent_size == 2:
     plt.figure()
     classes = [str(nr) for nr in range(0,10)]
-    plt.scatter(embeddings_np[:,0], embeddings_np[:,1], c=full_test_labels_tensor_np, 
+    plt.scatter(embeddings_np[:,0], embeddings_np[:,1], c=test_labels_tensor_np, 
                 s=8, cmap='tab10', label=classes)
     plt.legend()
     plt.savefig(f'{results_root_dir}/scatter_{MODEL_NAME}.jpg')
 
-from sklearn.manifold import TSNE
 if latent_size != 2:
     X = embeddings_np
     X_embedded = TSNE(n_components=2).fit_transform(X)
+    # plt.figure()
+    # plt.scatter(X_embedded[:,0], X_embedded[:,1], c=test_labels_tensor_np, 
+    #             s=8, cmap='tab10', label=classes)
+    # plt.legend()
+    # plt.savefig(f'{results_root_dir}/scatter_{MODEL_NAME}.jpg')
+    
     plt.figure()
-    plt.scatter(X_embedded[:,0], X_embedded[:,1], c=full_test_labels_tensor_np, 
-                s=8, cmap='tab10', label=classes)
-    plt.legend()
-    plt.savefig(f'{results_root_dir}/scatter_{MODEL_NAME}.jpg')
+    df = pd.DataFrame({'x':X_embedded[:,0], 'y':X_embedded[:,1]})
+    sns.scatterplot(x='x', y='y', hue=test_labels_tensor_np, 
+                    palette=sns.color_palette("hls", 10), 
+                    data=df, legend="full", alpha=0.3)
+    plt.savefig(f'{results_root_dir}/sns_scatter_{MODEL_NAME}.jpg')
