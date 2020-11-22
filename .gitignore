@@ -49,6 +49,8 @@ datasets/vocsplit
 datasets/lvis
 datasets/lvissplit
 datasets/*/seed*
+data/
+model_files/
 
 # configs
 configs/Test
