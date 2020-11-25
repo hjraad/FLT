@@ -7,10 +7,17 @@ import torch
 from torch import nn
 
 
-def FedAvg(w):
-    w_avg = copy.deepcopy(w[0])
-    for k in w_avg.keys():
-        for i in range(1, len(w)):
-            w_avg[k] += w[i][k]
-        w_avg[k] = torch.div(w_avg[k], len(w))
+def FedAvg(w, ar_related):
+    w_avg = copy.deepcopy(w)
+    for idx in range(len(w)):
+        for k in w_avg[0].keys():
+            w_avg[idx][k] = 0
+            counter = 0
+            for i in range(0, len(w)):
+                if ar_related[idx][i+1] == 1:
+                    w_avg[idx][k] += w[i][k]
+                    counter = counter + 1
+            w_avg[idx][k] = torch.div(w_avg[idx][k], counter)
+            #print(counter)
+    
     return w_avg
