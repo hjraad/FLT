@@ -18,6 +18,7 @@ from models.Fed import FedAvg
 from models.test import test_img, test_img_classes
 import pickle
 from sklearn.cluster import KMeans
+import itertools
 
 def gen_model(iid, dataset_type, num_users, cluster, cluster_num):
         # load dataset and split users
@@ -83,8 +84,8 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
         aa = np.empty((0,28*28))
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
         for batch_idx, (images, labels) in enumerate(local.ldr_train):#TODO: concatenate the matrices
-            if batch_idx == 3:# TODO: abalation test
-                break
+            # if batch_idx == 3:# TODO: abalation test
+            #     break
             ne = images.numpy().flatten().T.reshape((10,28*28))
             aa = np.vstack((aa,ne))
         embedding1 = reducer.transform(aa)
@@ -92,9 +93,11 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
         kmeans = KMeans(n_clusters=2, random_state=0).fit(np.array(X))
         centers[idx,:,:] = kmeans.cluster_centers_
     
+    ar_related0_soft = np.zeros((num_users, num_users+1))
     ar_related0 = np.zeros((num_users, num_users+1))
 
     for idx0 in idxs_users:
+        ar_related0_soft[idx0][0] = idx0
         ar_related0[idx0][0] = idx0
         for idx1 in idxs_users:
             c0 = centers[idx0]
@@ -104,14 +107,14 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
             dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
         
             distance = min([dist0, dist1])#min (max)
-            ar_related0[idx0][idx1+1] = distance
+            ar_related0_soft[idx0][idx1+1] = distance
         
             if distance < 1:
                 ar_related0[idx0][idx1+1] = 1
             else:
                 ar_related0[idx0][idx1+1] = 0
 
-    return ar_related0, centers
+    return ar_related0, ar_related0_soft, centers
 
 if __name__ == '__main__':
     # parse args
@@ -130,7 +133,7 @@ if __name__ == '__main__':
     ##########################################################################
     # case three: 100 clients with labeled from only two images for each client --> noniid --> adding clustered fed average
     iid=True
-    num_users=100
+    num_users=40
     
     cluster_num = 5
     cluster_length = num_users // cluster_num
@@ -143,9 +146,18 @@ if __name__ == '__main__':
     
     #average over clients in a same cluster
     ar_related = clustering_perfect(num_users, dict_users, dataset_train, args)
-    ar_related0,centers = clustering_umap(num_users, dict_users, dataset_train, args)
+    ar_related0, ar_related0_soft, centers = clustering_umap(num_users, dict_users, dataset_train, args)
     
     plt.figure(1)
     plt.imshow(ar_related[:,1:],cmap=plt.cm.viridis)
     plt.figure(2)
-    plt.imshow(-ar_related0[:,1:],cmap=plt.cm.viridis)
+    plt.imshow(ar_related0[:,1:],cmap=plt.cm.viridis)
+    plt.figure(3)
+    plt.imshow(-ar_related0_soft[:,1:],cmap=plt.cm.viridis)
+
+    Num_Cent = 2*cluster_length
+    colors = itertools.cycle(["r"] * Num_Cent +["b"]*Num_Cent+["g"]*Num_Cent+["k"]*Num_Cent+["y"]*Num_Cent)
+    plt.figure(4)
+    for i in range(0,num_users):
+        plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
+        plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))

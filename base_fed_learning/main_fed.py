@@ -219,8 +219,8 @@ if __name__ == '__main__':
     # dataset_train, dataset_test, dict_users = gen_model(iid, dataset, num_users, cluster, cluster_num)
     
     #average over clients in a same cluster
-    #ar_related = clustering(num_users, dict_users, dataset_train, args)
-    ar_related = clustering_umap(num_users, dict_users, dataset_train, args)
+    #ar_related = clustering_perfect(num_users, dict_users, dataset_train, args)
+    ar_related, _, _ = clustering_umap(num_users, dict_users, dataset_train, args)
             
     #TODO: add clustered Fed averaging
     net_glob, w_glob, net_glob_list, w_glob_list = net_g(dataset, dataset_train, num_users)
