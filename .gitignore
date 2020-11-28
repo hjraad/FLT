@@ -4,6 +4,8 @@
 *.txt
 *.csv
 
+model_weights/
+
 .idea/
 
 environment
@@ -50,7 +52,7 @@ datasets/lvis
 datasets/lvissplit
 datasets/*/seed*
 data/
-model_files/
+
 
 # configs
 configs/Test
