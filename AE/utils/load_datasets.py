@@ -5,6 +5,7 @@ import torch, torchvision
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 from torchvision import datasets
+from emnist import list_datasets, extract_training_samples, extract_test_samples
 
 def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, dataset_split=''):
     '''
@@ -19,23 +20,27 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, dat
         dataset_sizes
         class_names
     '''
-    if dataset_name == 'EMNIST':
+    if dataset_name == 'EMNIST': # torchvision version seems to have a bug with class mapping (so trasnforms is hacked)
         train_data = datasets.EMNIST(root=data_root_dir, split=dataset_split, 
                                                 train=True, download=True, 
-                                                transform=transforms_dict['train'])
+                                                transform=torchvision.transforms.Compose([
+                                                lambda img: torchvision.transforms.functional.rotate(img, -90),
+                                                lambda img: torchvision.transforms.functional.hflip(img),
+                                                torchvision.transforms.ToTensor()]))
 
         test_data = datasets.EMNIST(root=data_root_dir, split=dataset_split, 
                                                     train=False, download=True, 
-                                                    transform=transforms_dict['test'])
+                                                    transform=torchvision.transforms.Compose([
+                                                    lambda img: torchvision.transforms.functional.rotate(img, -90),
+                                                    lambda img: torchvision.transforms.functional.hflip(img),
+                                                    torchvision.transforms.ToTensor()]))
         
-        
-    # from emnist import list_datasets, extract_training_samples, extract_test_samples
-    # list_datasets()
-    # # ['balanced', 'byclass', 'bymerge', 'digits', 'letters', 'mnist']
-    # images, labels = extract_training_samples('balanced')
-    # class1 = [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-    #         'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q','R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',  'Z',
-    #         'a', 'b', 'd', 'e', 'f', 'g', 'h', 'n', 'q', 'r', 't']
+        # EMNIST using installed emnist package
+        # train_data = extract_training_samples('balanced')
+        # test_data = extract_training_samples('balanced')
+        # class_names = [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 'A', 'B', 'C', 'D', 'E', 'F', 
+        #                'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q','R', 'S', 'T', 
+        #                'U', 'V', 'W', 'X', 'Y',  'Z', 'a', 'b', 'd', 'e', 'f', 'g', 'h', 'n', 'q', 'r', 't']
 
     elif dataset_name == 'MNIST':
         train_data = datasets.EMNIST(root=data_root_dir, train=True, 

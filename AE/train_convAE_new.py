@@ -19,9 +19,13 @@ from torch.optim import lr_scheduler
 from torchvision import transforms
 
 import matplotlib.pyplot as plt
+from matplotlib import style
+
 import seaborn as sns
 from sklearn.manifold import TSNE
 from utils.load_datasets import load_dataset
+
+from tqdm import tqdm
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -32,8 +36,8 @@ latent_size = 128
 from models.convAE_128D import ConvAutoencoder
 TRAIN_FLAG = True
 eval_interval = 3 # epochs
-batch_size = 60
-nr_epochs = 5
+batch_size = 20
+nr_epochs = 20
 
 dataset_name = 'EMNIST'
 dataset_split = 'digits'
@@ -80,7 +84,13 @@ data_transforms = {
 }
 
 dataloaders, dataset_sizes, class_names = load_dataset('EMNIST', data_root_dir, data_transforms, 
-                                                       batch_size=batch_size, dataset_split='balanced')
+                                                       batch_size=batch_size, dataset_split=dataset_split)
+
+if dataset_name == 'EMNIST' and dataset_split == 'balanced':    
+    class_names = [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 
+                'M', 'N', 'O', 'P', 'Q','R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',  'Z',
+                'a', 'b', 'd', 'e', 'f', 'g', 'h', 'n', 'q', 'r', 't']
 
 # ----------------------------------
 # Visualize data 
@@ -95,23 +105,18 @@ def imshow(img):
     plt.imshow(img)  # convert from Tensor image
     
 # get some training images
-dataiter = iter(dataloaders['train'])
-images, labels = dataiter.next()
-# images = images.numpy() # convert images to numpy for display
-# plot the images in the batch, along with the corresponding labels
-
-class_names = [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 
-            'M', 'N', 'O', 'P', 'Q','R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',  'Z',
-            'a', 'b', 'd', 'e', 'f', 'g', 'h', 'n', 'q', 'r', 't']
-
-fig = plt.figure(figsize=(25, 4))
-# display 20 images
-for idx in np.arange(batch_size):
-    ax = fig.add_subplot(2, batch_size/2, idx+1, xticks=[], yticks=[])
-    imshow(images[idx])
-    ax.set_title(class_names[labels[idx]])
-plt.savefig(f'{results_root_dir}/train_data_samples_{dataset_name}.jpg')
+for dataset_type in ['train', 'test']: 
+    dataiter = iter(dataloaders[dataset_type])
+    images, labels = dataiter.next()
+    # images = images.numpy() # convert images to numpy for display
+    # plot the images in the batch, along with the corresponding labels
+    fig = plt.figure(figsize=(25, 4))
+    # display 20 images
+    for idx in np.arange(batch_size):
+        ax = fig.add_subplot(2, batch_size/2, idx+1, xticks=[], yticks=[])
+        imshow(images[idx])
+        ax.set_title(class_names[labels[idx]])
+    plt.savefig(f'{results_root_dir}/{dataset_type}_data_samples_{dataset_name}.jpg')
 
 # ----------------------------------
 # Define model training procedure
@@ -215,7 +220,7 @@ criterion = nn.BCELoss()
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
 # Decay LR by a factor of 0.1 every 7 epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 
 if TRAIN_FLAG:
     model, MODEL_NAME = train_model(model, criterion, optimizer, exp_lr_scheduler, num_epochs=nr_epochs)
@@ -223,12 +228,44 @@ if TRAIN_FLAG:
 
 # load the model (inference or to continue training)
 if not TRAIN_FLAG:
-    MODEL_NAME = "model-1606574353-epoch9-latent128"
+    MODEL_NAME = "model-1606602957-epoch5-latent128"
     checkpoint = torch.load(model_path_root + MODEL_NAME)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
+    
+# ----------------------------------
+# Visualize training (train vs test)
+# ----------------------------------
+style.use("ggplot")
+
+def create_acc_loss_graph(model_name):
+    contents = open(log_root_dir + model_name + ".log", "r").read().split("\n")
+
+    times = []
+    train_losses = []
+    test_losses = []
+    epochs = []
+
+    for c in contents:
+        if model_name in c:
+            name, timestamp, _, train_loss, _, test_loss, epoch = c.split(",")
+
+            times.append(float(timestamp))
+            train_losses.append(float(train_loss))
+            test_losses.append(float(test_loss))
+            epochs.append(float(epoch))
+
+    fig = plt.figure()
+
+    ax1 = plt.subplot2grid((2,1), (0,0))
+    ax1.plot(epochs,train_losses, label="train_loss")
+    ax1.plot(epochs,test_losses, label="test_loss")
+    ax1.legend(loc=3) # loc=3 means lower left 
+    plt.savefig(f'{results_root_dir}/train_test_graph_{dataset_name}_{model_name}.jpg')
+
+create_acc_loss_graph(MODEL_NAME)
 
 # ----------------------------------
 # Test the AE on test data
@@ -258,7 +295,7 @@ for idx in np.arange(20):
     ax = fig.add_subplot(2, 20/2, idx+1, xticks=[], yticks=[])
     imshow(output[idx])
     ax.set_title(class_names[labels[idx]])
-plt.savefig(f'{results_root_dir}/reconstructed_test_samples_{MODEL_NAME}.jpg')
+plt.savefig(f'{results_root_dir}/reconstructed_test_samples_{dataset_name}_{MODEL_NAME}.jpg')
 
 # ----------------------------------
 # Visualize the latent vector
@@ -297,4 +334,6 @@ if latent_size != 2:
     sns.scatterplot(x='x', y='y', hue=test_labels, 
                     palette=sns.color_palette("hls", len(class_names)), 
                     data=df, legend="full", alpha=0.3)
-    plt.savefig(f'{results_root_dir}/sns_scatter_{MODEL_NAME}.jpg')
+    plt.savefig(f'{results_root_dir}/sns_scatter_{dataset_name}_{MODEL_NAME}.jpg')
+    
+
