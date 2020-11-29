@@ -38,7 +38,7 @@ from models.convAE_128D import ConvAutoencoder
 TRAIN_FLAG = True
 eval_interval = 3 # epochs
 batch_size = 20
-nr_epochs = 40
+nr_epochs = 20
 
 dataset_name = 'EMNIST'
 dataset_split = 'balanced'
@@ -143,7 +143,7 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 if TRAIN_FLAG:
     # generate a model name
     MODEL_NAME = f"model-{int(time.time())}-epoch{nr_epochs}-latent{latent_size}" # use time to make the name unique
-    model, MODEL_NAME = train_model(model, MODEL_NAME, dataloaders, dataset_sizes, criterion, 
+    model = train_model(model, MODEL_NAME, dataloaders, dataset_sizes,criterion, 
                                     optimizer, exp_lr_scheduler, num_epochs=nr_epochs,
                                     model_save_dir=model_root_dir, log_save_dir=log_root_dir)
 

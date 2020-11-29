@@ -86,6 +86,6 @@ def train_model(model, model_name, dataloaders, dataset_sizes, criterion, optimi
             'model_state_dict': model.state_dict(best_model_wts),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
-            }, model_save_dir + MODEL_NAME)
+            }, model_save_dir + model_name)
     
-    return model, MODEL_NAME
+    return model
