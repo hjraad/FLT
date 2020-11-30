@@ -17,6 +17,7 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, dat
         
     Returns:
         dataloaders: dict of dataloaders
+        image_datasets: dict of image datasets
         dataset_sizes
         class_names
     '''
@@ -62,4 +63,4 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, dat
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'test']}
     class_names = image_datasets['train'].classes
     
-    return dataloaders, dataset_sizes, class_names
+    return dataloaders, image_datasets, dataset_sizes, class_names

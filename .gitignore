@@ -3,6 +3,7 @@
 *.h5
 *.txt
 *.csv
+*.p
 
 model_weights/
 

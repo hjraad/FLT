@@ -1,5 +1,7 @@
 '''
 Build a convolutional autoencoder
+@Author: Hadi Jamali-Rad
+@e-mail: h.jamali.rad@gmail.com
 '''
 
 from __future__ import print_function, division
@@ -10,6 +12,7 @@ import os
 import time
 import copy
 import sys
+import pickle
 
 import torch, torchvision
 import torch.nn as nn
@@ -23,6 +26,7 @@ from matplotlib import style
 
 import seaborn as sns
 from sklearn.manifold import TSNE
+import umap
 from utils.load_datasets import load_dataset
 
 from tqdm import tqdm
@@ -33,10 +37,12 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # ----------------------------------
 # Initialization
 # ----------------------------------
+TRAIN_FLAG = False  # train or not?
+UMAP_FLAG = True  # use Umap for visualization or not 
+TSNE_FLAG = False   # use ySNE for visualization or not 
+
 latent_size = 128
-from models.convAE_128D import ConvAutoencoder
-TRAIN_FLAG = True
-eval_interval = 3 # epochs
+#TODO eval_interval = every how many epochs to evlaute 
 batch_size = 20
 nr_epochs = 20
 
@@ -49,11 +55,15 @@ model_root_dir = "./model_weights/"
 results_root_dir = '../results/AE'
 log_root_dir = './logs/'
 
+# which model to use? 
+from models.convAE_128D import ConvAutoencoder
+
 # ----------------------------------
 # Reproducability
 # ----------------------------------
-# torch.manual_seed(1230)
-# np.random.seed(3210)
+torch.manual_seed(123)
+np.random.seed(321)
+umap_random_state=123
 
 # ---------------------
 # Check GPU
@@ -84,7 +94,7 @@ data_transforms = {
     ]),
 }
 
-dataloaders, dataset_sizes, class_names = load_dataset('EMNIST', data_root_dir, data_transforms, 
+dataloaders, image_datasets, dataset_sizes, class_names = load_dataset('EMNIST', data_root_dir, data_transforms, 
                                                        batch_size=batch_size, dataset_split=dataset_split)
 
 if dataset_name == 'EMNIST' and dataset_split == 'balanced':    
@@ -221,40 +231,47 @@ plt.savefig(f'{results_root_dir}/reconstructed_test_samples_{dataset_name}_{MODE
 # ----------------------------------
 # Visualize the latent vector
 # ----------------------------------
-embeddings_list = []
-labels_list = []
-with torch.no_grad():
-    for i, (images, labels) in enumerate(dataloaders['test']):
-            images = images.to(device)
-            labels_list.append(labels.cpu().numpy()) 
-            _, embeddings = model(images)
-            embeddings_list.append(embeddings.cpu().detach().numpy())
-            
-embeddings_np = np.concatenate(embeddings_list, axis=0)
-test_labels = np.concatenate(labels_list)
+if TSNE_FLAG:
+    embeddings_list = []
+    labels_list = []
+    with torch.no_grad():
+        for i, (images, labels) in enumerate(dataloaders['test']):
+                images = images.to(device)
+                labels_list.append(labels.cpu().numpy()) 
+                _, embeddings = model(images)
+                embeddings_list.append(embeddings.cpu().detach().numpy())
+                
+    embeddings_np = np.concatenate(embeddings_list, axis=0)
+    test_labels = np.concatenate(labels_list)
 
-if latent_size == 2:
-    plt.figure()
-    classes = [str(nr) for nr in range(0,10)]
-    plt.scatter(embeddings_np[:,0], embeddings_np[:,1], c=test_labels, 
-                s=8, cmap='tab10', label=classes)
-    plt.legend()
-    plt.savefig(f'{results_root_dir}/scatter_{MODEL_NAME}.jpg')
+    if latent_size == 2:
+        plt.figure()
+        classes = [str(nr) for nr in range(0,10)]
+        plt.scatter(embeddings_np[:,0], embeddings_np[:,1], c=test_labels, 
+                    s=8, cmap='tab10', label=classes)
+        plt.legend()
+        plt.savefig(f'{results_root_dir}/scatter_{MODEL_NAME}.jpg')
 
-if latent_size != 2:
-    X = embeddings_np
-    X_embedded = TSNE(n_components=2).fit_transform(X)
-    # plt.figure()
-    # plt.scatter(X_embedded[:,0], X_embedded[:,1], c=test_labels_tensor_np, 
-    #             s=8, cmap='tab10', label=classes)
-    # plt.legend()
-    # plt.savefig(f'{results_root_dir}/scatter_{MODEL_NAME}.jpg')
+    if latent_size != 2:
+        X = embeddings_np
+        X_embedded = TSNE(n_components=2).fit_transform(X)
+        # plt.figure()
+        # plt.scatter(X_embedded[:,0], X_embedded[:,1], c=test_labels_tensor_np, 
+        #             s=8, cmap='tab10', label=classes)
+        # plt.legend()
+        # plt.savefig(f'{results_root_dir}/scatter_{MODEL_NAME}.jpg')
+        
+        plt.figure()
+        df = pd.DataFrame({'x':X_embedded[:,0], 'y':X_embedded[:,1]})
+        sns.scatterplot(x='x', y='y', hue=test_labels, 
+                        palette=sns.color_palette("hls", len(class_names)), 
+                        data=df, legend="full", alpha=0.3)
+        plt.savefig(f'{results_root_dir}/sns_scatter_{dataset_name}_{MODEL_NAME}.jpg')
+        
+if UMAP_FLAG:
+    if os.path.exists(f'{model_root_dir}/umap_reduc_{dataset_name}.p'):
+        embeddings_umap = pickle.load( open( f'{model_root_dir}/umap_reduc_{dataset_name}.p', 'rb' ) )
+    else:
+        for 
+        
     
-    plt.figure()
-    df = pd.DataFrame({'x':X_embedded[:,0], 'y':X_embedded[:,1]})
-    sns.scatterplot(x='x', y='y', hue=test_labels, 
-                    palette=sns.color_palette("hls", len(class_names)), 
-                    data=df, legend="full", alpha=0.3)
-    plt.savefig(f'{results_root_dir}/sns_scatter_{dataset_name}_{MODEL_NAME}.jpg')
-    
-
