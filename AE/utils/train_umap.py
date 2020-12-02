@@ -1,7 +1,7 @@
 
 '''
 Train Umap based on the daset of choice
-@Author: Mohammad Abdizadeh & Hadi Jamali-Rad
+@Author(s): Mohammad Abdizadeh & Hadi Jamali-Rad
 @email(s): {moh.abdizadeh. h.jamali.rad}@gmail.com
 See also => #https://umap-learn.readthedocs.io/en/latest/transform.html
 '''
@@ -123,5 +123,5 @@ fig, ax = plt.subplots(figsize=(12, 10))
 color = train_labels_np.astype(int)
 plt.scatter(embedding[:, 0], embedding[:, 1], c=color, cmap="Spectral", s=0.1)
 plt.setp(ax, xticks=[], yticks=[])
-plt.title("MNIST data embedded into two dimensions by UMAP", fontsize=18)
+plt.title("EMNIST data dimensionality reduction by UMAP", fontsize=18)
 plt.show()

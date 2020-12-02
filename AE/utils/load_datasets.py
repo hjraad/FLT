@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from emnist import list_datasets, extract_training_samples, extract_test_samples
 
-def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, dataset_split=''):
+def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, shuffle_flag=False, dataset_split=''):
     '''
     Paramters: 
         dataset_name
@@ -56,7 +56,7 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, dat
     image_datasets = {'train': train_data, 'test': test_data}
     dataloaders = {x: DataLoader(image_datasets[x], 
                                 batch_size=batch_size,
-                                shuffle=True, 
+                                shuffle=shuffle_flag, 
                                 num_workers=4)
                    for x in ['train', 'test']}
 

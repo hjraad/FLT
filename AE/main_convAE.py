@@ -37,14 +37,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # ----------------------------------
 # Initialization
 # ----------------------------------
-TRAIN_FLAG = False  # train or not?
+TRAIN_FLAG = True  # train or not?
 UMAP_FLAG = True  # use Umap for visualization or not 
-TSNE_FLAG = False   # use ySNE for visualization or not 
+TSNE_FLAG = True   # use ySNE for visualization or not 
 
 latent_size = 128
 #TODO eval_interval = every how many epochs to evlaute 
 batch_size = 20
-nr_epochs = 20
+nr_epochs = 40
 
 dataset_name = 'EMNIST'
 dataset_split = 'balanced'
@@ -95,7 +95,8 @@ data_transforms = {
 }
 
 dataloaders, image_datasets, dataset_sizes, class_names = load_dataset('EMNIST', data_root_dir, data_transforms, 
-                                                       batch_size=batch_size, dataset_split=dataset_split)
+                                                                       batch_size=batch_size, shuffle_flag=False, 
+                                                                       dataset_split=dataset_split)
 
 if dataset_name == 'EMNIST' and dataset_split == 'balanced':    
     class_names = [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
@@ -153,9 +154,23 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 if TRAIN_FLAG:
     # generate a model name
     MODEL_NAME = f"model-{int(time.time())}-epoch{nr_epochs}-latent{latent_size}" # use time to make the name unique
-    model = train_model(model, MODEL_NAME, dataloaders, dataset_sizes,criterion, 
+    model, _ = train_model(model, MODEL_NAME, dataloaders, dataset_sizes,criterion, 
                                     optimizer, exp_lr_scheduler, num_epochs=nr_epochs,
                                     model_save_dir=model_root_dir, log_save_dir=log_root_dir)
+    
+    # also pickle dump the embedding from the best model
+    # this is for the Umap to pick up
+    embeddings_list = []
+    labels_list = []
+    with torch.no_grad():
+        for _, (image, label) in enumerate(tqdm(image_datasets['train'], desc='Inferencing training embeddings')):
+                image = image.to(device)
+                labels_list.append(label) 
+                _, embedding = model(image.unsqueeze(0))
+                embeddings_list.append(embedding.cpu().detach().numpy())
+    ae_embeddings_np = np.concatenate(embeddings_list, axis=0)
+    ae_labels_np = np.array(labels_list)
+    pickle.dump((ae_embeddings_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}.p', 'wb'))
 
 # load the model (inference or to continue training)
 if not TRAIN_FLAG:
@@ -230,31 +245,31 @@ plt.savefig(f'{results_root_dir}/reconstructed_test_samples_{dataset_name}_{MODE
 
 # ----------------------------------
 # Visualize the latent vector
-# ----------------------------------
+# ---------------------------------- 
+test_data_list = [data[0] for data in image_datasets['test']]
+test_data_tensor = torch.cat(test_data_list, dim=0)
+test_data_tensor_2D_np = torch.reshape(test_data_tensor, (test_data_tensor.shape[0], -1)).numpy()
+test_labels_np = np.array([data[1] for data in image_datasets['test']])
+
+# extract the AE embeddings of test data
+embeddings_list = []
+labels_list = []
+with torch.no_grad():
+    for i, (images, labels) in enumerate(dataloaders['test']):
+            images = images.to(device)
+            labels_list.append(labels.cpu().numpy()) 
+            _, embeddings = model(images)
+            embeddings_list.append(embeddings.cpu().detach().numpy())
+embeddings_np = np.concatenate(embeddings_list, axis=0)
+test_labels = np.concatenate(labels_list)
+
+if (test_labels != test_labels_np).all():
+    raise AssertionError('dataloader is shuffling at random - set Shuffle=False')
+    
 if TSNE_FLAG:
-    embeddings_list = []
-    labels_list = []
-    with torch.no_grad():
-        for i, (images, labels) in enumerate(dataloaders['test']):
-                images = images.to(device)
-                labels_list.append(labels.cpu().numpy()) 
-                _, embeddings = model(images)
-                embeddings_list.append(embeddings.cpu().detach().numpy())
-                
-    embeddings_np = np.concatenate(embeddings_list, axis=0)
-    test_labels = np.concatenate(labels_list)
-
-    if latent_size == 2:
-        plt.figure()
-        classes = [str(nr) for nr in range(0,10)]
-        plt.scatter(embeddings_np[:,0], embeddings_np[:,1], c=test_labels, 
-                    s=8, cmap='tab10', label=classes)
-        plt.legend()
-        plt.savefig(f'{results_root_dir}/scatter_{MODEL_NAME}.jpg')
-
+    # ------------- Use tSNE for dimensionality reduction  ------------
     if latent_size != 2:
-        X = embeddings_np
-        X_embedded = TSNE(n_components=2).fit_transform(X)
+        embeddings_tsne = TSNE(n_components=2).fit_transform(embeddings_np)
         # plt.figure()
         # plt.scatter(X_embedded[:,0], X_embedded[:,1], c=test_labels_tensor_np, 
         #             s=8, cmap='tab10', label=classes)
@@ -262,16 +277,35 @@ if TSNE_FLAG:
         # plt.savefig(f'{results_root_dir}/scatter_{MODEL_NAME}.jpg')
         
         plt.figure()
-        df = pd.DataFrame({'x':X_embedded[:,0], 'y':X_embedded[:,1]})
+        df = pd.DataFrame({'x':embeddings_tsne[:,0], 'y':embeddings_tsne[:,1]})
         sns.scatterplot(x='x', y='y', hue=test_labels, 
                         palette=sns.color_palette("hls", len(class_names)), 
                         data=df, legend="full", alpha=0.3)
-        plt.savefig(f'{results_root_dir}/sns_scatter_{dataset_name}_{MODEL_NAME}.jpg')
+        plt.savefig(f'{results_root_dir}/tsne_scatter_{dataset_name}_{MODEL_NAME}.jpg')
+    elif latent_size == 2:
+        print('Latent dim = 2, no need for dimensionality reduction!')
         
 if UMAP_FLAG:
-    if os.path.exists(f'{model_root_dir}/umap_reduc_{dataset_name}.p'):
-        embeddings_umap = pickle.load( open( f'{model_root_dir}/umap_reduc_{dataset_name}.p', 'rb' ) )
-    else:
-        for 
+    # ------------- Use Umap for dimensionality reduction  ------------
+    if latent_size != 2:
+        if os.path.exists(f'{model_root_dir}/umap_reducer_{dataset_name}.p'):
+            # load the reducer and calculate the embedding of the test data
+            reducer = pickle.load(open(f'{model_root_dir}/umap_reducer_{dataset_name}.p', 'rb'))
+            #TODO: we need to train the umap on embeddings of the AE to be fair here
+            embeddings_umap = reducer.transform(test_data_tensor_2D_np)
+            
+            plt.figure()
+            df = pd.DataFrame({'x':embeddings_umap[:,0], 'y':embeddings_umap[:,1]})
+            sns.scatterplot(x='x', y='y', hue=test_labels_np, 
+                            palette=sns.color_palette("hls", len(class_names)), 
+                            data=df, legend="full", alpha=0.3)
+            plt.savefig(f'{results_root_dir}/umap_scatter_{dataset_name}_{MODEL_NAME}.jpg')
+            
+        else:
+            print(f"The reducer for {dataset_name} doesn't exist, train the UMAP separately!")
+            print('-'*30)
+            
+    elif latent_size == 2:
+        print('Latent dim = 2, no need for dimensionality reduction!')
         
     
