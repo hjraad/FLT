@@ -22,7 +22,6 @@ from torch.optim import lr_scheduler
 from torchvision import transforms
 
 import matplotlib.pyplot as plt
-from matplotlib import style
 
 import seaborn as sns
 from sklearn.manifold import TSNE
@@ -31,13 +30,14 @@ from utils.load_datasets import load_dataset
 
 from tqdm import tqdm
 from utils.train_AE import train_model
+from utils.vis_tools import create_acc_loss_graph
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # ----------------------------------
 # Initialization
 # ----------------------------------
-TRAIN_FLAG = True  # train or not?
+TRAIN_FLAG = False  # train or not?
 UMAP_FLAG = True  # use Umap for visualization or not 
 TSNE_FLAG = True   # use ySNE for visualization or not 
 
@@ -170,12 +170,12 @@ if TRAIN_FLAG:
                 embeddings_list.append(embedding.cpu().detach().numpy())
     ae_embeddings_np = np.concatenate(embeddings_list, axis=0)
     ae_labels_np = np.array(labels_list)
-    pickle.dump((ae_embeddings_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}.p', 'wb'))
+    pickle.dump((ae_embeddings_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}_best.p', 'wb'))
 
 # load the model (inference or to continue training)
 if not TRAIN_FLAG:
-    MODEL_NAME = "model-1606648577-epoch40-latent128"
-    checkpoint = torch.load(model_root_dir + MODEL_NAME)
+    MODEL_NAME = "model-1606927012-epoch40-latent128"
+    checkpoint = torch.load(model_root_dir + MODEL_NAME + '_best.pt')
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
@@ -184,34 +184,7 @@ if not TRAIN_FLAG:
 # ----------------------------------
 # Visualize training (train vs test)
 # ----------------------------------
-style.use("ggplot")
-
-def create_acc_loss_graph(model_name):
-    contents = open(log_root_dir + model_name + ".log", "r").read().split("\n")
-
-    times = []
-    train_losses = []
-    test_losses = []
-    epochs = []
-
-    for c in contents:
-        if model_name in c:
-            name, timestamp, _, train_loss, _, test_loss, epoch = c.split(",")
-
-            times.append(float(timestamp))
-            train_losses.append(float(train_loss))
-            test_losses.append(float(test_loss))
-            epochs.append(float(epoch))
-
-    fig = plt.figure()
-
-    ax1 = plt.subplot2grid((2,1), (0,0))
-    ax1.plot(epochs,train_losses, label="train_loss")
-    ax1.plot(epochs,test_losses, label="test_loss")
-    ax1.legend(loc=3) # loc=3 means lower left 
-    plt.savefig(f'{results_root_dir}/train_test_graph_{dataset_name}_{model_name}.jpg')
-
-create_acc_loss_graph(MODEL_NAME)
+create_acc_loss_graph(MODEL_NAME, dataset_name, log_root_dir, results_root_dir)
 
 # ----------------------------------
 # Test the AE on test data
