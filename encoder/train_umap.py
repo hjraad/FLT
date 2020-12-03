@@ -51,8 +51,8 @@ dataset_name = 'EMNIST'
 dataset_split = 'balanced'
 # train_val_split = (100000, 12800)
 
-data_root_dir = '../../data'
-model_root_dir = '../model_weights'
+data_root_dir = '../data'
+model_root_dir = './model_weights'
 
 MODEL_NAME = 'model-1606927012-epoch40-latent128'
 
