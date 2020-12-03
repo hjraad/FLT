@@ -181,6 +181,8 @@ if not TRAIN_FLAG:
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
     
+    ae_embeddings_np, ae_labels_np = pickle.load(open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}_best.p', 'rb'))
+    
 # ----------------------------------
 # Visualize training (train vs test)
 # ----------------------------------
@@ -228,7 +230,7 @@ test_labels_np = np.array([data[1] for data in image_datasets['test']])
 embeddings_list = []
 labels_list = []
 with torch.no_grad():
-    for i, (images, labels) in enumerate(dataloaders['test']):
+    for i, (images, labels) in enumerate(tqdm(dataloaders['test'], desc='')):
             images = images.to(device)
             labels_list.append(labels.cpu().numpy()) 
             _, embeddings = model(images)
