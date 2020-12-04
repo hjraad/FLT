@@ -50,7 +50,7 @@ dataset_split = 'balanced'
 # train_val_split = (100000, 12800)
 
 data_root_dir = '../data'
-model_root_dir = "./model_weights/"
+model_root_dir = "../model_weights/"
 results_root_dir = '../results/AE'
 log_root_dir = './logs/'
 

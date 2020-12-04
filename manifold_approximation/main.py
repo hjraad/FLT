@@ -1,5 +1,5 @@
 '''
-E2E Encoding and Clustering 
+E2E Encoding 
 @Author: Hadi Jamali-Rad
 @e-mail: h.jamali.rad@gmail.com
 '''
@@ -49,7 +49,7 @@ dataset_name = 'MNIST'
 dataset_split = 'balanced'
 
 data_root_dir = '../data'
-model_root_dir = "./model_weights/"
+model_root_dir = '../model_weights'
 results_root_dir = '../results/Encoder'
 log_root_dir = './logs/'
 
@@ -98,7 +98,6 @@ if dataset_name == 'EMNIST' and dataset_split == 'balanced':
                 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 
                 'M', 'N', 'O', 'P', 'Q','R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',  'Z',
                 'a', 'b', 'd', 'e', 'f', 'g', 'h', 'n', 'q', 'r', 't']
-
 
 # ----------------------------------
 # Load AE and extract embedding
