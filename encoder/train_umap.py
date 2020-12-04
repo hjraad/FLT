@@ -45,7 +45,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 batch_size = 1
 num_workers = 0
 
-train_on_AE_embeddings = True
+train_on_AE_embedding = False
 
 dataset_name = 'EMNIST'
 dataset_split = 'balanced'
@@ -81,7 +81,7 @@ torch.cuda.device_count()
 # ----------------------------------
 # Load data or embedding 
 # ----------------------------------
-if train_on_AE_embeddings:
+if train_on_AE_embedding:
     train_data_2D_np, train_labels_np = pickle.load(open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}_best.p', 'rb'))
 else:
     # For now both have no special transformation 
@@ -108,27 +108,27 @@ else:
 # Train UMAP based on data or embedding
 # -------------------------------------------
 # train or load the upmap reducer
-if train_on_AE_embeddings:
+if train_on_AE_embedding:
     if not os.path.exists(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p'):
         reducer = umap.UMAP(random_state=umap_random_state)
-        embeddings = reducer.fit_transform(train_data_2D_np)
-        pickle.dump(embeddings, open(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p', 'wb'))
+        embedding = reducer.fit_transform(train_data_2D_np)
+        pickle.dump(embedding, open(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p', 'wb'))
         pickle.dump(reducer, open(f'{model_root_dir}/umap_reducer_{dataset_name}_{MODEL_NAME}.p', 'wb'))  
     else:
-        embeddings = pickle.load(open(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p', 'rb'))
+        embedding = pickle.load(open(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p', 'rb'))
 else: 
     if not os.path.exists(f'{model_root_dir}/umap_embedding_{dataset_name}.p'):
         reducer = umap.UMAP(random_state=umap_random_state)
-        embeddings = reducer.fit_transform(train_data_2D_np)
-        pickle.dump(embeddings, open(f'{model_root_dir}/umap_embedding_{dataset_name}.p', 'wb'))
+        embedding = reducer.fit_transform(train_data_2D_np)
+        pickle.dump(embedding, open(f'{model_root_dir}/umap_embedding_{dataset_name}.p', 'wb'))
         pickle.dump(reducer, open(f'{model_root_dir}/umap_reducer_{dataset_name}.p', 'wb'))
     else:
-        embeddings = pickle.dump(embeddings, open(f'{model_root_dir}/umap_embedding_{dataset_name}.p', 'rb'))
+        embedding = pickle.dump(embedding, open(f'{model_root_dir}/umap_embedding_{dataset_name}.p', 'rb'))
     
 sns.set(context="paper", style="white")
 fig, ax = plt.subplots(figsize=(12, 10))
 color = train_labels_np.astype(int)
-plt.scatter(embeddings[:, 0], embeddings[:, 1], c=color, cmap="Spectral", s=0.1)
+plt.scatter(embedding[:, 0], embedding[:, 1], c=color, cmap="Spectral", s=0.1)
 plt.setp(ax, xticks=[], yticks=[])
 plt.title("EMNIST data dimensionality reduction by UMAP", fontsize=18)
 plt.show()

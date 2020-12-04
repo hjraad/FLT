@@ -44,10 +44,10 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, shu
         #                'U', 'V', 'W', 'X', 'Y',  'Z', 'a', 'b', 'd', 'e', 'f', 'g', 'h', 'n', 'q', 'r', 't']
 
     elif dataset_name == 'MNIST':
-        train_data = datasets.EMNIST(root=data_root_dir, train=True, 
+        train_data = datasets.MNIST(root=data_root_dir, train=True, 
                                      download=True, transform=transforms_dict['train'])
 
-        test_data = datasets.EMNIST(root=data_root_dir, train=False, 
+        test_data = datasets.MNIST(root=data_root_dir, train=False, 
                                     download=True, transform=transforms_dict['test'])
         
     else:

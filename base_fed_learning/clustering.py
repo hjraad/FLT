@@ -71,7 +71,7 @@ def clustering_perfect(num_users, dict_users, dataset_train, args):
     return ar_related
 
 def clustering_umap(num_users, dict_users, dataset_train, args):
-    reducer_loaded = pickle.load( open( "umap_reducer.p", "rb" ) )
+    reducer_loaded = pickle.load( open( "../encoder/model_weights/umap_reducer_EMNIST.p", "rb" ) )
     reducer = reducer_loaded
 
     idxs_users = np.arange(num_users)
@@ -161,3 +161,5 @@ if __name__ == '__main__':
     for i in range(0,num_users):
         plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
         plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
+    
+plt.show()

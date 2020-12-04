@@ -93,7 +93,7 @@ data_transforms = {
     ]),
 }
 
-dataloaders, image_datasets, dataset_sizes, class_names = load_dataset('EMNIST', data_root_dir, data_transforms, 
+dataloaders, image_datasets, dataset_sizes, class_names = load_dataset(dataset_split, data_root_dir, data_transforms, 
                                                                        batch_size=batch_size, shuffle_flag=False, 
                                                                        dataset_split=dataset_split)
 
@@ -162,17 +162,17 @@ if TRAIN_FLAG:
     
     # also pickle dump the embedding from the best model
     # this is for the Umap to pick up
-    embeddings_list = []
+    embedding_list = []
     labels_list = []
     with torch.no_grad():
-        for _, (image, label) in enumerate(tqdm(image_datasets['train'], desc='Inferencing training embeddings')):
+        for _, (image, label) in enumerate(tqdm(image_datasets['train'], desc='Inferencing training embedding')):
                 image = image.to(device)
                 labels_list.append(label) 
                 _, embedding = model(image.unsqueeze(0))
-                embeddings_list.append(embedding.cpu().detach().numpy())
-    ae_embeddings_np = np.concatenate(embeddings_list, axis=0)
+                embedding_list.append(embedding.cpu().detach().numpy())
+    ae_embedding_np = np.concatenate(embedding_list, axis=0)
     ae_labels_np = np.array(labels_list)
-    pickle.dump((ae_embeddings_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}_best.p', 'wb'))
+    pickle.dump((ae_embedding_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}_best.p', 'wb'))
 
 # load the model (inference or to continue training)
 if not TRAIN_FLAG:
@@ -185,7 +185,7 @@ if not TRAIN_FLAG:
     loss = checkpoint['loss']
     
     # Load embddings of the contractie AE
-    ae_embeddings_np, ae_labels_np = pickle.load(open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}_best.p', 'rb'))
+    ae_embedding_np, ae_labels_np = pickle.load(open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}_best.p', 'rb'))
     
 # ----------------------------------
 # Test the AE on test data
