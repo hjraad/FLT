@@ -199,7 +199,7 @@ if __name__ == '__main__':
     # parse args
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-    args.gpu = -1
+    args.gpu = 0
     args.all_clients = True
     args.iid=True
     args.frac=0.1

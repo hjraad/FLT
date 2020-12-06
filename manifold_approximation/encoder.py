@@ -44,7 +44,7 @@ class Encoder():
     '''
     def __init__(self, ae_model, ae_model_name, model_root_dir,
                                     manifold_dim, image_dataset, client_name, 
-                                    dataset_name='MNIST', train_umap=False, use_AE=True):
+                                    dataset_name='', train_umap=False, use_AE=True):
         self.ae_model = ae_model
         self.ae_model_name = ae_model_name
         self.model_root_dir = model_root_dir
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     batch_size = 1
     manifold_dim = 2
     model_name = "model-1606927012-epoch40-latent128"
-    dataset_name = 'EMNIST'
+    dataset_name = 'MNIST'
     data_root_dir = '../data'
     results_root_dir = '../results/Encoder'
     model_root_dir = '../model_weights'

@@ -13,7 +13,9 @@ from models.Update import LocalUpdate
 from models.Nets import MLP, CNNMnist, CNNCifar
 from models.Fed import FedAvg
 from models.test import test_img, test_img_classes
-from clustering import clustering_perfect, clustering_umap
+from clustering import clustering_perfect, clustering_umap, clustering_encoder
+
+from manifold_approximation.models.convAE_128D import ConvAutoencoder
 
 def gen_model(iid, dataset_type, num_users, cluster, cluster_num):
         # load dataset and split users
@@ -110,7 +112,7 @@ if __name__ == '__main__':
     # parse args
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-    args.gpu = -1
+    args.gpu = 0
     args.all_clients = True
     args.iid=True
     args.frac=0.1
@@ -152,14 +154,14 @@ if __name__ == '__main__':
     loss_train_final = np.zeros(num_users)
     acc_test_final = np.zeros(num_users)
     loss_test_final = np.zeros(num_users)
-    if True:#idx in np.arange(1):#TODO: no need to loop over users
-        idx = 0
-        print(idx)
-        #net_glob_list[idx].eval()
-        acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, cluster[idx//cluster_length], args)
-        acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, cluster[idx//cluster_length], args)
-    print("Training accuracy: {:.2f}".format(acc_train_final[0]))
-    print("Testing accuracy: {:.2f}".format(acc_test_final[0]))
+    # if True:#idx in np.arange(1):#TODO: no need to loop over users
+    #     idx = 0
+    #     print(idx)
+    #     #net_glob_list[idx].eval()
+    #     acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, cluster[idx//cluster_length], args)
+    #     acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, cluster[idx//cluster_length], args)
+    # print("Training accuracy: {:.2f}".format(acc_train_final[0]))
+    # print("Testing accuracy: {:.2f}".format(acc_test_final[0]))
     
     loss_train_iid = loss_train
     ##########################################################################
@@ -192,13 +194,13 @@ if __name__ == '__main__':
     loss_train_final = np.zeros(num_users)
     acc_test_final = np.zeros(num_users)
     loss_test_final = np.zeros(num_users)
-    for idx in np.arange(0, num_users-1, cluster_length):#TODO: no need to loop over all users
-        print(idx)
-        #net_glob_list[idx].eval()
-        acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[0], dataset_train, cluster[idx//cluster_length], args)
-        acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[0], dataset_test, cluster[idx//cluster_length], args)
-    print("Training accuracy: {:.2f}".format(np.average(acc_train_final[np.arange(0, num_users-1, cluster_length)])))
-    print("Testing accuracy: {:.2f}".format(np.average(acc_test_final[np.arange(0, num_users-1, cluster_length)])))
+    # for idx in np.arange(0, num_users-1, cluster_length):#TODO: no need to loop over all users
+    #     print(idx)
+    #     #net_glob_list[idx].eval()
+    #     acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[0], dataset_train, cluster[idx//cluster_length], args)
+    #     acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[0], dataset_test, cluster[idx//cluster_length], args)
+    # print("Training accuracy: {:.2f}".format(np.average(acc_train_final[np.arange(0, num_users-1, cluster_length)])))
+    # print("Testing accuracy: {:.2f}".format(np.average(acc_test_final[np.arange(0, num_users-1, cluster_length)])))
        
     loss_train_noniid_noclustering = loss_train
     ##########################################################################
@@ -217,7 +219,23 @@ if __name__ == '__main__':
     
     #average over clients in a same cluster
     #ar_related = clustering_perfect(num_users, dict_users, dataset_train, args)
-    ar_related, _, _ = clustering_umap(num_users, dict_users, dataset_train, args)
+    # ar_related, _, _ = clustering_umap(num_users, dict_users, dataset_train, args)
+    manifold_dim = 2
+    model_name = "model-1606927012-epoch40-latent128"
+    data_root_dir = '../data'
+    model_root_dir = '../model_weights'
+        
+    # model
+    model = ConvAutoencoder().to(args.device)
+
+    # Load the model ckpt
+    checkpoint = torch.load(f'{model_root_dir}/{model_name}_best.pt')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    epoch = checkpoint['epoch']
+    loss = checkpoint['loss']       
+    
+    ar_related, _, _, _ = clustering_encoder(num_users, dict_users, dataset_train, model, 
+                                          model_name, model_root_dir, manifold_dim, args)
             
     #TODO: add clustered Fed averaging
     net_glob, w_glob, net_glob_list, w_glob_list = net_g(dataset, dataset_train, num_users)
@@ -228,13 +246,13 @@ if __name__ == '__main__':
     loss_train_final = np.zeros(num_users)
     acc_test_final = np.zeros(num_users)
     loss_test_final = np.zeros(num_users)
-    for idx in np.arange(0,num_users-1,cluster_length):#TODO: no need to loop over all the users!
-        print("cluster under process: ", idx//cluster_length)
-        net_glob_list[idx].eval()
-        acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, cluster[idx//cluster_length], args)
-        acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, cluster[idx//cluster_length], args)
-    print("Training accuracy: {:.2f}".format(np.average(acc_train_final[np.arange(0,num_users-1,cluster_length)])))
-    print("Testing accuracy: {:.2f}".format(np.average(acc_test_final[np.arange(0,num_users-1,cluster_length)])))     
+    # for idx in np.arange(0,num_users-1,cluster_length):#TODO: no need to loop over all the users!
+    #     print("cluster under process: ", idx//cluster_length)
+    #     net_glob_list[idx].eval()
+    #     acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, cluster[idx//cluster_length], args)
+    #     acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, cluster[idx//cluster_length], args)
+    # print("Training accuracy: {:.2f}".format(np.average(acc_train_final[np.arange(0,num_users-1,cluster_length)])))
+    # print("Testing accuracy: {:.2f}".format(np.average(acc_test_final[np.arange(0,num_users-1,cluster_length)])))     
     
     loss_train_noniid_clustering = loss_train
     ########################################################################### Create plots with pre-defined labels.
