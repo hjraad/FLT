@@ -32,10 +32,9 @@ from sklearn.cluster import KMeans
 import umap
 from manifold_approximation.utils.load_datasets import load_dataset
 
-from tqdm import tqdm
-from manifold_approximation.utils.train_AE import train_model
-from manifold_approximation.utils.vis_tools import create_acc_loss_graph
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
+
+from tqdm import tqdm
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -44,7 +43,8 @@ class Encoder():
     Encoder class for clustering 
     '''
     def __init__(self, ae_model, ae_model_name, model_root_dir,
-                                    manifold_dim, image_dataset, client_name, dataset_name='MNIST'):
+                                    manifold_dim, image_dataset, client_name, 
+                                    dataset_name='MNIST', train_umap=False):
         self.ae_model = ae_model
         self.ae_model_name = ae_model_name
         self.model_root_dir = model_root_dir
@@ -52,6 +52,7 @@ class Encoder():
         self.image_dataset = image_dataset
         self.client_name = client_name
         self.dataset_name = dataset_name
+        self.train_umap = train_umap
     
     #TODO: make it static method
     def autoencoder(self):
@@ -63,8 +64,7 @@ class Encoder():
         embedding_list = []
         labels_list = []
         with torch.no_grad():
-            for _, (image, label) in enumerate(tqdm(self.image_dataset, 
-                                                    desc=f'Extracting AE embedding of client_{self.client_name}')):
+            for _, (image, label) in enumerate(tqdm(self.image_dataset, desc=f'Extracting AE embedding of client_{self.client_name}')):
                     image = image.to(device)
                     labels_list.append(label) 
                     _, embedding = model(image.unsqueeze(0))
@@ -95,15 +95,24 @@ class Encoder():
             raise AssertionError('Order of data samples is shuffled!')
     
         # if not os.path.exists(f'{self.model_root_dir}/umap_embedding_{self.dataset_name}_{self.ae_model_name}_{self.manifold_dim}D.p'):
-        self.umap_reducer = umap.UMAP(n_components=self.manifold_dim, random_state=42)
-        self.umap_embedding = self.umap_reducer.fit_transform(self.ae_embedding_np)
-        print(f'UMAP embedding for client_{self.client_name} is extracted.')
+        if self.train_umap:
+            print('Training UMAP on AE embedding ...')
+            self.umap_reducer = umap.UMAP(n_components=self.manifold_dim, random_state=42)
+            self.umap_embedding = self.umap_reducer.fit_transform(self.ae_embedding_np)
+            print(f'UMAP embedding for client_{self.client_name} is extracted.')
             # pickle.dump(self.umap_embedding, open(f'{self.model_root_dir}/umap_embedding_{self.dataset_name}_{self.ae_model_name}_client{self.client_name}_{self.manifold_dim}D.p', 'wb'))
             # pickle.dump(self.umap_reducer, open(f'{self.model_root_dir}/umap_reducer_{self.dataset_name}_{self.ae_model_name}_client{self.client_name}_{self.manifold_dim}D.p', 'wb'))
-        # else:
-        #     self.umap_embedding = pickle.load(open(f'{self.model_root_dir}/umap_embedding_{self.dataset_name}_{self.ae_model_name}_client{self.client_name}_{self.manifold_dim}D.p', 'rb'))
-        #     self.umap_reducer = pickle.load(open(f'{self.model_root_dir}/umap_reducer_{self.dataset_name}_{self.ae_model_name}_client{self.client_name}_{self.manifold_dim}D.p', 'rb'))
-        #     print(f'UMAP embedding/reducer for client{self.client_name} is loaded.')
+        else:
+            # with AE
+            # self.umap_reducer = pickle.load(open(f'{self.model_root_dir}/umap_reducer_EMNIST_{self.ae_model_name}.p', 'rb'))
+            # print('Extracting UMAP embedding ...')
+            # self.umap_embedding = self.umap_reducer.transform(self.ae_embedding_np)
+            # or without AE
+            self.umap_reducer = pickle.load(open(f'{self.model_root_dir}/umap_reducer_EMNIST.p', 'rb'))
+            print('Extracting UMAP embedding ...')
+            self.umap_embedding = self.umap_reducer.fit_transform(data_2D_np)   
+            
+            print(f'UMAP embedding/reducer for client_{self.client_name} is loaded.')
 
 # unit test
 if __name__ == '__main__':
@@ -113,6 +122,7 @@ if __name__ == '__main__':
     model_name = "model-1606927012-epoch40-latent128"
     dataset_name = 'MNIST'
     data_root_dir = '../data'
+    results_root_dir = '../results/Encoder'
     model_root_dir = '../model_weights'
     client_name = 1
     dataset_split = 'balanced'
@@ -141,15 +151,12 @@ if __name__ == '__main__':
 
     # model
     model = ConvAutoencoder().to(device)
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     # Load the model ckpt
     checkpoint = torch.load(f'{model_root_dir}/{model_name}_best.pt')
     model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
-
 
     encoder = Encoder(model, model_name, model_root_dir, 
                                 manifold_dim, image_dataset, client_name)
@@ -157,4 +164,15 @@ if __name__ == '__main__':
     encoder.autoencoder()
     encoder.manifold_approximation_umap()
     reducer = encoder.umap_reducer
+    umap_embedding = encoder.umap_embedding
+
+    plt.figure()
+    labels_np = np.array([data[1] for data in image_datasets['train']])
+    df = pd.DataFrame({'x':umap_embedding[:, 0], 'y':umap_embedding[:, 1]})
+    sns.scatterplot(x='x', y='y', hue=labels_np, palette=sns.color_palette("hls", len(class_names)), 
+                    data=df, legend="full", alpha=0.3)
+    plt.savefig(f'{results_root_dir}/umap_scatter_{dataset_name}_{model_name}.jpg')
+    plt.show()
+    
+    
     
