@@ -22,19 +22,19 @@ from torch.optim import lr_scheduler
 from torchvision import transforms
 
 import matplotlib.pyplot as plt
+from manifold_approximation.utils import load_datasets
 
 import seaborn as sns
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 import umap
-from utils.load_datasets import load_dataset
+from manifold_approximationutils.load_datasets import load_dataset
+from manifold_approximationmodels.convAE_128D import ConvAutoencoder
 
 from tqdm import tqdm
-from utils.train_AE import train_model
-from utils.vis_tools import create_acc_loss_graph
-from models.convAE_128D import ConvAutoencoder
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 # ----------------------------------
 # Initialization

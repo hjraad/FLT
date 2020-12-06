@@ -26,11 +26,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.manifold import TSNE
 import umap
-from utils.load_datasets import load_dataset
+from  manifold_approximation.utils.load_datasets import load_dataset
+from  manifold_approximation.utils.train_AE import train_model
+from manifold_approximation.utils.vis_tools import create_acc_loss_graph
 
 from tqdm import tqdm
-from utils.train_AE import train_model
-from utils.vis_tools import create_acc_loss_graph
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

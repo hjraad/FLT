@@ -140,9 +140,10 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_
     idxs_users = np.arange(num_users)
 
     centers = np.zeros((num_users, 2, 2))
-    for user_id in idxs_users:
-        if user_id % (num_users//10) == 0:
-            print("clustering progress", user_id*100//num_users, " %")
+    embedding_matrix = np.zeros((len(dict_users[0])*num_users, 2))
+    for user_id in tqdm(idxs_users, desc='Custering progress'):
+        # if user_id % (num_users//10) == 0:
+        #     print("clustering progress", user_id*100//num_users, " %")
         X = []
         aa = np.empty((0,28*28))
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
@@ -165,6 +166,7 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_
         
         # embedding1 = reducer.transform(aa)
         X = list(embedding1)
+        embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding1
         kmeans = KMeans(n_clusters=2, random_state=0).fit(np.array(X))
         centers[user_id,:,:] = kmeans.cluster_centers_
     
@@ -189,7 +191,7 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_
             else:
                 ar_related0[idx0][idx1+1] = 0
 
-    return ar_related0, ar_related0_soft, centers
+    return ar_related0, ar_related0_soft, centers, embedding_matrix
 
 
 
@@ -209,8 +211,10 @@ if __name__ == '__main__':
     
     ##########################################################################
     # case three: 100 clients with labeled from only two images for each client --> noniid --> adding clustered fed average
+    plt.close('all')
+    
     iid=True
-    num_users=40
+    num_users=20
     
     cluster_num = 5
     cluster_length = num_users // cluster_num
@@ -240,8 +244,9 @@ if __name__ == '__main__':
     #average over clients in a same cluster
     ar_related = clustering_perfect(num_users, dict_users, dataset_train, args)
     # ar_related0, ar_related0_soft, centers = clustering_umap(num_users, dict_users, dataset_train, args)
-    ar_related0, ar_related0_soft, centers = clustering_encoder(num_users, dict_users, dataset_train, 
+    ar_related0, ar_related0_soft, centers, embedding_matrix = clustering_encoder(num_users, dict_users, dataset_train, 
                                                                 model, model_name, model_root_dir, manifold_dim, args)
+    
     
     plt.figure(1)
     plt.imshow(ar_related[:,1:],cmap=plt.cm.viridis)
@@ -256,5 +261,11 @@ if __name__ == '__main__':
     for i in range(0,num_users):
         plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
         plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
-    
+
+    plt.figure(5)
+    Num_Cent = len(dict_users[0])*cluster_length
+    colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
+    for i in range(cluster_num):
+        plt.scatter(embedding_matrix[i*Num_Cent:(i+1)*Num_Cent, 0], embedding_matrix[i*Num_Cent:(i+1)*Num_Cent:, 1], color=next(colors))
+
 plt.show()

@@ -34,8 +34,8 @@ from torch.optim import lr_scheduler
 from torchvision import transforms
 from tqdm import tqdm
 
-from utils.load_datasets import load_dataset
-from utils.train_AE import train_model
+from manifold_approximation.utils.load_datasets import load_dataset
+from  manifold_approximation.utils.train_AE import train_model
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
