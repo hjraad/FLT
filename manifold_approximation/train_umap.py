@@ -146,7 +146,9 @@ if train_on_AE_embedding:
         pickle.dump(embedding, open(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p', 'wb'))
         pickle.dump(reducer, open(f'{model_root_dir}/umap_reducer_{dataset_name}_{MODEL_NAME}.p', 'wb'))  
     else:
-        embedding = pickle.load(open(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p', 'rb'))
+        # embedding = pickle.load(open(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p', 'rb'))
+        reducer = pickle.load(open(f'{model_root_dir}/umap_reducer_{dataset_name}_{MODEL_NAME}.p', 'rb'))
+        embedding = reducer.transform(train_data_2D_np)
         print('Model trained on AE embedding is loaded.')
 else: 
     if not os.path.exists(f'{model_root_dir}/umap_embedding_{dataset_name}.p'):
@@ -159,7 +161,7 @@ else:
         embedding = pickle.load(open(f'{model_root_dir}/umap_embedding_{dataset_name}.p', 'rb'))
         print(f'Model trained full {dataset_name} is loaded.')
     
-sns.set(context='paper', style='white')
+# sns.set(context='paper', style='white')
 fig, ax = plt.subplots(figsize=(12, 10))
 color = train_labels_np.astype(int)
 plt.scatter(embedding[:, 0], embedding[:, 1], c=color, cmap='Spectral', s=0.1)
