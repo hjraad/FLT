@@ -172,7 +172,7 @@ if TRAIN_FLAG:
                 embedding_list.append(embedding.cpu().detach().numpy())
     ae_embedding_np = np.concatenate(embedding_list, axis=0)
     ae_labels_np = np.array(labels_list)
-    pickle.dump((ae_embedding_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}_best.p', 'wb'))
+    pickle.dump((ae_embedding_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}.p', 'wb'))
 
 # load the model (inference or to continue training)
 if not TRAIN_FLAG:
@@ -185,7 +185,7 @@ if not TRAIN_FLAG:
     loss = checkpoint['loss']
     
     # Load embddings of the contractie AE
-    ae_embedding_np, ae_labels_np = pickle.load(open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}_best.p', 'rb'))
+    ae_embedding_np, ae_labels_np = pickle.load(open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}.p', 'rb'))
     
 # ----------------------------------
 # Test the AE on test data
