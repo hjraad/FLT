@@ -110,7 +110,7 @@ class Encoder():
             # or without AE
             self.umap_reducer = pickle.load(open(f'{self.model_root_dir}/umap_reducer_EMNIST.p', 'rb'))
             print('Extracting UMAP embedding ...')
-            self.umap_embedding = self.umap_reducer.fit_transform(data_2D_np)   
+            self.umap_embedding = self.umap_reducer.transform(data_2D_np)   
             
             print(f'UMAP embedding/reducer for client_{self.client_name} is loaded.')
 

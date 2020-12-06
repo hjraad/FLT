@@ -45,7 +45,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 batch_size = 1
 num_workers = 0
 
-train_on_AE_embedding = False
+train_on_AE_embedding = True
 
 dataset_name = 'EMNIST'
 dataset_split = 'balanced'
@@ -53,6 +53,7 @@ dataset_split = 'balanced'
 
 data_root_dir = '../data'
 model_root_dir = '../model_weights'
+results_root_dir = '../results/UMAP'
 
 MODEL_NAME = 'model-1606927012-epoch40-latent128'
 # which model to use? 
@@ -154,11 +155,21 @@ else:
         embedding = reducer.fit_transform(train_data_2D_np)
         pickle.dump(embedding, open(f'{model_root_dir}/umap_embedding_{dataset_name}.p', 'wb'))
         pickle.dump(reducer, open(f'{model_root_dir}/umap_reducer_{dataset_name}.p', 'wb'))
+    else:    
+        embedding = pickle.load(open(f'{model_root_dir}/umap_embedding_{dataset_name}.p', 'rb'))
+        print(f'Model trained full {dataset_name} is loaded.')
     
-sns.set(context="paper", style="white")
+sns.set(context='paper', style='white')
 fig, ax = plt.subplots(figsize=(12, 10))
 color = train_labels_np.astype(int)
-plt.scatter(embedding[:, 0], embedding[:, 1], c=color, cmap="Spectral", s=0.1)
+plt.scatter(embedding[:, 0], embedding[:, 1], c=color, cmap='Spectral', s=0.1)
 plt.setp(ax, xticks=[], yticks=[])
-plt.title("EMNIST data dimensionality reduction by UMAP", fontsize=18)
+
+if train_on_AE_embedding:
+    plt.title(f'{dataset_name} dimensionality reduction by UMAP with AE', fontsize=18)
+    plt.savefig(f'{results_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.jpg')
+else:
+    plt.title(f'{dataset_name} dimensionality reduction by UMAP', fontsize=18)
+    plt.savefig(f'{results_root_dir}/umap_embedding_{dataset_name}.jpg')
+
 plt.show()
