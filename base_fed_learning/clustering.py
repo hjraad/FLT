@@ -188,10 +188,11 @@ if __name__ == '__main__':
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
     args.num_users = 20
+    
     # ----------------------------------
     plt.close('all')
-    
     iid=True
+    
     # ----------------------------------
     # generate cluster settings    
     cluster_num = 5
@@ -199,25 +200,30 @@ if __name__ == '__main__':
     cluster = np.zeros((cluster_num,2), dtype='int64')
     for i in range(cluster_num):
         cluster[i] = np.random.choice(10, 2, replace=False)
-     # ----------------------------------       
+    
+    # ----------------------------------       
     manifold_dim = 2
     model_name = "model-1606927012-epoch40-latent128"
     data_root_dir = '../data'
-    model_root_dir = './manifold_approximation/models/model_weights'
-     # ----------------------------------       
+    model_root_dir = '../model_weights'
+    
+    # ----------------------------------       
     # model
     model = ConvAutoencoder().to(args.device)
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    
     # ----------------------------------
     # Load the model ckpt
     checkpoint = torch.load(f'{model_root_dir}/{model_name}_best.pt')
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
-    loss = checkpoint['loss']       
+    loss = checkpoint['loss']  
+        
     # ----------------------------------
     # generate clustered data
     dataset_train, dataset_test, dict_users = gen_model(iid, args.dataset, args.num_users, cluster, cluster_num)
+    
     # ----------------------------------    
     #average over clients in a same cluster
     clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)

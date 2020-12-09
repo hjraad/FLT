@@ -1,5 +1,8 @@
+'''
+Base code forked from https://github.com/shaoxiongji/federated-learning
+'''
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import sys
 sys.path.append("./../")
 sys.path.append("./../../")
