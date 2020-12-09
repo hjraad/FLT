@@ -5,7 +5,12 @@
 *.csv
 *.p
 
-model_weights/
+model_weights/*
+!model_weights/.gitkeep 
+
+# Log files
+logs/*
+!logs/.gitkeep 
 
 .idea/
 

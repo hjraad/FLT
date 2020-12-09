@@ -3,8 +3,6 @@ matplotlib.use('Agg')
 import sys
 sys.path.append("./../")
 sys.path.append("./../../")
-sys.path.append("./")
-sys.path.append("../")
 
 import matplotlib.pyplot as plt
 import copy
@@ -131,7 +129,7 @@ if __name__ == '__main__':
     manifold_dim = 2
     model_name = "model-1606927012-epoch40-latent128"
     data_root_dir = '../data'
-    model_root_dir = './manifold_approximation/models/model_weights'
+    model_root_dir = '../model_weights'
         
     # model
     model = ConvAutoencoder().to(args.device)

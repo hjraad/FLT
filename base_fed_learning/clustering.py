@@ -2,13 +2,11 @@
 Created on Mon Nov 23 19:44:39 2020
 
 @author: Mohammad Abdizadeh & Hadi Jamali-Rad
-@email:{moh.abdizadeh, h.jamali.rad@gmail.com}
+@email(s):{moh.abdizadeh, h.jamali.rad@gmail.com}
 """
 import sys
 sys.path.append("./../")
 sys.path.append("./../../")
-sys.path.append("./")
-sys.path.append("../")
 
 import matplotlib.pyplot as plt
 import copy
@@ -92,7 +90,7 @@ def clustering_perfect(num_users, dict_users, dataset_train, args):
     return clustering_matrix
 
 def clustering_umap(num_users, dict_users, dataset_train, args):
-    reducer_loaded = pickle.load( open( "./manifold_approximation/models/model_weights/umap_reducer_EMNIST.p", "rb" ) )
+    reducer_loaded = pickle.load( open( "../model_weights/umap_reducer_EMNIST.p", "rb" ) )
     reducer = reducer_loaded
 
     idxs_users = np.arange(num_users)
