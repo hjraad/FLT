@@ -58,7 +58,7 @@ def gen_model(iid, dataset_type, num_users, cluster, cluster_num):
 
     return dataset_train, dataset_test, dict_users
 
-def clustering_dummy(num_users, dict_users, dataset_train, args):
+def clustering_dummy(num_users):
     clustering_matrix = np.zeros((num_users, num_users+1))
     idxs_users = np.arange(num_users)
     for idx in idxs_users:                         

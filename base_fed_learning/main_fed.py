@@ -13,12 +13,12 @@ import numpy as np
 from torchvision import datasets, transforms
 import torch
 import torchvision
-from utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid
-from utils.options import args_parser
-from models.Update import LocalUpdate
-from models.Nets import MLP, CNNMnist, CNNCifar
-from models.Fed import FedAvg
-from models.test import test_img, test_img_classes
+from base_fed_learning.utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid
+from base_fed_learning.utils.options import args_parser
+from base_fed_learning.models.Update import LocalUpdate
+from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar
+from base_fed_learning.models.Fed import FedAvg
+from base_fed_learning.models.test import test_img, test_img_classes
 from clustering import clustering_dummy, clustering_perfect, clustering_umap, clustering_encoder
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
@@ -31,6 +31,7 @@ def gen_data(iid, dataset_type, num_users, cluster, cluster_num):
         dataset_test = datasets.MNIST('../data/mnist/', train=False, download=True, transform=trans_mnist)
         # sample users
         if iid:
+            #TODO: cluster_number doesn't have to be passed in below
             dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster, cluster_num)
         else:
             dict_users = mnist_iid(dataset_train, num_users)
@@ -47,7 +48,7 @@ def gen_data(iid, dataset_type, num_users, cluster, cluster_num):
 
     return dataset_train, dataset_test, dict_users
 
-def net_g(dataset, dataset_train, num_users):
+def net_gen(dataset, dataset_train, num_users):
     img_size = dataset_train[0][0].shape
 
     # build model
@@ -121,20 +122,7 @@ if __name__ == '__main__':
     args.gpu = 0
     args.all_clients = True
     args.iid=True
-    args.frac=0.1
-    args.lr=0.01
-    args.num_users=20#100
-    args.seed=1
-    args.epochs=10
-    args.num_classes = 10
-    # ----------------------------------
-    num_users=40
-    manifold_dim = 2
-    model_name = "model-1606927012-epoch40-latent128"
-    data_root_dir = '../data'
-    model_root_dir = '../model_weights'
-        
-    # model
+    args.franet_gen
     model = ConvAutoencoder().to(args.device)
 
     # Load the model ckpt
@@ -143,30 +131,33 @@ if __name__ == '__main__':
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
 
-    clustering_method = 'umap_mo'#'perfect','umap_mo','umap','encoder'
-
+    # TODO: clean up umap_mo & umap
+    clustering_method = 'encoder'#'perfect','umap_mo','umap','encoder'
     results_root_dir = '../results/main_fed'
+    
     outputFile = open(f'{results_root_dir}/results_{num_users}_{clustering_method}.txt', 'w')
-    #bs=128, dataset='mnist', device=device(type='cpu'), , kernel_num=9, kernel_sizes='3,4,5', local_bs=10, local_ep=5, , max_pool='True', model='mlp', momentum=0.5, norm='batch_norm', num_channels=3, num_classes=10, num_filters=32, , split='user', stopping_rounds=10, verbose=False)
+    
     # ----------------------------------
     # case 1: N clients with labeled from all the images --> iid
-    #TODO: change naming
+    #TODO: fix the naming of iid here (seems like it has to be removed)
     iid=False# change the naming!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     num_users=40
     
+    # TODO: cluster_num => nr_of_clusters, cluster_length => cluster_size
     cluster_num = 1
     cluster_length = num_users // cluster_num
     cluster = np.zeros((cluster_num,10), dtype='int64')
     for i in range(cluster_num):
-        cluster[i] = np.random.choice(10, 10, replace=False)# TODO: should it be np.random.choice(10, 2, replace=False) ?
+        # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
+        cluster[i] = np.random.choice(10, 10, replace=False)
         
     dataset='mnist'
     dataset_train, dataset_test, dict_users = gen_data(iid, dataset, num_users, cluster, cluster_num)
 
     #average over all clients
-    clustering_matrix = clustering_dummy(num_users, dict_users, dataset_train, args)
+    clustering_matrix = clustering_dummy(num_users)
 
-    net_glob, w_glob, net_glob_list, w_glob_list = net_g(dataset, dataset_train, num_users)
+    net_glob, w_glob, net_glob_list, w_glob_list = net_gen(dataset, dataset_train, num_users)
     loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix)
 
     # testing
@@ -204,9 +195,10 @@ if __name__ == '__main__':
     dataset_train, dataset_test, dict_users = gen_data(iid, dataset, num_users, cluster, cluster_num)
     
     #average over all clients
-    clustering_matrix = clustering_dummy(num_users, dict_users, dataset_train, args)
+    # TODO: optimize this
+    clustering_matrix = clustering_dummy(num_users)
     
-    net_glob, w_glob, net_glob_list, w_glob_list = net_g(dataset, dataset_train, num_users)
+    net_glob, w_glob, net_glob_list, w_glob_list = net_gen(dataset, dataset_train, num_users)
     loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix)
 
     # testing
@@ -235,12 +227,6 @@ if __name__ == '__main__':
     
     cluster_num = 5
     cluster_length = num_users // cluster_num
-    # cluster = np.zeros((cluster_num,2), dtype='int64')
-    # for i in range(cluster_num):
-    #     cluster[i] = np.random.choice(10, 2, replace=False)
-
-    # dataset='mnist'
-    # dataset_train, dataset_test, dict_users = gen_data(iid, dataset, num_users, cluster, cluster_num)
     
     #average over clients in a same cluster
     if clustering_method == 'perfect':#'perfect','umap_mo','umap','encoder'
@@ -251,8 +237,7 @@ if __name__ == '__main__':
         clustering_matrix, _, _, _ = clustering_encoder(num_users, dict_users, dataset_train, model, 
                                                  model_name, model_root_dir, manifold_dim, args)
             
-    #TODO: add clustered Fed averaging
-    net_glob, w_glob, net_glob_list, w_glob_list = net_g(dataset, dataset_train, num_users)
+    net_glob, w_glob, net_glob_list, w_glob_list = net_gen(dataset, dataset_train, num_users)
     loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix)
 
     # testing
