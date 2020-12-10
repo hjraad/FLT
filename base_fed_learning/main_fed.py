@@ -6,6 +6,8 @@ import matplotlib
 import sys
 sys.path.append("./../")
 sys.path.append("./../../")
+sys.path.append("./")
+sys.path.append("../")
 
 import matplotlib.pyplot as plt
 import copy
@@ -122,7 +124,20 @@ if __name__ == '__main__':
     args.gpu = 0
     args.all_clients = True
     args.iid=True
-    args.franet_gen
+    args.frac=0.1
+    args.lr=0.01
+    args.num_users=20#100
+    args.seed=1
+    args.epochs=10
+    args.num_classes = 10
+    # ----------------------------------
+    num_users=40
+    manifold_dim = 2
+    model_name = "model-1606927012-epoch40-latent128"
+    data_root_dir = '../data'
+    model_root_dir = './model_weights'
+        
+    # Load the model ckpt
     model = ConvAutoencoder().to(args.device)
 
     # Load the model ckpt
@@ -133,7 +148,7 @@ if __name__ == '__main__':
 
     # TODO: clean up umap_mo & umap
     clustering_method = 'encoder'#'perfect','umap_mo','umap','encoder'
-    results_root_dir = '../results/main_fed'
+    results_root_dir = './results/main_fed'
     
     outputFile = open(f'{results_root_dir}/results_{num_users}_{clustering_method}.txt', 'w')
     

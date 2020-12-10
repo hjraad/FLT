@@ -8,6 +8,12 @@
 model_weights/*
 !model_weights/.gitkeep 
 
+results/*
+!results/.gitkeep
+
+results/main_fed/*
+!results/main_fed/.gitkeep 
+
 # Log files
 logs/*
 !logs/.gitkeep 
