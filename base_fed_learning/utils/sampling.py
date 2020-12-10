@@ -37,29 +37,13 @@ def mnist_noniid(dataset, num_users):
     idxs_labels = np.vstack((idxs, labels))
     idxs_labels = idxs_labels[:,idxs_labels[1,:].argsort()]
     idxs = idxs_labels[0,:]
-    #indices = [idxs_labels[i] for i, x in enumerate(idxs_labels) if x == 0]
-    indices_array = np.zeros((10,10000), dtype='int64') - 1
-    for i in range(len(idxs_labels.T)):
-        #k=indices_array[ idxs_labels[1][i] ].index(-1)
-        k = np.where(indices_array[ idxs_labels[1][i] ] == -1)[0][0]
-        indices_array[ idxs_labels[1][i] ][k] = idxs_labels[0][i]
-        
-    cluster_num = 5
-    cluster_length = num_users // cluster_num
-    cluster = np.zeros((cluster_num,2), dtype='int64')
-    for i in range(cluster_num):
-        cluster[i] = np.random.choice(10, 2, replace=False)
-            
-    for i in range(num_users):
-        cluster_index = (i//cluster_length)
-        k = np.where(indices_array[ cluster[cluster_index][0] ] == -1)[0][0]
-        rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
-        dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][0] ][list(rand_set)]), axis=0)
-                                       
-        k = np.where(indices_array[ cluster[cluster_index][1] ] == -1)[0][0]
-        rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
-        dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][1] ][list(rand_set)]), axis=0)
 
+    # divide and assign
+    for i in range(num_users):
+        rand_set = set(np.random.choice(idx_shard, 2, replace=False))
+        idx_shard = list(set(idx_shard) - rand_set)
+        for rand in rand_set:
+            dict_users[i] = np.concatenate((dict_users[i], idxs[rand*num_imgs:(rand+1)*num_imgs]), axis=0)
     return dict_users
 
 def mnist_noniid_cluster(dataset, num_users, cluster, cluster_num):
@@ -70,7 +54,6 @@ def mnist_noniid_cluster(dataset, num_users, cluster, cluster_num):
     :return:
     """
     num_shards, num_imgs = 200, 300
-    idx_shard = [i for i in range(num_shards)]
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     idxs = np.arange(num_shards*num_imgs)
     labels = dataset.train_labels.numpy()
@@ -79,10 +62,9 @@ def mnist_noniid_cluster(dataset, num_users, cluster, cluster_num):
     idxs_labels = np.vstack((idxs, labels))
     idxs_labels = idxs_labels[:,idxs_labels[1,:].argsort()]
     idxs = idxs_labels[0,:]
-    #indices = [idxs_labels[i] for i, x in enumerate(idxs_labels) if x == 0]
+    
     indices_array = np.zeros((10,10000), dtype='int64') - 1
     for i in range(len(idxs_labels.T)):
-        #k=indices_array[ idxs_labels[1][i] ].index(-1)
         k = np.where(indices_array[ idxs_labels[1][i] ] == -1)[0][0]
         indices_array[ idxs_labels[1][i] ][k] = idxs_labels[0][i]
 
@@ -99,7 +81,6 @@ def mnist_noniid_cluster(dataset, num_users, cluster, cluster_num):
         dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][1] ][list(rand_set)]), axis=0)
     
     return dict_users
-
 
 def cifar_iid(dataset, num_users):
     """

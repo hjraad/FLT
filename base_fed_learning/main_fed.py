@@ -7,7 +7,6 @@ import sys
 sys.path.append("./../")
 sys.path.append("./../../")
 sys.path.append("./")
-sys.path.append("../")
 
 import matplotlib.pyplot as plt
 import copy
@@ -33,10 +32,10 @@ def gen_data(iid, dataset_type, num_users, cluster, cluster_num):
         dataset_test = datasets.MNIST('../data/mnist/', train=False, download=True, transform=trans_mnist)
         # sample users
         if iid:
+            dict_users = mnist_iid(dataset_train, num_users)
+        else:
             #TODO: cluster_number doesn't have to be passed in below
             dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster, cluster_num)
-        else:
-            dict_users = mnist_iid(dataset_train, num_users)
     elif dataset_type == 'cifar':
         trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         dataset_train = datasets.CIFAR10('../data/cifar', train=True, download=True, transform=trans_cifar)
@@ -50,7 +49,7 @@ def gen_data(iid, dataset_type, num_users, cluster, cluster_num):
 
     return dataset_train, dataset_test, dict_users
 
-def net_gen(dataset, dataset_train, num_users):
+def get_net(dataset, dataset_train, num_users):
     img_size = dataset_train[0][0].shape
 
     # build model
@@ -121,69 +120,53 @@ if __name__ == '__main__':
     # parse args
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-    args.gpu = 0
-    args.all_clients = True
-    args.iid=True
-    args.frac=0.1
-    args.lr=0.01
-    args.num_users=20#100
-    args.seed=1
-    args.epochs=10
-    args.num_classes = 10
+
     # ----------------------------------
-    num_users=40
     manifold_dim = 2
     model_name = "model-1606927012-epoch40-latent128"
-    data_root_dir = '../data'
-    model_root_dir = './model_weights'
         
     # Load the model ckpt
     model = ConvAutoencoder().to(args.device)
 
     # Load the model ckpt
-    checkpoint = torch.load(f'{model_root_dir}/{model_name}_best.pt')
+    checkpoint = torch.load(f'{args.model_root_dir}/{model_name}_best.pt')
     model.load_state_dict(checkpoint['model_state_dict'])
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
 
     # TODO: clean up umap_mo & umap
     clustering_method = 'encoder'#'perfect','umap_mo','umap','encoder'
-    results_root_dir = './results/main_fed'
     
-    outputFile = open(f'{results_root_dir}/results_{num_users}_{clustering_method}.txt', 'w')
+    outputFile = open(f'{args.results_root_dir}/main_fed/results_{args.num_users}_{clustering_method}.txt', 'w')
     
     # ----------------------------------
     # case 1: N clients with labeled from all the images --> iid
-    #TODO: fix the naming of iid here (seems like it has to be removed)
-    iid=False# change the naming!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    num_users=40
+    args.iid=True
     
     # TODO: cluster_num => nr_of_clusters, cluster_length => cluster_size
     cluster_num = 1
-    cluster_length = num_users // cluster_num
+    cluster_length = args.num_users // cluster_num
     cluster = np.zeros((cluster_num,10), dtype='int64')
     for i in range(cluster_num):
         # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
         cluster[i] = np.random.choice(10, 10, replace=False)
         
-    dataset='mnist'
-    dataset_train, dataset_test, dict_users = gen_data(iid, dataset, num_users, cluster, cluster_num)
+    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster, cluster_num)
 
-    #average over all clients
-    clustering_matrix = clustering_dummy(num_users)
+    #
+    clustering_matrix = clustering_dummy(args.num_users)
 
-    net_glob, w_glob, net_glob_list, w_glob_list = net_gen(dataset, dataset_train, num_users)
-    loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix)
+    net_glob, w_glob, net_glob_list, w_glob_list = get_net(args.dataset, dataset_train, args.num_users)
+    loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix)
 
-    # testing
-    acc_train_final = np.zeros(num_users)
-    loss_train_final = np.zeros(num_users)
-    acc_test_final = np.zeros(num_users)
-    loss_test_final = np.zeros(num_users)
+    # testing: average over all clients
+    acc_train_final = np.zeros(args.num_users)
+    loss_train_final = np.zeros(args.num_users)
+    acc_test_final = np.zeros(args.num_users)
+    loss_test_final = np.zeros(args.num_users)
     if True:#idx in np.arange(1):#TODO: no need to loop over users
         idx = 0
         print(idx)
-        #net_glob_list[idx].eval()
         acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, cluster[idx//cluster_length], args)
         acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, cluster[idx//cluster_length], args)
     print('Training accuracy: {:.2f}'.format(acc_train_final[0]))
@@ -197,91 +180,86 @@ if __name__ == '__main__':
     # ----------------------------------
     # case 2: N clients with labeled from only two image labelss for each client --> noniid
     # ----------------------------------
-    iid=True
-    num_users=40
+    args.iid=False
     
     cluster_num = 5
-    cluster_length = num_users // cluster_num
+    cluster_length = args.num_users // cluster_num
     cluster = np.zeros((cluster_num,2), dtype='int64')
     for i in range(cluster_num):
         cluster[i] = np.random.choice(10, 2, replace=False)
 
-    dataset='mnist'
-    dataset_train, dataset_test, dict_users = gen_data(iid, dataset, num_users, cluster, cluster_num)
+    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster, cluster_num)
     
-    #average over all clients
     # TODO: optimize this
-    clustering_matrix = clustering_dummy(num_users)
+    clustering_matrix = clustering_dummy(args.num_users)
     
-    net_glob, w_glob, net_glob_list, w_glob_list = net_gen(dataset, dataset_train, num_users)
-    loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix)
+    net_glob, w_glob, net_glob_list, w_glob_list = get_net(args.dataset, dataset_train, args.num_users)
+    loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix)
 
-    # testing
-    acc_train_final = np.zeros(num_users)
-    loss_train_final = np.zeros(num_users)
-    acc_test_final = np.zeros(num_users)
-    loss_test_final = np.zeros(num_users)
-    for idx in np.arange(0, num_users-1, cluster_length):#TODO: no need to loop over all users
+    # testing: average over all clients
+    acc_train_final = np.zeros(args.num_users)
+    loss_train_final = np.zeros(args.num_users)
+    acc_test_final = np.zeros(args.num_users)
+    loss_test_final = np.zeros(args.num_users)
+    for idx in np.arange(0, args.num_users-1, cluster_length):#TODO: no need to loop over all users
         print(idx)
-        #net_glob_list[idx].eval()
         acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[0], dataset_train, cluster[idx//cluster_length], args)
         acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[0], dataset_test, cluster[idx//cluster_length], args)
-    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0, num_users-1, cluster_length)])))
-    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0, num_users-1, cluster_length)])))
+    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0, args.num_users-1, cluster_length)])))
+    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0, args.num_users-1, cluster_length)])))
 
     print('case 2: 100 clients with labeled from only two images for eahc client --> noniid', file = outputFile)
-    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0, num_users-1, cluster_length)])), file = outputFile)
-    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0, num_users-1, cluster_length)])), file = outputFile)
+    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0, args.num_users-1, cluster_length)])), file = outputFile)
+    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0, args.num_users-1, cluster_length)])), file = outputFile)
        
     loss_train_noniid_noclustering = loss_train
     # ----------------------------------
     # case 3: N clients with labeled from only two image labelss for each client --> noniid --> adding clustered fed average
     # ----------------------------------
-    iid=True
-    num_users=40
+    args.iid=False
     
     cluster_num = 5
-    cluster_length = num_users // cluster_num
+    cluster_length = args.num_users // cluster_num
     
     #average over clients in a same cluster
     if clustering_method == 'perfect':#'perfect','umap_mo','umap','encoder'
-        clustering_matrix = clustering_perfect(num_users, dict_users, dataset_train, args)
+        clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
     elif clustering_method == 'umap_mo':
-        clustering_matrix, _, _ = clustering_umap(num_users, dict_users, dataset_train, args)
+        clustering_matrix, _, _ = clustering_umap(args.num_users, dict_users, dataset_train, args)
     elif clustering_method == 'encoder':
-        clustering_matrix, _, _, _ = clustering_encoder(num_users, dict_users, dataset_train, model, 
-                                                 model_name, model_root_dir, manifold_dim, args)
+        clustering_matrix, _, _, _ = clustering_encoder(args.num_users, dict_users, dataset_train, model, 
+                                                 model_name, args.model_root_dir, manifold_dim, args)
             
-    net_glob, w_glob, net_glob_list, w_glob_list = net_gen(dataset, dataset_train, num_users)
-    loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix)
+    net_glob, w_glob, net_glob_list, w_glob_list = get_net(args.dataset, dataset_train, args.num_users)
+    loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix)
 
     # testing
-    acc_train_final = np.zeros(num_users)
-    loss_train_final = np.zeros(num_users)
-    acc_test_final = np.zeros(num_users)
-    loss_test_final = np.zeros(num_users)
-    for idx in np.arange(0,num_users-1,cluster_length):#TODO: no need to loop over all the users!
+    acc_train_final = np.zeros(args.num_users)
+    loss_train_final = np.zeros(args.num_users)
+    acc_test_final = np.zeros(args.num_users)
+    loss_test_final = np.zeros(args.num_users)
+    for idx in np.arange(0,args.num_users-1,cluster_length):#TODO: no need to loop over all the users!
         print("cluster under process: ", idx//cluster_length)
         net_glob_list[idx].eval()
         acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, cluster[idx//cluster_length], args)
         acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, cluster[idx//cluster_length], args)
-    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0,num_users-1,cluster_length)])))
-    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0,num_users-1,cluster_length)])))
+    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0,args.num_users-1,cluster_length)])))
+    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0,args.num_users-1,cluster_length)])))
 
     print('case 3: 100 clients with labeled from only two images for each client --> noniid --> adding clustered fed average', file = outputFile)
-    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0,num_users-1,cluster_length)])), file = outputFile)
-    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0,num_users-1,cluster_length)])), file = outputFile)
+    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0,args.num_users-1,cluster_length)])), file = outputFile)
+    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0,args.num_users-1,cluster_length)])), file = outputFile)
     
     loss_train_noniid_clustering = loss_train
     # Create plots with pre-defined labels.
     fig, ax = plt.subplots()
 
-    ax.plot(loss_train_iid, 'r', label=f'FedAvg, iid data {num_users}  clients')# no clustered data, no clustering algo
-    ax.plot(loss_train_noniid_noclustering, 'g', label=f'FedAvg, non-iid data, no clustering algo {num_users} clients')
-    ax.plot(loss_train_noniid_clustering, 'b', label=f'clustered data, {clustering_method} clustering algo {num_users} clients')
+    ax.plot(loss_train_iid, 'r', label=f'FedAvg, iid data {args.num_users}  clients')# no clustered data, no clustering algo
+    ax.plot(loss_train_noniid_noclustering, 'g', label=f'FedAvg, non-iid data, no clustering algo {args.num_users} clients')
+    ax.plot(loss_train_noniid_clustering, 'b', label=f'clustered data, {clustering_method} clustering algo {args.num_users} clients')
 
     legend = ax.legend(loc='upper center', fontsize='x-large')
-    plt.savefig(f'{results_root_dir}/training_accuracy_{num_users}_{clustering_method}.png')
+    plt.savefig(f'{args.results_root_dir}/training_accuracy_{args.num_users}_{clustering_method}.png')
     plt.show()
 
     outputFile.close()

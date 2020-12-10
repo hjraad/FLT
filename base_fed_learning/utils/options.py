@@ -8,7 +8,7 @@ def args_parser():
     parser = argparse.ArgumentParser()
     # federated arguments
     parser.add_argument('--epochs', type=int, default=10, help="rounds of training")
-    parser.add_argument('--num_users', type=int, default=100, help="number of users: K")
+    parser.add_argument('--num_users', type=int, default=40, help="number of users: K")
     parser.add_argument('--frac', type=float, default=0.1, help="the fraction of clients: C")
     parser.add_argument('--local_ep', type=int, default=5, help="the number of local epochs: E")
     parser.add_argument('--local_bs', type=int, default=10, help="local batch size: B")
@@ -36,6 +36,12 @@ def args_parser():
     parser.add_argument('--stopping_rounds', type=int, default=10, help='rounds of early stopping')
     parser.add_argument('--verbose', action='store_true', help='verbose print')
     parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
-    parser.add_argument('--all_clients', action='store_true', help='aggregation over all clients')
+    parser.add_argument('--all_clients', default='True', help='aggregation over all clients')
+
+    # required folders
+    parser.add_argument('--data_root_dir', default='./data', help='data location')
+    parser.add_argument('--model_root_dir', default='./model_weights', help='clustering model location')
+    parser.add_argument('--results_root_dir', default='./results', help='results location')
+
     args = parser.parse_args()
     return args
