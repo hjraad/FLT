@@ -44,5 +44,11 @@ def args_parser():
     parser.add_argument('--results_root_dir', default='./results', help='results location')
     parser.add_argument('--model_name', default='model-1606927012-epoch40-latent128', help='model name')
 
+    # clustering options
+    parser.add_argument('--clustering_method', default='encoder', help='clustering method: single, perfect, umap_mo, umap, encoder')
+
+    parser.add_argument('--manifold_dim', default=2, help='manifold dimension')
+
+
     args = parser.parse_args()
     return args

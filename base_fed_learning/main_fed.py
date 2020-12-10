@@ -20,7 +20,7 @@ from base_fed_learning.models.Update import LocalUpdate
 from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar
 from base_fed_learning.models.Fed import FedAvg
 from base_fed_learning.models.test import test_img, test_img_classes
-from clustering import clustering_dummy, clustering_perfect, clustering_umap, clustering_encoder
+from clustering import clustering_single, clustering_perfect, clustering_umap, clustering_encoder
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 
@@ -48,7 +48,7 @@ def gen_data(iid, dataset_type, num_users, cluster):
 
     return dataset_train, dataset_test, dict_users
 
-def get_net(dataset, dataset_train, num_users):
+def gen_model(dataset, dataset_train, num_users):
     img_size = dataset_train[0][0].shape
 
     # build model
@@ -115,22 +115,16 @@ if __name__ == '__main__':
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
 
-    # ----------------------------------
-    manifold_dim = 2
-    model_name = "model-1606927012-epoch40-latent128"
-        
+    # ----------------------------------        
     # Load the model ckpt
     model = ConvAutoencoder().to(args.device)
-    checkpoint = torch.load(f'{args.model_root_dir}/{model_name}_best.pt')
+    checkpoint = torch.load(f'{args.model_root_dir}/{args.model_name}_best.pt')
     model.load_state_dict(checkpoint['model_state_dict'])
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
-
-    # TODO: clean up umap_mo & umap
-    clustering_method = 'encoder'#'perfect','umap_mo','umap','encoder'
     
     # open the output file to write the results to
-    outputFile = open(f'{args.results_root_dir}/main_fed/results_{args.num_users}_{clustering_method}.txt', 'w')
+    outputFile = open(f'{args.results_root_dir}/main_fed/results_{args.num_users}_{args.clustering_method}.txt', 'w')
     
     # ----------------------------------
     # case 1: N clients with labeled from all the images --> iid
@@ -147,9 +141,9 @@ if __name__ == '__main__':
     dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
 
     # clustering the clients
-    clustering_matrix = clustering_dummy(args.num_users)
+    clustering_matrix = clustering_single(args.num_users)
 
-    net_glob, w_glob, net_glob_list, w_glob_list = get_net(args.dataset, dataset_train, args.num_users)
+    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
     loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix)
 
     # testing: average over all clients
@@ -157,7 +151,7 @@ if __name__ == '__main__':
     loss_train_final = np.zeros(args.num_users)
     acc_test_final = np.zeros(args.num_users)
     loss_test_final = np.zeros(args.num_users)
-    if True:#idx in np.arange(1):#TODO: no need to loop over users
+    if True:#idx in np.arange(1):
         idx = 0
         print(idx)
         acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, cluster[idx//cluster_length], args)
@@ -184,10 +178,9 @@ if __name__ == '__main__':
     dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
     
     # clustering the clients
-    # TODO: optimize this
-    clustering_matrix = clustering_dummy(args.num_users)
+    clustering_matrix = clustering_single(args.num_users)
     
-    net_glob, w_glob, net_glob_list, w_glob_list = get_net(args.dataset, dataset_train, args.num_users)
+    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
     loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix)
 
     # testing: average over all clients
@@ -216,15 +209,16 @@ if __name__ == '__main__':
     cluster_length = args.num_users // nr_of_clusters
     
     # clustering the clients
-    if clustering_method == 'perfect':#'perfect','umap_mo','umap','encoder'
+    # TODO: clean up umap_mo & umap
+    if args.clustering_method == 'perfect':
         clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
-    elif clustering_method == 'umap_mo':
+    elif args.clustering_method == 'umap_mo':
         clustering_matrix, _, _ = clustering_umap(args.num_users, dict_users, dataset_train, args)
-    elif clustering_method == 'encoder':
+    elif args.clustering_method == 'encoder':
         clustering_matrix, _, _, _ = clustering_encoder(args.num_users, dict_users, dataset_train, model, 
-                                                 model_name, args.model_root_dir, manifold_dim, args)
+                                                args.model_name, args.model_root_dir, args.manifold_dim, args)
             
-    net_glob, w_glob, net_glob_list, w_glob_list = get_net(args.dataset, dataset_train, args.num_users)
+    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
     loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix)
 
     # testing: average over clients in a same cluster
@@ -250,10 +244,10 @@ if __name__ == '__main__':
 
     ax.plot(loss_train_iid, 'r', label=f'FedAvg, iid data {args.num_users}  clients')# no clustered data, no clustering algo
     ax.plot(loss_train_noniid_noclustering, 'g', label=f'FedAvg, non-iid data, no clustering algo {args.num_users} clients')
-    ax.plot(loss_train_noniid_clustering, 'b', label=f'clustered data, {clustering_method} clustering algo {args.num_users} clients')
+    ax.plot(loss_train_noniid_clustering, 'b', label=f'clustered data, {args.clustering_method} clustering algo {args.num_users} clients')
 
     legend = ax.legend(loc='upper center', fontsize='x-large')
-    plt.savefig(f'{args.results_root_dir}/training_accuracy_{args.num_users}_{clustering_method}.png')
+    plt.savefig(f'{args.results_root_dir}/training_accuracy_{args.num_users}_{args.clustering_method}.png')
     plt.show()
 
     outputFile.close()

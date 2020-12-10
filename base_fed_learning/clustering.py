@@ -59,7 +59,7 @@ def gen_data(iid, dataset_type, num_users, cluster):
 
     return dataset_train, dataset_test, dict_users
 
-def clustering_dummy(num_users):
+def clustering_single(num_users):
     clustering_matrix = np.ones((num_users, num_users))
                 
     return clustering_matrix
