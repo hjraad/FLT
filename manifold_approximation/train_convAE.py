@@ -3,15 +3,17 @@ Build a convolutional autoencoder
 @Author: Hadi Jamali-Rad
 @e-mail: h.jamali.rad@gmail.com
 '''
-
 from __future__ import print_function, division
+
+import sys
+sys.path.append("./../")
+sys.path.append("./../../")
 
 import numpy as np
 import pandas as pd
 import os
 import time
 import copy
-import sys
 import pickle
 
 import torch, torchvision
@@ -37,15 +39,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # ----------------------------------
 # Initialization
 # ----------------------------------
-TRAIN_FLAG = False  # train or not?
-manifold_FLAG = both  # tsne, umpa, both
+TRAIN_FLAG = True  # train or not?
  
 latent_size = 128
 #TODO eval_interval = every how many epochs to evlaute 
 batch_size = 20
 nr_epochs = 40
 
-dataset_name = 'EMNIST'
+dataset_name = 'FMNIST'
 dataset_split = 'balanced'
 # train_val_split = (100000, 12800)
 
@@ -84,16 +85,20 @@ torch.cuda.device_count()
 # ----------------------------------
 # For now both have no special transformation 
 #TODO: test the imapct of transformation later
-data_transforms = {
-    'train': transforms.Compose([
-        transforms.ToTensor()
-    ]),
-    'test': transforms.Compose([
-        transforms.ToTensor()
-    ]),
-}
+# ToTensor() automatically converts everything to [0, 1]
+if dataset_name in ['MNIST', 'FMNIST', 'EMNIST']:
+    data_transforms = {
+        'train': transforms.Compose([
+            transforms.ToTensor()
+            #transforms.Normalize((0.1307,), (0.3081,))
+            ]),
+        'test': transforms.Compose([
+            transforms.ToTensor()
+            #transforms.Normalize((0.1307,), (0.3081,))
+            ])
+        }
 
-dataloaders, image_datasets, dataset_sizes, class_names = load_dataset(dataset_split, data_root_dir, data_transforms, 
+dataloaders, image_datasets, dataset_sizes, class_names = load_dataset(dataset_name, data_root_dir, data_transforms, 
                                                                        batch_size=batch_size, shuffle_flag=False, 
                                                                        dataset_split=dataset_split)
 
@@ -142,10 +147,14 @@ if not os.path.exists(model_root_dir):
     os.makedirs(model_root_dir)
 
 # specify loss citerion
+# only use BCE for data in range [0, 1]
+# else best to use sum of squared differences
+# see => https://www.youtube.com/watch?v=xTU79Zs4XKY
 criterion = nn.BCELoss()
 
 # specify loss function
-optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+# optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # Decay LR by a factor of x*gamma every step_size epochs
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)

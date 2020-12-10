@@ -44,7 +44,7 @@ class Encoder():
     '''
     def __init__(self, ae_model, ae_model_name, model_root_dir,
                                     manifold_dim, image_dataset, client_name, 
-                                    dataset_name='', train_umap=False, use_AE=True):
+                                    dataset_name='', train_umap=False, use_AE=False):
         self.ae_model = ae_model
         self.ae_model_name = ae_model_name
         self.model_root_dir = model_root_dir
@@ -62,16 +62,17 @@ class Encoder():
         
         # extract the AE embedding of test data
         # if not os.path.exists(f'{self.model_root_dir}/AE_embedding_{self.dataset_name}_{self.ae_model_name}_client{self.client_name}.p'):
-        embedding_list = []
-        labels_list = []
-        with torch.no_grad():
-            for _, (image, label) in enumerate(tqdm(self.image_dataset, desc=f'Extracting AE embedding of client_{self.client_name}')):
-                    image = image.to(device)
-                    labels_list.append(label) 
-                    _, embedding = model(image.unsqueeze(0))
-                    embedding_list.append(embedding.cpu().detach().numpy())
-        self.ae_embedding_np = np.concatenate(embedding_list, axis=0)
-        self.ae_labels_np = np.array(labels_list)
+        if self.use_AE:
+            embedding_list = []
+            labels_list = []
+            with torch.no_grad():
+                for _, (image, label) in enumerate(tqdm(self.image_dataset, desc=f'Extracting AE embedding of client_{self.client_name}')):
+                        image = image.to(device)
+                        labels_list.append(label) 
+                        _, embedding = model(image.unsqueeze(0))
+                        embedding_list.append(embedding.cpu().detach().numpy())
+            self.ae_embedding_np = np.concatenate(embedding_list, axis=0)
+            self.ae_labels_np = np.array(labels_list)
         # pickle.dump((self.ae_embedding_np, self.ae_labels_np), 
         #             open(f'{self.model_root_dir}/AE_embedding_{self.dataset_name}_{self.ae_model_name}_client{self.client_name}.p', 'wb'))
         # else: 
@@ -85,25 +86,26 @@ class Encoder():
     #TODO: 2) consider tSNE and other manifold approximation methods
     def manifold_approximation_umap(self):
         # check if manifold approximation is needed
-        if self.manifold_dim == self.ae_embedding_np.shape[1]:
-            raise AssertionError("We need need manifold learning, AE dim = 2 !")
+        if self.use_AE and self.manifold_dim == self.ae_embedding_np.shape[1]:
+            raise AssertionError("We don't need manifold learning, AE dim = 2 !")
         
         #TODO: do this once up there, and function input!    
         data_list = [data[0] for data in self.image_dataset]
         data_tensor = torch.cat(data_list, dim=0)
         data_2D_np = torch.reshape(data_tensor, (data_tensor.shape[0], -1)).numpy()
         labels_np = np.array([data[1] for data in self.image_dataset])
-        if (labels_np != self.ae_labels_np).all():
-            raise AssertionError('Order of data samples is shuffled!')
         
         if self.use_AE: 
+            if (labels_np != self.ae_labels_np).all():
+                raise AssertionError('Order of data samples is shuffled!')
+            
             print('Using AE for E2E encoding ...')
             umap_data = self.ae_embedding_np
-            umap_model_address = f'{self.model_root_dir}/umap_reducer_EMNIST_{self.ae_model_name}.p'
+            umap_model_address = f'{self.model_root_dir}/umap_reducer_FMNIST_{self.ae_model_name}.p'
         else:
             print('AE not used in this scenario ...')
             umap_data = data_2D_np
-            umap_model_address = f'{self.model_root_dir}/umap_reducer_EMNIST.p'
+            umap_model_address = f'{self.model_root_dir}/umap_reducer_FMNIST.p'
             
         # if not os.path.exists(f'{self.model_root_dir}/umap_embedding_{self.dataset_name}_{self.ae_model_name}_{self.manifold_dim}D.p'):
         if self.train_umap:
@@ -125,7 +127,7 @@ if __name__ == '__main__':
     #
     batch_size = 1
     manifold_dim = 2
-    model_name = "model-1606927012-epoch40-latent128"
+    model_name = "model-1607623811-epoch40-latent128"
     dataset_name = 'MNIST'
     data_root_dir = '../data'
     results_root_dir = '../results/Encoder'
