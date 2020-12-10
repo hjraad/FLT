@@ -46,13 +46,14 @@ def mnist_noniid(dataset, num_users):
             dict_users[i] = np.concatenate((dict_users[i], idxs[rand*num_imgs:(rand+1)*num_imgs]), axis=0)
     return dict_users
 
-def mnist_noniid_cluster(dataset, num_users, cluster, cluster_num):
+def mnist_noniid_cluster(dataset, num_users, cluster):
     """
-    Sample non-I.I.D client data from MNIST dataset
+    Sample clustered non-I.I.D client data from MNIST dataset
     :param dataset:
     :param num_users:
     :return:
     """
+    cluster_size = cluster.shape[0]
     num_shards, num_imgs = 200, 300
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     idxs = np.arange(num_shards*num_imgs)
@@ -68,10 +69,10 @@ def mnist_noniid_cluster(dataset, num_users, cluster, cluster_num):
         k = np.where(indices_array[ idxs_labels[1][i] ] == -1)[0][0]
         indices_array[ idxs_labels[1][i] ][k] = idxs_labels[0][i]
 
-    cluster_length = num_users // cluster_num
+    nr_of_clusters = num_users // cluster_size
 
     for i in range(num_users):
-        cluster_index = (i//cluster_length)
+        cluster_index = (i//nr_of_clusters)
         k = np.where(indices_array[ cluster[cluster_index][0] ] == -1)[0][0]
         rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
         dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][0] ][list(rand_set)]), axis=0)

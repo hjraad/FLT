@@ -38,10 +38,11 @@ def args_parser():
     parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
     parser.add_argument('--all_clients', default='True', help='aggregation over all clients')
 
-    # required folders
+    # required folders and files
     parser.add_argument('--data_root_dir', default='./data', help='data location')
     parser.add_argument('--model_root_dir', default='./model_weights', help='clustering model location')
     parser.add_argument('--results_root_dir', default='./results', help='results location')
+    parser.add_argument('--model_name', default='model-1606927012-epoch40-latent128', help='model name')
 
     args = parser.parse_args()
     return args

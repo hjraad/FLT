@@ -7,6 +7,7 @@ Created on Mon Nov 23 19:44:39 2020
 import sys
 sys.path.append("./../")
 sys.path.append("./../../")
+sys.path.append("./")
 
 import matplotlib.pyplot as plt
 import copy
@@ -34,17 +35,17 @@ torch.manual_seed(123)
 np.random.seed(321)
 umap_random_state=42
 
-def gen_model(iid, dataset_type, num_users, cluster, cluster_num):
-        # load dataset and split users
+def gen_data(iid, dataset_type, num_users, cluster):
+    # load dataset and split users
     if dataset_type == 'mnist':
-        trans_mnist = transforms.Compose([transforms.ToTensor()])
+        trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
         dataset_train = datasets.MNIST('../data/mnist/', train=True, download=True, transform=trans_mnist)
         dataset_test = datasets.MNIST('../data/mnist/', train=False, download=True, transform=trans_mnist)
         # sample users
         if iid:
-            dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster, cluster_num)
-        else:
             dict_users = mnist_iid(dataset_train, num_users)
+        else:
+            dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
     elif dataset_type == 'cifar':
         trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         dataset_train = datasets.CIFAR10('../data/cifar', train=True, download=True, transform=trans_cifar)
@@ -70,7 +71,7 @@ def clustering_dummy(num_users):
 
 def clustering_perfect(num_users, dict_users, dataset_train, args):
     idxs_users = np.arange(num_users)
-    ar_label = np.zeros((num_users, 4))-1
+    ar_label = np.zeros((num_users, args.num_classes + 1))-1
     for idx in idxs_users:
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
         label_matrix = np.empty(0, dtype=int)
@@ -90,7 +91,7 @@ def clustering_perfect(num_users, dict_users, dataset_train, args):
     return clustering_matrix
 
 def clustering_umap(num_users, dict_users, dataset_train, args):
-    reducer_loaded = pickle.load( open( "../model_weights/umap_reducer_EMNIST.p", "rb" ) )
+    reducer_loaded = pickle.load( open( "./model_weights/umap_reducer_EMNIST.p", "rb" ) )
     reducer = reducer_loaded
 
     idxs_users = np.arange(num_users)
@@ -188,24 +189,20 @@ if __name__ == '__main__':
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
     args.num_users = 20
-    
+    args.iid = False
     # ----------------------------------
     plt.close('all')
-    iid=True
     
     # ----------------------------------
     # generate cluster settings    
-    cluster_num = 5
-    cluster_length = args.num_users // cluster_num
-    cluster = np.zeros((cluster_num,2), dtype='int64')
-    for i in range(cluster_num):
+    nr_of_clusters = 5
+    cluster_length = args.num_users // nr_of_clusters
+    cluster = np.zeros((nr_of_clusters,2), dtype='int64')
+    for i in range(nr_of_clusters):
         cluster[i] = np.random.choice(10, 2, replace=False)
     
     # ----------------------------------       
     manifold_dim = 2
-    model_name = "model-1606927012-epoch40-latent128"
-    data_root_dir = '../data'
-    model_root_dir = '../model_weights'
     
     # ----------------------------------       
     # model
@@ -214,7 +211,7 @@ if __name__ == '__main__':
     
     # ----------------------------------
     # Load the model ckpt
-    checkpoint = torch.load(f'{model_root_dir}/{model_name}_best.pt')
+    checkpoint = torch.load(f'{args.model_root_dir}/{args.model_name}_best.pt')
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
@@ -222,14 +219,14 @@ if __name__ == '__main__':
         
     # ----------------------------------
     # generate clustered data
-    dataset_train, dataset_test, dict_users = gen_model(iid, args.dataset, args.num_users, cluster, cluster_num)
+    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
     
     # ----------------------------------    
     #average over clients in a same cluster
     clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
-    # clustering_matrix0, clustering_matrix0_soft, centers = clustering_umap(num_users, dict_users, dataset_train, args)
+    #clustering_matrix0, clustering_matrix0_soft, centers = clustering_umap(args.num_users, dict_users, dataset_train, args)
     clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix = clustering_encoder(args.num_users, dict_users, dataset_train, 
-                                                                model, model_name, model_root_dir, manifold_dim, args)
+                                                                model, args.model_name, args.model_root_dir, manifold_dim, args)
     
     # ----------------------------------    
     # plot results
@@ -240,17 +237,21 @@ if __name__ == '__main__':
     plt.figure(3)
     plt.imshow(-clustering_matrix0_soft[:,1:],cmap=plt.cm.viridis)
 
-    Num_Cent = 2*cluster_length
-    colors = itertools.cycle(["r"] * Num_Cent +["b"]*Num_Cent+["g"]*Num_Cent+["k"]*Num_Cent+["y"]*Num_Cent)
+    plt.show()
+
+    nr_of_centers = 2*cluster_length
+    colors = itertools.cycle(["r"] * nr_of_centers +["b"]*nr_of_centers+["g"]*nr_of_centers+["k"]*nr_of_centers+["y"]*nr_of_centers)
     plt.figure(4)
     for i in range(0,args.num_users):
         plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
         plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
 
+    plt.show()
+
     plt.figure(5)
-    Num_Cent = len(dict_users[0])*cluster_length
+    nr_of_centers = len(dict_users[0])*cluster_length
     colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
-    for i in range(cluster_num):
-        plt.scatter(embedding_matrix[i*Num_Cent:(i+1)*Num_Cent, 0], embedding_matrix[i*Num_Cent:(i+1)*Num_Cent:, 1], color=next(colors))
+    for i in range(nr_of_clusters):
+        plt.scatter(embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers, 0], embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers:, 1], color=next(colors))
 
     plt.show()

@@ -24,7 +24,7 @@ from clustering import clustering_dummy, clustering_perfect, clustering_umap, cl
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 
-def gen_data(iid, dataset_type, num_users, cluster, cluster_num):
+def gen_data(iid, dataset_type, num_users, cluster):
     # load dataset and split users
     if dataset_type == 'mnist':
         trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
@@ -34,8 +34,7 @@ def gen_data(iid, dataset_type, num_users, cluster, cluster_num):
         if iid:
             dict_users = mnist_iid(dataset_train, num_users)
         else:
-            #TODO: cluster_number doesn't have to be passed in below
-            dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster, cluster_num)
+            dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
     elif dataset_type == 'cifar':
         trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         dataset_train = datasets.CIFAR10('../data/cifar', train=True, download=True, transform=trans_cifar)
@@ -77,11 +76,6 @@ def get_net(dataset, dataset_train, num_users):
 def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, ar_related):
     # training
     loss_train = []
-    cv_loss, cv_acc = [], []
-    val_loss_pre, counter = 0, 0
-    net_best = None
-    best_loss = None
-    val_acc_list, net_list = [], []
 
     if args.all_clients: 
         print("Aggregation over all clients")
@@ -127,8 +121,6 @@ if __name__ == '__main__':
         
     # Load the model ckpt
     model = ConvAutoencoder().to(args.device)
-
-    # Load the model ckpt
     checkpoint = torch.load(f'{args.model_root_dir}/{model_name}_best.pt')
     model.load_state_dict(checkpoint['model_state_dict'])
     epoch = checkpoint['epoch']
@@ -137,23 +129,24 @@ if __name__ == '__main__':
     # TODO: clean up umap_mo & umap
     clustering_method = 'encoder'#'perfect','umap_mo','umap','encoder'
     
+    # open the output file to write the results to
     outputFile = open(f'{args.results_root_dir}/main_fed/results_{args.num_users}_{clustering_method}.txt', 'w')
     
     # ----------------------------------
     # case 1: N clients with labeled from all the images --> iid
     args.iid=True
     
-    # TODO: cluster_num => nr_of_clusters, cluster_length => cluster_size
-    cluster_num = 1
-    cluster_length = args.num_users // cluster_num
-    cluster = np.zeros((cluster_num,10), dtype='int64')
-    for i in range(cluster_num):
+    # setting the clustering format
+    nr_of_clusters = 1
+    cluster_length = args.num_users // nr_of_clusters
+    cluster = np.zeros((nr_of_clusters,10), dtype='int64')
+    for i in range(nr_of_clusters):
         # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
         cluster[i] = np.random.choice(10, 10, replace=False)
         
-    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster, cluster_num)
+    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
 
-    #
+    # clustering the clients
     clustering_matrix = clustering_dummy(args.num_users)
 
     net_glob, w_glob, net_glob_list, w_glob_list = get_net(args.dataset, dataset_train, args.num_users)
@@ -182,14 +175,15 @@ if __name__ == '__main__':
     # ----------------------------------
     args.iid=False
     
-    cluster_num = 5
-    cluster_length = args.num_users // cluster_num
-    cluster = np.zeros((cluster_num,2), dtype='int64')
-    for i in range(cluster_num):
+    nr_of_clusters = 5
+    cluster_length = args.num_users // nr_of_clusters
+    cluster = np.zeros((nr_of_clusters,2), dtype='int64')
+    for i in range(nr_of_clusters):
         cluster[i] = np.random.choice(10, 2, replace=False)
 
-    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster, cluster_num)
+    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
     
+    # clustering the clients
     # TODO: optimize this
     clustering_matrix = clustering_dummy(args.num_users)
     
@@ -218,10 +212,10 @@ if __name__ == '__main__':
     # ----------------------------------
     args.iid=False
     
-    cluster_num = 5
-    cluster_length = args.num_users // cluster_num
+    nr_of_clusters = 5
+    cluster_length = args.num_users // nr_of_clusters
     
-    #average over clients in a same cluster
+    # clustering the clients
     if clustering_method == 'perfect':#'perfect','umap_mo','umap','encoder'
         clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
     elif clustering_method == 'umap_mo':
@@ -233,7 +227,7 @@ if __name__ == '__main__':
     net_glob, w_glob, net_glob_list, w_glob_list = get_net(args.dataset, dataset_train, args.num_users)
     loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix)
 
-    # testing
+    # testing: average over clients in a same cluster
     acc_train_final = np.zeros(args.num_users)
     loss_train_final = np.zeros(args.num_users)
     acc_test_final = np.zeros(args.num_users)
