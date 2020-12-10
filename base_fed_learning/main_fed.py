@@ -73,7 +73,7 @@ def get_net(dataset, dataset_train, num_users):
     
     return net_glob, w_glob, net_glob_list, w_glob_list
 
-def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, ar_related):
+def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix):
     # training
     loss_train = []
 
@@ -95,7 +95,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
                 w_locals.append(copy.deepcopy(w))
             loss_locals.append(copy.deepcopy(loss))
         # update global weights
-        w_glob_list = FedAvg(w_locals, ar_related)
+        w_glob_list = FedAvg(w_locals, clustering_matrix)
 
         # copy weight to net_glob
         for idx in np.arange(num_users): #TODO: fix this

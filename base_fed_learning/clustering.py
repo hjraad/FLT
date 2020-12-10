@@ -60,33 +60,26 @@ def gen_data(iid, dataset_type, num_users, cluster):
     return dataset_train, dataset_test, dict_users
 
 def clustering_dummy(num_users):
-    clustering_matrix = np.zeros((num_users, num_users+1))
-    idxs_users = np.arange(num_users)
-    for idx in idxs_users:                         
-        clustering_matrix[idx][0] = idx
-        for idx0 in idxs_users:
-            clustering_matrix[idx][idx0+1] = 1
+    clustering_matrix = np.ones((num_users, num_users))
                 
     return clustering_matrix
 
 def clustering_perfect(num_users, dict_users, dataset_train, args):
     idxs_users = np.arange(num_users)
-    ar_label = np.zeros((num_users, args.num_classes + 1))-1
+    ar_label = np.zeros((args.num_users, args.num_classes))-1
     for idx in idxs_users:
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
         label_matrix = np.empty(0, dtype=int)
         for batch_idx, (images, labels) in enumerate(local.ldr_train):
             label_matrix = np.concatenate((label_matrix, labels.numpy()), axis=0)
         label_matrix = np.unique(label_matrix)
-        ar_label[idx][0] = idx
-        ar_label[idx][1:1+len(label_matrix)] = label_matrix
+        ar_label[idx][0:len(label_matrix)] = label_matrix
     
-    clustering_matrix = np.zeros((num_users, num_users+1))
-    for idx in idxs_users:                         
-        clustering_matrix[idx][0] = idx
+    clustering_matrix = np.zeros((num_users, num_users))
+    for idx in idxs_users:
         for idx0 in idxs_users:
-            if ar_label[idx][1] == ar_label[idx0][1] and ar_label[idx][2] == ar_label[idx0][2]:
-                clustering_matrix[idx][idx0+1] = 1
+            if ar_label[idx][0] == ar_label[idx0][0] and ar_label[idx][1] == ar_label[idx0][1]:
+                clustering_matrix[idx][idx0] = 1
                 
     return clustering_matrix
 
@@ -110,12 +103,10 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
         kmeans = KMeans(n_clusters=2, random_state=0).fit(np.array(X))
         centers[idx,:,:] = kmeans.cluster_centers_
     
-    clustering_matrix_soft = np.zeros((num_users, num_users+1))
-    clustering_matrix = np.zeros((num_users, num_users+1))
+    clustering_matrix_soft = np.zeros((num_users, num_users))
+    clustering_matrix = np.zeros((num_users, num_users))
 
     for idx0 in idxs_users:
-        clustering_matrix_soft[idx0][0] = idx0
-        clustering_matrix[idx0][0] = idx0
         for idx1 in idxs_users:
             c0 = centers[idx0]
             c1 = centers[idx1]
@@ -124,12 +115,12 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
             dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
         
             distance = min([dist0, dist1])#min (max)
-            clustering_matrix_soft[idx0][idx1+1] = distance
+            clustering_matrix_soft[idx0][idx1] = distance
         
             if distance < 1:
-                clustering_matrix[idx0][idx1+1] = 1
+                clustering_matrix[idx0][idx1] = 1
             else:
-                clustering_matrix[idx0][idx1+1] = 0
+                clustering_matrix[idx0][idx1] = 0
 
     return clustering_matrix, clustering_matrix_soft, centers
 
@@ -161,12 +152,10 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_
         kmeans = KMeans(n_clusters=2, random_state=0).fit(np.array(X))
         centers[user_id,:,:] = kmeans.cluster_centers_
     
-    clustering_matrix_soft = np.zeros((num_users, num_users+1))
-    clustering_matrix = np.zeros((num_users, num_users+1))
+    clustering_matrix_soft = np.zeros((num_users, num_users))
+    clustering_matrix = np.zeros((num_users, num_users))
 
     for idx0 in idxs_users:
-        clustering_matrix_soft[idx0][0] = idx0
-        clustering_matrix[idx0][0] = idx0
         for idx1 in idxs_users:
             c0 = centers[idx0]
             c1 = centers[idx1]
@@ -175,12 +164,12 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_
             dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
         
             distance = min([dist0, dist1])#min (max)
-            clustering_matrix_soft[idx0][idx1+1] = distance
+            clustering_matrix_soft[idx0][idx1] = distance
         
             if distance < 1:
-                clustering_matrix[idx0][idx1+1] = 1
+                clustering_matrix[idx0][idx1] = 1
             else:
-                clustering_matrix[idx0][idx1+1] = 0
+                clustering_matrix[idx0][idx1] = 0
 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
@@ -231,11 +220,11 @@ if __name__ == '__main__':
     # ----------------------------------    
     # plot results
     plt.figure(1)
-    plt.imshow(clustering_matrix[:,1:],cmap=plt.cm.viridis)
+    plt.imshow(clustering_matrix,cmap=plt.cm.viridis)
     plt.figure(2)
-    plt.imshow(clustering_matrix0[:,1:],cmap=plt.cm.viridis)
+    plt.imshow(clustering_matrix0,cmap=plt.cm.viridis)
     plt.figure(3)
-    plt.imshow(-clustering_matrix0_soft[:,1:],cmap=plt.cm.viridis)
+    plt.imshow(-clustering_matrix0_soft,cmap=plt.cm.viridis)
 
     plt.show()
 
