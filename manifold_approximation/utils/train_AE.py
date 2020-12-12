@@ -113,7 +113,7 @@ def train_model(model, model_name, dataloaders, dataset_sizes, phases, criterion
                     'optimizer_state_dict': best_opt_wts,
                     'loss': least_loss,
                     }, model_save_dir + model_name + '_best.pt')
-        
+            print('saved the best model.')
         # save the last model
         torch.save({
                 'epoch': num_epochs,
@@ -121,5 +121,6 @@ def train_model(model, model_name, dataloaders, dataset_sizes, phases, criterion
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': epoch_loss,
                 }, model_save_dir + model_name + '_last.pt')
+        print('saved the last model.')
     
     return best_model, last_model
