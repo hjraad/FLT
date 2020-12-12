@@ -2,7 +2,7 @@
 Created on Mon Nov 23 19:44:39 2020
 
 @author: Mohammad Abdizadeh & Hadi Jamali-Rad
-@email(s):{moh.abdizadeh, h.jamali.rad@gmail.com}
+@email(s):{moh.abdizadeh, h.jamali.rad}@gmail.com
 """
 import sys
 sys.path.append("./../")
@@ -27,6 +27,7 @@ from tqdm import tqdm
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.encoder import Encoder
+from manifold_approximation.sequential_encoder import Sequential_Encoder
 
 # ----------------------------------
 # Reproducability
@@ -131,7 +132,7 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_
 
     centers = np.zeros((num_users, 2, 2))
     embedding_matrix = np.zeros((len(dict_users[0])*num_users, 2))
-    for user_id in tqdm(idxs_users, desc='Custering progress'):
+    for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
         
         user_dataset_train = local.ldr_train.dataset
@@ -196,13 +197,13 @@ if __name__ == '__main__':
     # ----------------------------------       
     # model
     model = ConvAutoencoder().to(args.device)
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     
     # ----------------------------------
     # Load the model ckpt
     checkpoint = torch.load(f'{args.model_root_dir}/{args.model_name}_best.pt')
     model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']  
         
