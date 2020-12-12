@@ -45,7 +45,7 @@ class Sequential_Encoder():
     This takes a pre-trained model and further fine tunes it
     on input data. 
     '''
-    def __init__(self, ae_model, ae_opt, criterion, scheduler, nr_epochs, ae_model_name, model_root_dir,
+    def __init__(self, ae_model, ae_opt, criterion, scheduler, nr_epochs, ae_model_name, model_root_dir, log_root_dir,
                                     manifold_dim, image_dataset, client_name, pre_trained_dataset, batch_size=10,  
                                     dataset_name='', train_umap=True, use_AE=True):
         self.ae_model = ae_model
@@ -55,6 +55,7 @@ class Sequential_Encoder():
         self.nr_epochs = nr_epochs
         self.ae_model_name = ae_model_name
         self.model_root_dir = model_root_dir
+        self.log_root_dir = log_root_dir
         self.manifold_dim = manifold_dim
         self.image_dataset = image_dataset
         self.client_name = client_name
@@ -78,12 +79,12 @@ class Sequential_Encoder():
 
         # make a dataloader from the image dataset for training
         dataloaders = {'train': DataLoader(self.image_dataset, batch_size=self.batch_size, shuffle=False, num_workers=4)}
-        dataset_sizes = {'train': len(image_dataset)}
+        dataset_sizes = {'train': len(self.image_dataset)}
         phases = ['train']
         
         _, model_l = train_model(self.ae_model, self.new_model_name, dataloaders, dataset_sizes, phases, 
                                        self.criterion, self.ae_opt, self.lr_scheduler, num_epochs=self.nr_epochs, 
-                                       model_save_dir=model_root_dir, log_save_dir=log_root_dir)
+                                       model_save_dir=self.model_root_dir, log_save_dir=self.log_root_dir)
         model = model_l
         
         # extract the AE embedding of test data
@@ -152,14 +153,14 @@ if __name__ == '__main__':
     batch_size = 1
     manifold_dim = 2
     model_name = "model-1607623811-epoch40-latent128"
-    pre_trained_dataset = 'FMNIST'
-    dataset_name = 'MNIST'
+    pre_trained_dataset = 'FMNIST'  
+    dataset_name = 'MNIST' # testing on MNIST
     data_root_dir = '../data'
     results_root_dir = '../results/Encoder'
-    model_root_dir = '../model_weights/'
-    log_root_dir = './logs/'
+    model_root_dir = '../model_weights'
+    log_root_dir = '../logs'
     client_name = 1
-    nr_epochs = 10
+    nr_epochs = 1
     dataset_split = 'balanced'
     
     # Load sample data 
@@ -198,7 +199,7 @@ if __name__ == '__main__':
 
     # sequential encoding
     encoder = Sequential_Encoder(model, optimizer, criterion, exp_lr_scheduler, nr_epochs, model_name, 
-                                 model_root_dir, manifold_dim, image_dataset, client_name, pre_trained_dataset)
+                                 model_root_dir, log_root_dir, manifold_dim, image_dataset, client_name, pre_trained_dataset)
     
     
     encoder.autoencoder()

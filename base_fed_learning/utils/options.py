@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Python version: 3.6
-
 import argparse
 
 def args_parser():
@@ -42,10 +38,12 @@ def args_parser():
     parser.add_argument('--data_root_dir', default='../data', help='data location')
     parser.add_argument('--model_root_dir', default='../model_weights', help='clustering model location')
     parser.add_argument('--results_root_dir', default='../results', help='results location')
+    parser.add_argument('--log_root_dir', default='../logs', help='results location')
     parser.add_argument('--model_name', default='model-1606927012-epoch40-latent128', help='model name')
+    parser.add_argument('--pretrained_dataset', default='EMNIST', help='data on which the initial model has been pretrained')
 
     # clustering options
-    parser.add_argument('--clustering_method', default='encoder', help='clustering method: single, perfect, umap_mo, umap, encoder')
+    parser.add_argument('--clustering_method', default='encoder', help='clustering method: single, perfect, umap_mo, umap, encoder, sequential_encoder')
 
     parser.add_argument('--manifold_dim', default=2, help='manifold dimension')
 

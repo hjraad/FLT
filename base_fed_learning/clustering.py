@@ -14,7 +14,9 @@ import copy
 import numpy as np
 from torchvision import datasets, transforms
 import torch
+import torch.nn as nn
 import torch.optim as optim
+from torch.optim import lr_scheduler
 
 from utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid
 from utils.options import args_parser
@@ -39,7 +41,8 @@ umap_random_state=42
 def gen_data(iid, dataset_type, num_users, cluster):
     # load dataset and split users
     if dataset_type == 'mnist':
-        trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+        # trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+        trans_mnist = transforms.Compose([transforms.ToTensor()])
         dataset_train = datasets.MNIST('../data/mnist/', train=True, download=True, transform=trans_mnist)
         dataset_test = datasets.MNIST('../data/mnist/', train=False, download=True, transform=trans_mnist)
         # sample users
@@ -137,7 +140,6 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_
         
         user_dataset_train = local.ldr_train.dataset
             
-        # #TODO: Mo(k)h to review this! 
         encoder = Encoder(ae_model, ae_model_name, model_root_dir, 
                                     manifold_dim, user_dataset_train, user_id)
         
@@ -173,12 +175,64 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_
                 clustering_matrix[idx0][idx1] = 0
 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
+ 
+
+def clustering_sequential_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_name, ae_optimizer, criterion, 
+                                  exp_lr_scheduler, nr_epochs_sequential_training, args):
+    idxs_users = np.arange(num_users)
+
+    centers = np.zeros((num_users, 2, 2))
+    embedding_matrix = np.zeros((len(dict_users[0])*num_users, 2))
+    for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
+        local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
+        
+        user_dataset_train = local.ldr_train.dataset
+            
+        encoder = Sequential_Encoder(ae_model, ae_optimizer, criterion, exp_lr_scheduler, nr_epochs_sequential_training, 
+                                     ae_model_name, args.model_root_dir, args.log_root_dir, args.manifold_dim, user_dataset_train, 
+                                     user_id, args.pre_trained_dataset)
+        
+        encoder.autoencoder()
+        encoder.manifold_approximation_umap()
+        # reducer = encoder.umap_reducer
+        embedding = encoder.umap_embedding
+        ae_model_name = encoder.new_model_name
+        
+        # ----------------------------------
+        # use Kmeans to cluster the data into 2 clusters
+        X = list(embedding)
+        embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
+        kmeans = KMeans(n_clusters=2, random_state=0).fit(np.array(X))
+        centers[user_id,:,:] = kmeans.cluster_centers_
+    
+    clustering_matrix_soft = np.zeros((num_users, num_users))
+    clustering_matrix = np.zeros((num_users, num_users))
+
+    for idx0 in idxs_users:
+        for idx1 in idxs_users:
+            c0 = centers[idx0]
+            c1 = centers[idx1]
+        
+            dist0 = np.linalg.norm(c0[0] - c1[0])**2 + np.linalg.norm(c0[1] - c1[1])**2
+            dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
+        
+            distance = min([dist0, dist1])#min (max)
+            clustering_matrix_soft[idx0][idx1] = distance
+        
+            if distance < 1:
+                clustering_matrix[idx0][idx1] = 1
+            else:
+                clustering_matrix[idx0][idx1] = 0
+                
+    return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
 if __name__ == '__main__':
     # parse args
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
     args.num_users = 20
+    args.model_name = "model-1607623811-epoch40-latent128"
+    args.pre_trained_dataset = 'FMNIST'
     args.iid = False
     # ----------------------------------
     plt.close('all')
@@ -187,9 +241,12 @@ if __name__ == '__main__':
     # generate cluster settings    
     nr_of_clusters = 5
     cluster_length = args.num_users // nr_of_clusters
-    cluster = np.zeros((nr_of_clusters,2), dtype='int64')
+    cluster = np.zeros((nr_of_clusters, 2), dtype='int64')
+    # for i in range(nr_of_clusters):
+    #     cluster[i] = np.random.choice(10, 2, replace=False)
+    cluster_array = np.random.choice(10, 10, replace=False)
     for i in range(nr_of_clusters):
-        cluster[i] = np.random.choice(10, 2, replace=False)
+        cluster[i] = cluster_array[i*2: i*2 + 1]
     
     # ----------------------------------       
     manifold_dim = 2
@@ -197,7 +254,15 @@ if __name__ == '__main__':
     # ----------------------------------       
     # model
     model = ConvAutoencoder().to(args.device)
+    
     # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    # Decay LR by a factor of x*gamma every step_size epochs
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+    
+    # loss
+    criterion = nn.BCELoss()
     
     # ----------------------------------
     # Load the model ckpt
@@ -214,9 +279,17 @@ if __name__ == '__main__':
     # ----------------------------------    
     #average over clients in a same cluster
     clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
+    
     #clustering_matrix0, clustering_matrix0_soft, centers = clustering_umap(args.num_users, dict_users, dataset_train, args)
-    clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix = clustering_encoder(args.num_users, dict_users, dataset_train, 
-                                                                model, args.model_name, args.model_root_dir, manifold_dim, args)
+    
+    # clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix = clustering_encoder(args.num_users, dict_users, dataset_train, 
+    #                                                             model, args.model_name, args.model_root_dir, manifold_dim, args)
+    
+    nr_epochs_sequential_training = 2
+    clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
+        clustering_sequential_encoder(args.num_users, dict_users, dataset_train, model, args.model_name, optimizer, 
+                                      criterion, exp_lr_scheduler, nr_epochs_sequential_training, args)
+    
     
     # ----------------------------------    
     # plot results
