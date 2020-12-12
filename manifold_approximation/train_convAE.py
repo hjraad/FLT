@@ -39,12 +39,12 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # ----------------------------------
 # Initialization
 # ----------------------------------
-TRAIN_FLAG = True  # train or not?
+TRAIN_FLAG = False  # train or not?
  
 latent_size = 128
 #TODO eval_interval = every how many epochs to evlaute 
 batch_size = 20
-nr_epochs = 40
+nr_epochs = 2
 
 dataset_name = 'FMNIST'
 dataset_split = 'balanced'
@@ -54,6 +54,7 @@ data_root_dir = '../data'
 model_root_dir = "../model_weights/"
 results_root_dir = '../results/AE'
 log_root_dir = './logs/'
+phases = ['train', 'test']
 
 # which model to use? 
 from models.convAE_128D import ConvAutoencoder
@@ -162,12 +163,16 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 if TRAIN_FLAG:
     # generate a model name
     MODEL_NAME = f"model-{int(time.time())}-epoch{nr_epochs}-latent{latent_size}" # use time to make the name unique
-    model, _ = train_model(model, MODEL_NAME, dataloaders, dataset_sizes,criterion, 
+    model_b, model_l = train_model(model, MODEL_NAME, dataloaders, dataset_sizes, phases, criterion, 
                                     optimizer, exp_lr_scheduler, num_epochs=nr_epochs,
                                     model_save_dir=model_root_dir, log_save_dir=log_root_dir)
     
-    # Visualize training (train vs test)
-    create_acc_loss_graph(MODEL_NAME, dataset_name, log_root_dir, results_root_dir)
+    if 'test' in phases:
+        model = model_b
+        # Visualize training (train vs test)
+        create_acc_loss_graph(MODEL_NAME, dataset_name, log_root_dir, results_root_dir)
+    else:
+        model = model_l
     
     # also pickle dump the embedding from the best model
     # this is for the Umap to pick up
@@ -186,8 +191,13 @@ if TRAIN_FLAG:
 # load the model (inference or to continue training)
 if not TRAIN_FLAG:
     # load the model 
-    MODEL_NAME = "model-1606927012-epoch40-latent128"
-    checkpoint = torch.load(model_root_dir + MODEL_NAME + '_best.pt')
+    MODEL_NAME = 'model-1607765429-epoch2-latent128'
+    if os.path.exists(model_root_dir + MODEL_NAME + '_best.pt'):
+        checkpoint = torch.load(model_root_dir + MODEL_NAME + '_best.pt')
+    elif os.path.exists(model_root_dir + MODEL_NAME + '_last.pt'):
+        checkpoint = torch.load(model_root_dir + MODEL_NAME + '_last.pt')
+    else:
+        raise FileNotFoundError('No relevant model file found!')
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']

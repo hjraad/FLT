@@ -11,8 +11,8 @@ import numpy as np
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def train_model(model, model_name, dataloaders, dataset_sizes, criterion, optimizer, scheduler, 
-                num_epochs=10, model_save_dir='./', log_save_dir='./'):
+def train_model(model, model_name, dataloaders, dataset_sizes, phases, criterion, optimizer, scheduler, 
+                num_epochs=10, model_save_dir='./', log_save_dir='./', save_flag=True):
     '''
     Trains the AE model 
     Paramteres:
@@ -37,8 +37,9 @@ def train_model(model, model_name, dataloaders, dataset_sizes, criterion, optimi
             print('-' * 10)
 
             # Each epoch has a training and validation phase
-            temp_loss = {'train':0, 'test':0}
-            for phase in ['train', 'test']:
+            temp_loss = {phase:0 for phase in phases} 
+            
+            for phase in phases:
                 if phase == 'train':
                     model.train()  # Set model to training mode
                 else:
@@ -68,7 +69,7 @@ def train_model(model, model_name, dataloaders, dataset_sizes, criterion, optimi
                     # statistics
                     current_loss += loss.item() * images.size(0)
                     
-                if phase == 'train':
+                if phase == 'train' and scheduler:
                     scheduler.step()
                 
                 epoch_loss = current_loss / dataset_sizes[phase]
@@ -84,9 +85,11 @@ def train_model(model, model_name, dataloaders, dataset_sizes, criterion, optimi
                     best_model = copy.deepcopy(model)
                     best_epoch = epoch
                     
-            # write a line for this epoch's loss values     
-            f.write(f"{model_name},{round(time.time(),3)}, train_loss, {round(float(temp_loss['train']),4)}, test_loss, {round(float(temp_loss['test']),4)},{epoch}\n")
-            
+            # write a line for this epoch's loss values  
+            if 'test' in phases:
+                f.write(f"{model_name},{round(time.time(),3)}, train_loss, {round(float(temp_loss['train']),4)}, test_loss, {round(float(temp_loss['test']),4)},{epoch}\n")
+            else:
+                f.write(f"{model_name},{round(time.time(),3)}, train_loss, {round(float(temp_loss['train']),4)},{epoch}\n")
             print()
     
     # last model     
@@ -95,22 +98,28 @@ def train_model(model, model_name, dataloaders, dataset_sizes, criterion, optimi
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
-    print('Least test Acc: {:4f}, best epoch:{}'.format(least_loss, best_epoch))
+    
+    if 'test' in phases:
+        print('Least test Acc: {:4f}, best epoch:{}'.format(least_loss, best_epoch))
+    else:
+        best_model = None
 
     # save the best model
-    torch.save({
-            'epoch': best_epoch,
-            'model_state_dict': best_model_wts,
-            'optimizer_state_dict': best_opt_wts,
-            'loss': least_loss,
-            }, model_save_dir + model_name + '_best.pt')
-    
-    # save the last model
-    torch.save({
-            'epoch': num_epochs,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'loss': epoch_loss,
-            }, model_save_dir + model_name + '_last.pt')
+    if save_flag:
+        if 'test' in phases:
+            torch.save({
+                    'epoch': best_epoch,
+                    'model_state_dict': best_model_wts,
+                    'optimizer_state_dict': best_opt_wts,
+                    'loss': least_loss,
+                    }, model_save_dir + model_name + '_best.pt')
+        
+        # save the last model
+        torch.save({
+                'epoch': num_epochs,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': epoch_loss,
+                }, model_save_dir + model_name + '_last.pt')
     
     return best_model, last_model
