@@ -31,7 +31,7 @@ def train_model(model, model_name, dataloaders, dataset_sizes, phases, criterion
     best_model_wts = copy.deepcopy(model.state_dict())
     least_loss = np.Inf
     
-    with open(log_save_dir + model_name + ".log", "a") as f:
+    with open(f'{log_save_dir}/{model_name}.log', 'a') as f:
         for epoch in tqdm.tqdm(range(num_epochs), desc='Training progress'):
             print('Epoch {}/{}'.format(epoch, num_epochs - 1))
             print('-' * 10)
@@ -112,7 +112,7 @@ def train_model(model, model_name, dataloaders, dataset_sizes, phases, criterion
                     'model_state_dict': best_model_wts,
                     'optimizer_state_dict': best_opt_wts,
                     'loss': least_loss,
-                    }, model_save_dir + model_name + '_best.pt')
+                    }, f'{model_save_dir}/{model_name}_best.pt')
             print('saved the best model.')
         # save the last model
         torch.save({
@@ -120,7 +120,7 @@ def train_model(model, model_name, dataloaders, dataset_sizes, phases, criterion
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': epoch_loss,
-                }, model_save_dir + model_name + '_last.pt')
+                }, f'{model_save_dir}/{model_name}_last.pt')
         print('saved the last model.')
     
     return best_model, last_model

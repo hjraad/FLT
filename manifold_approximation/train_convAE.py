@@ -39,7 +39,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # ----------------------------------
 # Initialization
 # ----------------------------------
-TRAIN_FLAG = False  # train or not?
+TRAIN_FLAG = True  # train or not?
  
 latent_size = 128
 #TODO eval_interval = every how many epochs to evlaute 
@@ -51,9 +51,9 @@ dataset_split = 'balanced'
 # train_val_split = (100000, 12800)
 
 data_root_dir = '../data'
-model_root_dir = "../model_weights/"
+model_root_dir = "../model_weights"
 results_root_dir = '../results/AE'
-log_root_dir = './logs/'
+log_root_dir = '../logs'
 phases = ['train', 'test']
 
 # which model to use? 
@@ -162,7 +162,7 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 
 if TRAIN_FLAG:
     # generate a model name
-    MODEL_NAME = f"model-{int(time.time())}-epoch{nr_epochs}-latent{latent_size}" # use time to make the name unique
+    MODEL_NAME = f'model-{int(time.time())}-epoch{nr_epochs}-latent{latent_size}' # use time to make the name unique
     model_b, model_l = train_model(model, MODEL_NAME, dataloaders, dataset_sizes, phases, criterion, 
                                     optimizer, exp_lr_scheduler, num_epochs=nr_epochs,
                                     model_save_dir=model_root_dir, log_save_dir=log_root_dir)
@@ -192,10 +192,10 @@ if TRAIN_FLAG:
 if not TRAIN_FLAG:
     # load the model 
     MODEL_NAME = 'model-1607765429-epoch2-latent128'
-    if os.path.exists(model_root_dir + MODEL_NAME + '_best.pt'):
-        checkpoint = torch.load(model_root_dir + MODEL_NAME + '_best.pt')
-    elif os.path.exists(model_root_dir + MODEL_NAME + '_last.pt'):
-        checkpoint = torch.load(model_root_dir + MODEL_NAME + '_last.pt')
+    if os.path.exists(f'{model_root_dir}/{MODEL_NAME}_best.pt'):
+        checkpoint = torch.load(f'{model_root_dir}/{MODEL_NAME}_best.pt')
+    elif os.path.exists(f'{model_root_dir}/{MODEL_NAME}_last.pt'):
+        checkpoint = torch.load(f'{model_root_dir}/{MODEL_NAME}_last.pt')
     else:
         raise FileNotFoundError('No relevant model file found!')
     model.load_state_dict(checkpoint['model_state_dict'])
