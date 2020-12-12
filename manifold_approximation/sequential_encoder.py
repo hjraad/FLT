@@ -160,7 +160,7 @@ if __name__ == '__main__':
     model_root_dir = '../model_weights'
     log_root_dir = '../logs'
     client_name = 1
-    nr_epochs = 1
+    nr_epochs = 3
     dataset_split = 'balanced'
     
     # Load sample data 

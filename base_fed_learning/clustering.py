@@ -24,6 +24,7 @@ from models.Update import LocalUpdate
 import pickle
 from sklearn.cluster import KMeans
 import itertools
+import copy
 
 from tqdm import tqdm
 
@@ -176,13 +177,13 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_
 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
  
-
 def clustering_sequential_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_name, ae_optimizer, criterion, 
                                   exp_lr_scheduler, nr_epochs_sequential_training, args):
-    idxs_users = np.arange(num_users)
-
+    # idxs_users = np.random.shuffle(np.arange(num_users))
+    idxs_users = np.random.choice(num_users, num_users, replace=False)
     centers = np.zeros((num_users, 2, 2))
     embedding_matrix = np.zeros((len(dict_users[0])*num_users, 2))
+
     for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
         
@@ -196,7 +197,7 @@ def clustering_sequential_encoder(num_users, dict_users, dataset_train, ae_model
         encoder.manifold_approximation_umap()
         # reducer = encoder.umap_reducer
         embedding = encoder.umap_embedding
-        ae_model_name = encoder.new_model_name
+        # ae_model_name = encoder.new_model_name
         
         # ----------------------------------
         # use Kmeans to cluster the data into 2 clusters
@@ -285,7 +286,7 @@ if __name__ == '__main__':
     # clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix = clustering_encoder(args.num_users, dict_users, dataset_train, 
     #                                                             model, args.model_name, args.model_root_dir, manifold_dim, args)
     
-    nr_epochs_sequential_training = 2
+    nr_epochs_sequential_training = 10
     clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
         clustering_sequential_encoder(args.num_users, dict_users, dataset_train, model, args.model_name, optimizer, 
                                       criterion, exp_lr_scheduler, nr_epochs_sequential_training, args)
@@ -300,16 +301,12 @@ if __name__ == '__main__':
     plt.figure(3)
     plt.imshow(-clustering_matrix0_soft,cmap=plt.cm.viridis)
 
-    plt.show()
-
     nr_of_centers = 2*cluster_length
     colors = itertools.cycle(["r"] * nr_of_centers +["b"]*nr_of_centers+["g"]*nr_of_centers+["k"]*nr_of_centers+["y"]*nr_of_centers)
     plt.figure(4)
     for i in range(0,args.num_users):
         plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
         plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
-
-    plt.show()
 
     plt.figure(5)
     nr_of_centers = len(dict_users[0])*cluster_length
