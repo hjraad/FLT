@@ -25,6 +25,7 @@ import pickle
 from sklearn.cluster import KMeans
 import itertools
 import copy
+import umap
 
 from tqdm import tqdm
 
@@ -227,6 +228,61 @@ def clustering_sequential_encoder(num_users, dict_users, dataset_train, ae_model
                 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
+def clustering_umap_central(num_users, dict_users, dataset_train, ae_model, ae_model_name, ae_optimizer, criterion, 
+                            exp_lr_scheduler, nr_epochs_sequential_training, args):
+    # idxs_users = np.random.shuffle(np.arange(num_users))
+    idxs_users = np.random.choice(num_users, num_users, replace=False)
+    centers = np.zeros((num_users, 2, 128))
+    embedding_matrix = np.zeros((len(dict_users[0])*num_users, 128))
+
+    for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
+        local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
+        
+        user_dataset_train = local.ldr_train.dataset
+            
+        encoder = Sequential_Encoder(ae_model, ae_optimizer, criterion, exp_lr_scheduler, nr_epochs_sequential_training, 
+                                     ae_model_name, args.model_root_dir, args.log_root_dir, args.manifold_dim, user_dataset_train, 
+                                     user_id, args.pre_trained_dataset, train_umap=False, use_AE=True)
+        
+        encoder.autoencoder()
+        # encoder.manifold_approximation_umap()
+        embedding = encoder.ae_embedding_np 
+        # reducer = encoder.umap_reducer
+        # embedding = encoder.umap_embedding
+        # ae_model_name = encoder.new_model_name
+        
+        # ----------------------------------
+        # use Kmeans to cluster the data into 2 clusters
+        embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
+        kmeans = KMeans(n_clusters=2, random_state=43).fit(np.array(embedding))
+        centers[user_id,:,:] = kmeans.cluster_centers_
+    
+    umap_reducer = umap.UMAP(n_components=2, random_state=42)
+    umap_embedding = umap_reducer.fit_transform(np.reshape(centers, (-1, 128)))
+    centers = np.reshape(umap_embedding, (num_users, -1, 2))
+    clustering_matrix_soft = np.zeros((num_users, num_users))
+    clustering_matrix = np.zeros((num_users, num_users))
+
+    for idx0 in idxs_users:
+        for idx1 in idxs_users:
+            c0 = centers[idx0]
+            c1 = centers[idx1]
+        
+            dist0 = np.linalg.norm(c0[0] - c1[0])**2 + np.linalg.norm(c0[1] - c1[1])**2
+            dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
+        
+            distance = min([dist0, dist1])#min (max)
+            clustering_matrix_soft[idx0][idx1] = distance
+        
+            if distance < 1:
+                clustering_matrix[idx0][idx1] = 1
+            else:
+                clustering_matrix[idx0][idx1] = 0
+                
+    return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
+
+
+
 if __name__ == '__main__':
     # parse args
     args = args_parser()
@@ -283,12 +339,18 @@ if __name__ == '__main__':
     
     #clustering_matrix0, clustering_matrix0_soft, centers = clustering_umap(args.num_users, dict_users, dataset_train, args)
     
-    # clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix = clustering_encoder(args.num_users, dict_users, dataset_train, 
-    #                                                             model, args.model_name, args.model_root_dir, manifold_dim, args)
+    clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix = clustering_encoder(args.num_users, dict_users, dataset_train, 
+                                                                model, args.model_name, args.model_root_dir, manifold_dim, args)
     
-    nr_epochs_sequential_training = 10
+    # nr_epochs_sequential_training = 10
+    # clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
+    #     clustering_sequential_encoder(args.num_users, dict_users, dataset_train, model, args.model_name, optimizer, 
+    #                                   criterion, exp_lr_scheduler, nr_epochs_sequential_training, args)
+    
+    
+    nr_epochs_sequential_training = 2
     clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-        clustering_sequential_encoder(args.num_users, dict_users, dataset_train, model, args.model_name, optimizer, 
+        clustering_umap_central(args.num_users, dict_users, dataset_train, model, args.model_name, optimizer, 
                                       criterion, exp_lr_scheduler, nr_epochs_sequential_training, args)
     
     

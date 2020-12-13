@@ -117,7 +117,7 @@ class Encoder():
             # pickle.dump(self.umap_reducer, open(f'{self.model_root_dir}/umap_reducer_{self.dataset_name}_{self.ae_model_name}_client{self.client_name}_{self.manifold_dim}D.p', 'wb'))
         else:
             self.umap_reducer = pickle.load(open(umap_model_address, 'rb'))
-            print('Extracting UMAP embedding ...')
+            print('Loading UMAP embedding ...')
             # only load the transfrom and use it as a function
             self.umap_embedding = self.umap_reducer.transform(umap_data)   
             print(f'UMAP embedding/reducer for client_{self.client_name} is loaded.')

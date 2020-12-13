@@ -47,7 +47,7 @@ class Sequential_Encoder():
     '''
     def __init__(self, ae_model, ae_opt, criterion, scheduler, nr_epochs, ae_model_name, model_root_dir, log_root_dir,
                                     manifold_dim, image_dataset, client_name, pre_trained_dataset, batch_size=10,  
-                                    dataset_name='', train_umap=True, use_AE=True):
+                                    dataset_name='', train_umap=False, use_AE=True):
         self.ae_model = ae_model
         self.ae_opt = ae_opt
         self.criterion = criterion
@@ -142,7 +142,7 @@ class Sequential_Encoder():
             # pickle.dump(self.umap_reducer, open(f'{self.model_root_dir}/umap_reducer_{self.dataset_name}_{self.ae_model_name}_client{self.client_name}_{self.manifold_dim}D.p', 'wb'))
         else:
             self.umap_reducer = pickle.load(open(umap_model_address, 'rb'))
-            print('Extracting UMAP embedding ...')
+            print('Loading UMAP embedding ...')
             # only load the transfrom and use it as a function
             self.umap_embedding = self.umap_reducer.transform(umap_data)   
             print(f'UMAP embedding/reducer for client_{self.client_name} is loaded.')
