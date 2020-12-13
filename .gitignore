@@ -11,8 +11,8 @@ model_weights/*
 results/*
 !results/.gitkeep
 
-results/main_fed/*
-!results/main_fed/.gitkeep 
+results/**/
+!results/**/.gitkeep 
 
 # Log files
 logs/*
@@ -331,5 +331,3 @@ dmypy.json
 **/*.pyc
 **/*.so
 **/*.pt
-
-keys.py
