@@ -8,8 +8,8 @@
 model_weights/*
 !model_weights/.gitkeep 
 
-results/*
-!results/.gitkeep
+# results/*
+# !results/.gitkeep
 
 results/**/
 !results/**/.gitkeep 
