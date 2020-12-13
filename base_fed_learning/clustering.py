@@ -282,7 +282,6 @@ def clustering_umap_central(num_users, dict_users, dataset_train, ae_model, ae_m
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
 
-
 if __name__ == '__main__':
     # parse args
     args = args_parser()
@@ -291,6 +290,7 @@ if __name__ == '__main__':
     args.model_name = "model-1607623811-epoch40-latent128"
     args.pre_trained_dataset = 'FMNIST'
     args.iid = False
+    
     # ----------------------------------
     plt.close('all')
     
@@ -307,6 +307,8 @@ if __name__ == '__main__':
     
     # ----------------------------------       
     manifold_dim = 2
+    nr_epochs_sequential_training = 2
+    encoding_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
     
     # ----------------------------------       
     # model
@@ -320,8 +322,6 @@ if __name__ == '__main__':
     
     # loss
     criterion = nn.BCELoss()
-    
-    # ----------------------------------
     # Load the model ckpt
     checkpoint = torch.load(f'{args.model_root_dir}/{args.model_name}_best.pt')
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -337,21 +337,20 @@ if __name__ == '__main__':
     #average over clients in a same cluster
     clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
     
-    #clustering_matrix0, clustering_matrix0_soft, centers = clustering_umap(args.num_users, dict_users, dataset_train, args)
-    
-    clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix = clustering_encoder(args.num_users, dict_users, dataset_train, 
-                                                                model, args.model_name, args.model_root_dir, manifold_dim, args)
-    
-    # nr_epochs_sequential_training = 10
-    # clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-    #     clustering_sequential_encoder(args.num_users, dict_users, dataset_train, model, args.model_name, optimizer, 
-    #                                   criterion, exp_lr_scheduler, nr_epochs_sequential_training, args)
-    
-    
-    nr_epochs_sequential_training = 2
-    clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-        clustering_umap_central(args.num_users, dict_users, dataset_train, model, args.model_name, optimizer, 
-                                      criterion, exp_lr_scheduler, nr_epochs_sequential_training, args)
+    if encoding_method == 'umap':
+        clustering_matrix0, clustering_matrix0_soft, centers = clustering_umap(args.num_users, dict_users, dataset_train, args)
+    elif encoding_method == 'encoder':
+        clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
+            clustering_encoder(args.num_users, dict_users, dataset_train, model, 
+                               args.model_name, args.model_root_dir, manifold_dim, args)
+    elif encoding_method == 'sequential_encoder':
+        clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
+            clustering_sequential_encoder(args.num_users, dict_users, dataset_train, model, args.model_name, optimizer, 
+                                        criterion, exp_lr_scheduler, nr_epochs_sequential_training, args)
+    elif encoding_method == 'umap_central':
+        clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
+            clustering_umap_central(args.num_users, dict_users, dataset_train, model, args.model_name, optimizer, 
+                                        criterion, exp_lr_scheduler, nr_epochs_sequential_training, args)
     
     
     # ----------------------------------    
@@ -360,20 +359,23 @@ if __name__ == '__main__':
     plt.imshow(clustering_matrix,cmap=plt.cm.viridis)
     plt.figure(2)
     plt.imshow(clustering_matrix0,cmap=plt.cm.viridis)
+    plt.savefig(f'{args.results_root_dir}/Clustering/slustMat_{encoding_method}_nrclust-{nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
     plt.figure(3)
     plt.imshow(-clustering_matrix0_soft,cmap=plt.cm.viridis)
-
+    plt.savefig(f'{args.results_root_dir}/Clustering/softClustMat_{encoding_method}_nrclust-{nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+    
     nr_of_centers = 2*cluster_length
     colors = itertools.cycle(["r"] * nr_of_centers +["b"]*nr_of_centers+["g"]*nr_of_centers+["k"]*nr_of_centers+["y"]*nr_of_centers)
     plt.figure(4)
     for i in range(0,args.num_users):
         plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
         plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
-
+    plt.savefig(f'{args.results_root_dir}/Clustering/centers_{encoding_method}_nrclust-{nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+    
     plt.figure(5)
     nr_of_centers = len(dict_users[0])*cluster_length
     colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
     for i in range(nr_of_clusters):
         plt.scatter(embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers, 0], embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers:, 1], color=next(colors))
-
+    plt.savefig(f'{args.results_root_dir}/Clustering/embeddingMat_{encoding_method}_nrclust-{nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
     plt.show()
