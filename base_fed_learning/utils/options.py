@@ -28,7 +28,7 @@ def args_parser():
     parser.add_argument('--iid', action='store_true', help='whether i.i.d or not')
     parser.add_argument('--num_classes', type=int, default=10, help="number of classes")
     parser.add_argument('--num_channels', type=int, default=3, help="number of channels of imges")
-    parser.add_argument('--gpu', type=int, default=0, help="GPU ID, -1 for CPU")
+    parser.add_argument('--gpu', type=int, default=-1, help="GPU ID, -1 for CPU")
     parser.add_argument('--stopping_rounds', type=int, default=10, help='rounds of early stopping')
     parser.add_argument('--verbose', action='store_true', help='verbose print')
     parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
@@ -43,7 +43,7 @@ def args_parser():
     parser.add_argument('--pretrained_dataset', default='EMNIST', help='data on which the initial model has been pretrained')
 
     # clustering options
-    parser.add_argument('--clustering_method', default='encoder', help='clustering method: single, perfect, umap_mo, umap, encoder, sequential_encoder')
+    parser.add_argument('--clustering_method', default='perfect', help='clustering method: single, perfect, umap_mo, umap, encoder, sequential_encoder')
 
     parser.add_argument('--manifold_dim', default=2, help='manifold dimension')
 
