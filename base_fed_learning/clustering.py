@@ -135,20 +135,21 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model, ae_model_
     
     idxs_users = np.arange(num_users)
 
-    centers = np.zeros((num_users, 2, 2))
-    embedding_matrix = np.zeros((len(dict_users[0])*num_users, 2))
+    centers = np.zeros((num_users, 2, 128))
+    embedding_matrix = np.zeros((len(dict_users[0])*num_users, 128))
     for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
         
         user_dataset_train = local.ldr_train.dataset
             
         encoder = Encoder(ae_model, ae_model_name, model_root_dir, 
-                                    manifold_dim, user_dataset_train, user_id)
+                                    manifold_dim, user_dataset_train, user_id, use_AE=True)
         
         encoder.autoencoder()
-        encoder.manifold_approximation_umap()
-        reducer = encoder.umap_reducer
-        embedding1 = encoder.umap_embedding
+        #encoder.manifold_approximation_umap()
+        #reducer = encoder.umap_reducer
+        # embedding1 = encoder.umap_embedding
+        embedding1 = encoder.ae_embedding_np
         
         # ----------------------------------
         # use Kmeans to cluster the data into 2 clusters
@@ -309,7 +310,7 @@ if __name__ == '__main__':
     # ----------------------------------       
     manifold_dim = 2
     nr_epochs_sequential_training = 5
-    encoding_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
+    encoding_method = 'encoder'    # umap, encoder, sequential_encoder, umap_central
     
     # ----------------------------------       
     # model
