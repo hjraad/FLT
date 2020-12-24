@@ -233,7 +233,7 @@ if __name__ == '__main__':
     else:
         cluster_array = np.random.choice(10, 10, replace=False)
         for i in range(args.nr_of_clusters):
-            cluster[i] = cluster_array[i*2: i*2 + 1]
+            cluster[i] = cluster_array[i*2: i*2 + 2]
 
     # ----------------------------------
     # generate clustered data
@@ -303,7 +303,7 @@ if __name__ == '__main__':
     acc_test_final = np.zeros(args.num_users)
     loss_test_final = np.zeros(args.num_users)
     for idx in np.arange(args.num_users):#TODO: no need to loop over all the users!
-        print("under process: ", idx)
+        print("user under process: ", idx)
         net_glob_list[idx].eval()
         acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, cluster[idx//cluster_length], args)
         acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, cluster[idx//cluster_length], args)
@@ -320,18 +320,6 @@ if __name__ == '__main__':
     # ----------------------------------
     print('case 4: 100 clients with labeled from only two images for eahc client --> noniid')
     args.iid=False
-    
-    nr_of_clusters = 5
-    cluster_length = args.num_users // nr_of_clusters
-    cluster = np.zeros((nr_of_clusters,2), dtype='int64')
-    if False:#args.clustering_with_overlap:
-        for i in range(nr_of_clusters):
-            cluster[i] = np.random.choice(10, 2, replace=False)
-    else:
-        cluster_array = np.random.choice(10, 10, replace=False)
-        for i in range(nr_of_clusters):
-            cluster[i] = cluster_array[i*2: i*2 + 2]
-    print(cluster)
 
     dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
     
