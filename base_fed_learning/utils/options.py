@@ -3,8 +3,8 @@ import argparse
 def args_parser():
     parser = argparse.ArgumentParser()
     # federated arguments
-    parser.add_argument('--epochs', type=int, default=40, help="rounds of training")
-    parser.add_argument('--num_users', type=int, default=40, help="number of users: K")
+    parser.add_argument('--epochs', type=int, default=5, help="rounds of training")
+    parser.add_argument('--num_users', type=int, default=20, help="number of users: K")
     parser.add_argument('--frac', type=float, default=0.1, help="the fraction of clients: C")
     parser.add_argument('--local_ep', type=int, default=5, help="the number of local epochs: E")
     parser.add_argument('--local_bs', type=int, default=10, help="local batch size: B")
@@ -43,7 +43,7 @@ def args_parser():
     parser.add_argument('--pretrained_dataset', default='EMNIST', help='data on which the initial model has been pretrained')
 
     # clustering options
-    parser.add_argument('--clustering_method', default='encoder', help='clustering method: single, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central')
+    parser.add_argument('--clustering_method', default='umap_central', help='clustering method: single, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central')
     parser.add_argument('--nr_of_clusters', default=5, help='number of clusters')
     parser.add_argument('--flag_with_overlap', default='True', help='clustering with overlapped labels')
 
