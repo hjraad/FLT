@@ -172,7 +172,8 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
     
     return loss_train, net_glob_list, clustering_matrix
 
-def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster_length, evaluation_index_range, args, outputFile):
+def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, args, outputFile):
+    # evaluate the performance of the models on train and test datasets
     acc_train_final = np.zeros(args.num_users)
     loss_train_final = np.zeros(args.num_users)
     acc_test_final = np.zeros(args.num_users)
@@ -189,6 +190,82 @@ def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster_len
     print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[evaluation_index_range])), file = outputFile)
 
     return
+
+def gen_cluster(args):
+    # setting the clustering format
+    if args.iid == True:
+        nr_of_clusters = 1
+    
+        cluster_length = args.num_users // nr_of_clusters
+        cluster = np.zeros((nr_of_clusters,10), dtype='int64')
+        for i in range(nr_of_clusters):
+            # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
+            cluster[i] = np.random.choice(10, 10, replace=False)
+    else:
+        cluster_length = args.num_users // args.nr_of_clusters
+        # generate cluster settings    
+        cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
+        if args.flag_with_overlap:
+            for i in range(args.nr_of_clusters):
+                cluster[i] = np.random.choice(10, 2, replace=False)
+        else:
+            cluster_array = np.random.choice(10, 10, replace=False)
+            for i in range(args.nr_of_clusters):
+                cluster[i] = cluster_array[i*2: i*2 + 2]
+
+    return cluster, cluster_length
+
+def extract_clustering(dict_users, dataset_train, args):
+
+    if args.clustering_method == 'single':
+        clustering_matrix = clustering_single(args.num_users)
+    if args.clustering_method == 'umap':
+        clustering_matrix, _, _ = clustering_umap(args.num_users, dict_users, dataset_train, args)
+    elif args.clustering_method == 'encoder':
+        clustering_matrix, _, _, _ =\
+            clustering_encoder(args.num_users, dict_users, dataset_train, 
+                               args.ae_model_name, args.model_root_dir, args.manifold_dim, args)
+    elif args.clustering_method == 'sequential_encoder':
+        clustering_matrix, _, _, _ =\
+            clustering_sequential_encoder(args.num_users, dict_users, dataset_train, args.ae_model_name, 
+                                        args.nr_epochs_sequential_training, args)
+    elif args.clustering_method == 'umap_central':
+        clustering_matrix, _, _, _ =\
+            clustering_umap_central(args.num_users, dict_users, dataset_train, args.ae_model_name, 
+                                        args.nr_epochs_sequential_training, args)
+    
+    return clustering_matrix
+
+def run(args, outputFile):
+    # setting the clustering format
+    cluster, cluster_length = gen_cluster(args)
+
+    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
+
+    # clustering the clients
+    clustering_matrix = extract_clustering(dict_users, dataset_train, args)
+
+    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
+    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, args.multi_center)
+
+    # ----------------------------------
+    # testing: average over all clients
+    if args.iid == True:
+        evaluation_index_step = 1
+        evaluation_index_max = 1
+    elif args.clustering_method == 'single' and args.multi_center == False:
+        evaluation_index_step = args.num_users // args.nr_of_clusters# clustering_length
+        evaluation_index_max = args.num_users-1
+    else:
+        evaluation_index_step = 1
+        evaluation_index_max = args.num_users-1
+
+    evaluation_index_range = np.arange(0, evaluation_index_max, evaluation_index_step)
+
+    evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, args, outputFile)
+
+    return loss_train
+
 if __name__ == '__main__':
     # parse args
     args = args_parser()
@@ -206,129 +283,41 @@ if __name__ == '__main__':
     print('case 1: 100 clients with labeled from all the images --> iid')
     print('case 1: 100 clients with labeled from all the images --> iid', file = outputFile)
     args.iid=True
-    
-    # setting the clustering format
-    nr_of_clusters = 1
-    cluster_length = args.num_users // nr_of_clusters
-    cluster = np.zeros((nr_of_clusters,10), dtype='int64')
-    for i in range(nr_of_clusters):
-        # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
-        cluster[i] = np.random.choice(10, 10, replace=False)
-        
-    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
-
-    # clustering the clients
-    clustering_matrix = clustering_single(args.num_users)
-    Multi_Center = False
-
-    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
-    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, Multi_Center)
-
-    # ----------------------------------
-    # testing: average over all clients
-    step = 1
-    evaluation_index_range = np.arange(0, 1, step)
-    evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster_length, evaluation_index_range, args, outputFile)
-    
-    loss_train_iid = loss_train
+    args.clustering_method = 'single'
+    args.multi_center = False
+  
+    loss_train_iid = run(args, outputFile)
     # ----------------------------------
     # case 2: N clients with labeled from only two image labelss for each client --> noniid
     # ----------------------------------
     print('case 2: 100 clients with labeled from only two images for eahc client --> noniid')
     print('case 2: 100 clients with labeled from only two images for eahc client --> noniid', file = outputFile)
     args.iid = False
-
-    # generate cluster settings    
-    cluster_length = args.num_users // args.nr_of_clusters
-    cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
-    if args.flag_with_overlap:
-        for i in range(args.nr_of_clusters):
-            cluster[i] = np.random.choice(10, 2, replace=False)
-    else:
-        cluster_array = np.random.choice(10, 10, replace=False)
-        for i in range(args.nr_of_clusters):
-            cluster[i] = cluster_array[i*2: i*2 + 2]
-
-    # ----------------------------------
-    # generate clustered data
-    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
-    
-    # clustering the clients
-    clustering_matrix = clustering_single(args.num_users)
-    Multi_Center = False
-    
-    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
-    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, Multi_Center)
-
-    # testing: average over all clients
-    step = cluster_length
-    evaluation_index_range = np.arange(0, args.num_users-1, step)
-    evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster_length, evaluation_index_range, args, outputFile)
-       
-    loss_train_noniid_noclustering = loss_train
+    args.clustering_method = 'single'
+    args.multi_center = False
+     
+    loss_train_noniid_noclustering = run(args, outputFile)
     # ----------------------------------
     # case 3: N clients with labeled from only two image labelss for each client --> noniid --> adding clustered fed average
     # ----------------------------------
     print('case 3: 100 clients with labeled from only two images for each client --> noniid --> adding clustered fed average')
     print('case 3: 100 clients with labeled from only two images for each client --> noniid --> adding clustered fed average', file = outputFile)
     args.iid=False
-    
-    cluster_length = args.num_users // args.nr_of_clusters
-
-    # ----------------------------------
-    # clustering the clients
-    if args.clustering_method == 'umap':
-        clustering_matrix, clustering_matrix_soft, centers = clustering_umap(args.num_users, dict_users, dataset_train, args)
-    elif args.clustering_method == 'encoder':
-        clustering_matrix, clustering_matrix_soft, centers, embedding_matrix =\
-            clustering_encoder(args.num_users, dict_users, dataset_train, 
-                               args.ae_model_name, args.model_root_dir, args.manifold_dim, args)
-    elif args.clustering_method == 'sequential_encoder':
-        clustering_matrix, clustering_matrix_soft, centers, embedding_matrix =\
-            clustering_sequential_encoder(args.num_users, dict_users, dataset_train, args.ae_model_name, 
-                                        args.nr_epochs_sequential_training, args)
-    elif args.clustering_method == 'umap_central':
-        clustering_matrix, clustering_matrix_soft, centers, embedding_matrix =\
-            clustering_umap_central(args.num_users, dict_users, dataset_train, args.ae_model_name, 
-                                        args.nr_epochs_sequential_training, args)
-
-    Multi_Center = False
-            
-    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
-    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, Multi_Center)
-
-    # testing: average over clients in a same cluster
-    step = 1
-    evaluation_index_range = np.arange(0, args.num_users-1, step)
-    evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster_length, evaluation_index_range, args, outputFile)
-    
-    loss_train_noniid_clustering = loss_train
+    args.clustering_method = 'umap_central'
+    args.multi_center = False
+   
+    loss_train_noniid_clustering = run(args, outputFile)
     # ----------------------------------
     # case 4: N clients with labeled from only two image labelss for each client --> noniid and multicenter clustering
     # ----------------------------------
     print('case 4: 100 clients with labeled from only two images for eahc client --> noniid')
     print('case 4: 100 clients with labeled from only two images for eahc client --> noniid', file = outputFile)
     args.iid=False
+    args.clustering_method = 'single'
+    args.multi_center = True
+    evaluation_index_step = 1
 
-    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
-    
-    # clustering the clients
-    clustering_matrix = clustering_single(args.num_users)
-    Multi_Center = True
-    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
-    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, Multi_Center)
-    plt.figure()
-    plt.imshow(clustering_matrix)
-    plt.savefig(f'{args.results_root_dir}/Clustering/multi_center_nrclust-{nr_of_clusters}_num_users-{args.num_users}_{args.epochs}_epoch-{args.epochs}.jpg')
-    #plt.show()
-    
-    # testing: average over all clients
-    step = 1
-    evaluation_index_range = np.arange(0, args.num_users-1, step)
-    evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster_length, evaluation_index_range, args, outputFile)
-       
-    loss_train_noniid_multicenter = loss_train
-
+    loss_train_noniid_multicenter = run(args, outputFile)
     # ----------------------------------
     # Create plots with pre-defined labels.
     fig, ax = plt.subplots()

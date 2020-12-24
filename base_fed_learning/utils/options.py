@@ -52,5 +52,8 @@ def args_parser():
     parser.add_argument('--manifold_dim', default=2, help='manifold dimension')
     parser.add_argument('--nr_epochs_sequential_training', default=2, help='number of epochs for training the encoder')
 
+    # third party results
+    parser.add_argument('--multi_center', default='False', help='generate results for multu_center paper')
+
     args = parser.parse_args()
     return args
