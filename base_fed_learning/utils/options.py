@@ -39,8 +39,10 @@ def args_parser():
     parser.add_argument('--model_root_dir', default='./model_weights', help='clustering model location')
     parser.add_argument('--results_root_dir', default='./results', help='results location')
     parser.add_argument('--log_root_dir', default='./logs', help='results location')
-    parser.add_argument('--ae_model_name', default='model-1606927012-epoch40-latent128', help='Autoencoder model name')
-    parser.add_argument('--pretrained_dataset', default='EMNIST', help='data on which the initial model has been pretrained')
+    #parser.add_argument('--ae_model_name', default='model-1606927012-epoch40-latent128', help='Autoencoder model name')
+    #parser.add_argument('--pre_trained_dataset', default='EMNIST', help='data on which the initial model has been pretrained')
+    parser.add_argument('--ae_model_name', default='model-1607623811-epoch40-latent128', help='Autoencoder model name')
+    parser.add_argument('--pre_trained_dataset', default='FMNIST', help='data on which the initial model has been pretrained')
 
     # clustering options
     parser.add_argument('--clustering_method', default='umap_central', help='clustering method: single, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central')
