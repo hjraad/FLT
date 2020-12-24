@@ -183,8 +183,8 @@ def clustering_sequential_encoder(num_users, dict_users, dataset_train, ae_model
                                   exp_lr_scheduler, nr_epochs_sequential_training, args):
     # idxs_users = np.random.shuffle(np.arange(num_users))
     idxs_users = np.random.choice(num_users, num_users, replace=False)
-    centers = np.zeros((num_users, 2, 2))
-    embedding_matrix = np.zeros((len(dict_users[0])*num_users, 2))
+    centers = np.zeros((num_users, 2, 128))
+    embedding_matrix = np.zeros((len(dict_users[0])*num_users, 128))
 
     for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
@@ -196,11 +196,11 @@ def clustering_sequential_encoder(num_users, dict_users, dataset_train, ae_model
                                      user_id, args.pre_trained_dataset)
         
         encoder.autoencoder()
-        encoder.manifold_approximation_umap()
+        # encoder.manifold_approximation_umap()
         # reducer = encoder.umap_reducer
-        embedding = encoder.umap_embedding
+        # embedding = encoder.umap_embedding
         # ae_model_name = encoder.new_model_name
-        
+        embedding = encoder.ae_embedding_np
         # ----------------------------------
         # use Kmeans to cluster the data into 2 clusters
         X = list(embedding)
@@ -288,8 +288,8 @@ if __name__ == '__main__':
     # parse args
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-    args.num_users = 20
-    args.model_name = "model-1607623811-epoch40-latent128"
+    args.num_users = 400
+    args.model_name = 'model-1607623811-epoch40-latent128' # "model-1607623811-epoch40-latent128" (FMNIST)  # model-1606927012-epoch40-latent128_best (for EMNIST)
     args.pre_trained_dataset = 'FMNIST'
     args.iid = False
     
@@ -301,16 +301,16 @@ if __name__ == '__main__':
     nr_of_clusters = 5
     cluster_length = args.num_users // nr_of_clusters
     cluster = np.zeros((nr_of_clusters, 2), dtype='int64')
-    for i in range(nr_of_clusters):
-        cluster[i] = np.random.choice(10, 2, replace=False)
-    # cluster_array = np.random.choice(10, 10, replace=False)
     # for i in range(nr_of_clusters):
-    #     cluster[i] = cluster_array[i*2: i*2 + 1]
+    #     cluster[i] = np.random.choice(10, 2, replace=False)
+    cluster_array = np.random.choice(10, 10, replace=False)
+    for i in range(nr_of_clusters):
+        cluster[i] = cluster_array[i: i + 2]
     
     # ----------------------------------       
     manifold_dim = 2
-    nr_epochs_sequential_training = 5
-    encoding_method = 'encoder'    # umap, encoder, sequential_encoder, umap_central
+    nr_epochs_sequential_training = 1
+    encoding_method = 'sequential_encoder'    # umap, encoder, sequential_encoder, umap_central
     
     # ----------------------------------       
     # model
