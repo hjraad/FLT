@@ -105,7 +105,7 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
 
 
     if multi_center_initialization_flag:                
-        kmeans = KMeans(n_clusters=args.nr_of_clusters, n_init=1).fit(models_parameter_list)
+        kmeans = KMeans(n_clusters=args.nr_of_clusters, n_init=20).fit(models_parameter_list)
 
     else:
         kmeans = KMeans(n_clusters=args.nr_of_clusters, init=est_multi_center, n_init=1).fit(models_parameter_list)#TODO: remove the best
@@ -165,11 +165,13 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
-        print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
+        print(f'Round {iter}, Average loss {loss_avg}')
+        print(f'Round {iter}, Average loss {loss_avg}', file = outputFile)
         loss_train.append(loss_avg)
 
         if args.iter_to_iter_results == True:
-            print('iteration under process: ', iter)
+            print(f'iteration under process: {iter, }')
+            print(f'iteration under process: {iter, }', file = outputFile)
             # testing: average over all clients
             evaluation_index_range = extract_evaluation_range(args)
             evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, args, outputFile)
