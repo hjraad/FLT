@@ -53,7 +53,11 @@ def args_parser():
     parser.add_argument('--nr_epochs_sequential_training', default=2, help='number of epochs for training the encoder')
 
     # third party results
-    parser.add_argument('--multi_center', default='False', help='generate results for multu_center paper')
+    parser.add_argument('--multi_center', default='False', help='generate results for multi_center paper')
+
+
+    parser.add_argument('--iter_to_iter_results', default='False', help='generate results for each iteration')
+    parser.add_argument('--config_root_dir', default='./config', help='config file location')
 
     args = parser.parse_args()
     return args

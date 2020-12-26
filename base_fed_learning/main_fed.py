@@ -24,13 +24,17 @@ from clustering import clustering_single, clustering_perfect, clustering_umap, c
 from sklearn.cluster import KMeans
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
+import json
 
 # ----------------------------------
 # Reproducability
 # ----------------------------------
-torch.manual_seed(123)
-np.random.seed(321)
-umap_random_state=42
+def set_random_seed():
+    torch.manual_seed(123)
+    np.random.seed(321)
+    umap_random_state=42
+
+    return
 
 def gen_data(iid, dataset_type, num_users, cluster):
     # load dataset and split users
@@ -82,15 +86,47 @@ def gen_model(dataset, dataset_train, num_users):
     
     return net_glob, w_glob, net_glob_list, w_glob_list
 
-def clustering_multi_center(num_users, multi_center_initialization_flag):
+def get_model_params_length(model):
+    lst = [list(model[k].cpu().numpy().flatten()) for  k in model.keys()]
+    flat_list = [item for sublist in lst for item in sublist]
+
+    return len(flat_list)
+
+def clustering_multi_center(num_users, w_locals, multi_center_initialization_flag, est_multi_center, args):
+    model_params_length = get_model_params_length(w_locals[0])
+    models_parameter_list = np.zeros((num_users, model_params_length))
+
+    for i in range(num_users):
+        model = w_locals[i]
+        lst = [list(model[k].cpu().numpy().flatten()) for  k in model.keys()]
+        flat_list = [item for sublist in lst for item in sublist]
+
+        models_parameter_list[i] = np.array(flat_list).reshape(1,model_params_length)
+
+
+    if multi_center_initialization_flag:                
+        kmeans = KMeans(n_clusters=args.nr_of_clusters, n_init=1).fit(models_parameter_list)
+
+    else:
+        kmeans = KMeans(n_clusters=args.nr_of_clusters, init=est_multi_center, n_init=1).fit(models_parameter_list)#TODO: remove the best
+    
+    ind_center = kmeans.fit_predict(models_parameter_list)
+
+    est_multi_center_new = kmeans.cluster_centers_  
     clustering_matrix = np.zeros((num_users, num_users))
 
-    return clustering_matrix
-def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, multi_center_flag):
+    for ii in range(len(ind_center)):
+        ind_inter_cluster = np.where(ind_center == ind_center[ii])[0]
+        clustering_matrix[ii,ind_inter_cluster] = 1
+
+    return clustering_matrix, est_multi_center_new
+
+def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, multi_center_flag, dataset_test, cluster, cluster_length, outputFile):
     # training
     loss_train = []
     if multi_center_flag:
-        multi_center_initialization_flag = 1
+        multi_center_initialization_flag = True
+        est_multi_center = []
 
     if args.all_clients: 
         print("Aggregation over all clients")
@@ -111,52 +147,14 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
             loss_locals.append(copy.deepcopy(loss))
         # update global weights
         if multi_center_flag:
-            #clustering_matrix = multi_center(w_locals)
-            if multi_center_initialization_flag:
-                ll = np.zeros((num_users, 156800+200+2000+10))
-                for i in range(num_users):
-                    aa = w_locals[i]
-                    lis = []
-                    for k in aa.keys():
-                        #print(aa[k].numpy().flatten().shape)
-                        lis = lis + list(aa[k].cpu().numpy().flatten())
-                    ll[i] = np.array(lis).reshape(1,159010)
-                
-                kmeans = KMeans(n_clusters=args.nr_of_clusters, n_init=20).fit(ll)
-                ind_center = kmeans.fit_predict(ll)
-                est_multi_center = kmeans.cluster_centers_
-                multi_center_initialization_flag = False
-                clustering_matrix = np.zeros((num_users, num_users))
-                for ii in range(len(ind_center)):
-                    for jj in range(len(ind_center)):
-                        if ind_center[ii] == ind_center[jj]:
-                            clustering_matrix[ii][jj] = 1
-                    clustering_matrix[ii][ii] = 1
-                #clustering_matrix0 = clustering_multi_center(num_users, multi_center_initialization_flag)
-                        
-            else:
-                ll = np.zeros((num_users, 156800+200+2000+10))
-                for i in range(num_users):
-                    aa = w_locals[i]
-                    lis = []
-                    for k in aa.keys():
-                        #print(aa[k].numpy().flatten().shape)
-                        lis = lis + list(aa[k].cpu().numpy().flatten())
-                    ll[i] = np.array(lis).reshape(1,159010)
-                kmeans = KMeans(n_clusters=args.nr_of_clusters, init=est_multi_center, n_init=1).fit(ll)#TODO: remove the best
-                ind_center = kmeans.fit_predict(ll)
-                est_multi_center = kmeans.cluster_centers_
-                clustering_matrix = np.zeros((num_users, num_users))
-                for ii in range(len(ind_center)):
-                    for jj in range(len(ind_center)):
-                        if ind_center[ii] == ind_center[jj]:
-                            clustering_matrix[ii][jj] = 1
-                    clustering_matrix[ii][ii] = 1
-        if multi_center_flag:
+            clustering_matrix, est_multi_center = clustering_multi_center(num_users, w_locals, multi_center_initialization_flag, est_multi_center, args)
+            multi_center_initialization_flag = False
+
             plt.figure()
             plt.imshow(clustering_matrix)
             plt.savefig(f'{args.results_root_dir}/Clustering/multi_center_nrclust-{args.nr_of_clusters}_num_users-{args.num_users}_{args.epochs}_epoch-{iter}.jpg')
-            #plt.show()
+            plt.close()
+        
         w_glob_list = FedAvg(w_locals, clustering_matrix)
 
         # copy weight to net_glob
@@ -169,6 +167,12 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         loss_avg = sum(loss_locals) / len(loss_locals)
         print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
         loss_train.append(loss_avg)
+
+        if args.iter_to_iter_results == True:
+            print('iteration under process: ', iter)
+            # testing: average over all clients
+            evaluation_index_range = extract_evaluation_range(args)
+            evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, args, outputFile)
     
     return loss_train, net_glob_list, clustering_matrix
 
@@ -236,20 +240,7 @@ def extract_clustering(dict_users, dataset_train, args):
     
     return clustering_matrix
 
-def run(args, outputFile):
-    # setting the clustering format
-    cluster, cluster_length = gen_cluster(args)
-
-    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
-
-    # clustering the clients
-    clustering_matrix = extract_clustering(dict_users, dataset_train, args)
-
-    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
-    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, args.multi_center)
-
-    # ----------------------------------
-    # testing: average over all clients
+def extract_evaluation_range(args):
     if args.iid == True:
         evaluation_index_step = 1
         evaluation_index_max = 1
@@ -262,10 +253,42 @@ def run(args, outputFile):
 
     evaluation_index_range = np.arange(0, evaluation_index_max, evaluation_index_step)
 
+    return evaluation_index_range
+
+def run(args, config_file_name):
+    # set the random genertors' seed
+    set_random_seed()
+
+    # ----------------------------------
+    # open the output file to write the results to
+    outputFile = open(f'{args.results_root_dir}/main_fed/results_configfile_{config_file_name}_{args.num_users}_{args.iid}_{args.epochs}_{args.local_ep}_{args.clustering_method}_{args.multi_center}.txt', 'w')
+
+    description_text =f'{args.num_users} clients with {args.iid} iid data, iter = {args.epochs}, local epoch = {args.local_ep}, clustering method = {args.clustering_method}, MC = {args.multi_center}'
+    print(description_text)
+    print(description_text, file = outputFile)
+
+    # setting the clustering format
+    cluster, cluster_length = gen_cluster(args)
+
+    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
+
+    # clustering the clients
+    clustering_matrix = extract_clustering(dict_users, dataset_train, args)
+
+    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
+    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, args.multi_center, dataset_test, cluster, cluster_length, outputFile)
+
+    # ----------------------------------
+    # testing: average over all clients
+    evaluation_index_range = extract_evaluation_range(args)
+
     evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, args, outputFile)
 
-    return loss_train
+    outputFile.close()
 
+    return loss_train
+import argparse
+import os
 if __name__ == '__main__':
     # parse args
     args = args_parser()
@@ -273,61 +296,18 @@ if __name__ == '__main__':
 
     # ----------------------------------
     plt.close('all')
-    
-    # open the output file to write the results to
-    outputFile = open(f'{args.results_root_dir}/main_fed/results_numusers_{args.num_users}_{args.clustering_method}_epoch_{args.epochs}.txt', 'w')
-    
-    # ----------------------------------
-    # case 1: N clients with labeled from all the images --> iid
-    # ----------------------------------
-    print('case 1: 100 clients with labeled from all the images --> iid')
-    print('case 1: 100 clients with labeled from all the images --> iid', file = outputFile)
-    args.iid=True
-    args.clustering_method = 'single'
-    args.multi_center = False
+    entries = os.listdir(f'{args.config_root_dir}/')
+    for entry in entries:
+        with open(f'{args.config_root_dir}/{entry}') as f:
+            config_file_name = entry
+            print(f'working on the cofig file: {args.config_root_dir}/{entry}')
+            parser = argparse.ArgumentParser()
+            argparse_dict = vars(args)
+            argparse_dict.update(json.load(f))
+
+            t_args = argparse.Namespace()
+            t_args.__dict__.update(argparse_dict)
+            args = parser.parse_args(namespace=t_args)
+
+        run(args, config_file_name)
   
-    loss_train_iid = run(args, outputFile)
-    # ----------------------------------
-    # case 2: N clients with labeled from only two image labelss for each client --> noniid
-    # ----------------------------------
-    print('case 2: 100 clients with labeled from only two images for eahc client --> noniid')
-    print('case 2: 100 clients with labeled from only two images for eahc client --> noniid', file = outputFile)
-    args.iid = False
-    args.clustering_method = 'single'
-    args.multi_center = False
-     
-    loss_train_noniid_noclustering = run(args, outputFile)
-    # ----------------------------------
-    # case 3: N clients with labeled from only two image labelss for each client --> noniid --> adding clustered fed average
-    # ----------------------------------
-    print('case 3: 100 clients with labeled from only two images for each client --> noniid --> adding clustered fed average')
-    print('case 3: 100 clients with labeled from only two images for each client --> noniid --> adding clustered fed average', file = outputFile)
-    args.iid=False
-    args.clustering_method = 'umap_central'
-    args.multi_center = False
-   
-    loss_train_noniid_clustering = run(args, outputFile)
-    # ----------------------------------
-    # case 4: N clients with labeled from only two image labelss for each client --> noniid and multicenter clustering
-    # ----------------------------------
-    print('case 4: 100 clients with labeled from only two images for eahc client --> noniid')
-    print('case 4: 100 clients with labeled from only two images for eahc client --> noniid', file = outputFile)
-    args.iid=False
-    args.clustering_method = 'single'
-    args.multi_center = True
-    evaluation_index_step = 1
-
-    loss_train_noniid_multicenter = run(args, outputFile)
-    # ----------------------------------
-    # Create plots with pre-defined labels.
-    fig, ax = plt.subplots()
-
-    ax.plot(loss_train_iid, 'r', label=f'FedAvg, iid data {args.num_users}  clients')# no clustered data, no clustering algo
-    ax.plot(loss_train_noniid_noclustering, 'g', label=f'FedAvg, non-iid data, no clustering algo {args.num_users} clients')
-    ax.plot(loss_train_noniid_clustering, 'b', label=f'clustered data, {args.clustering_method} clustering algo {args.num_users} clients')
-
-    legend = ax.legend(loc='upper center', fontsize='x-large')
-    plt.savefig(f'{args.results_root_dir}/training_accuracy_{args.num_users}_{args.clustering_method}_{args.epochs}.png')
-    plt.show()
-
-    outputFile.close()
