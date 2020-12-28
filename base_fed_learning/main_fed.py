@@ -8,9 +8,12 @@ sys.path.append("./../")
 sys.path.append("./../../")
 sys.path.append("./")
 
+import os
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
+import json
+import argparse
 from torchvision import datasets, transforms
 import torch
 import torchvision
@@ -24,7 +27,6 @@ from clustering import clustering_single, clustering_perfect, clustering_umap, c
 from sklearn.cluster import KMeans
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
-import json
 
 # ----------------------------------
 # Reproducability
@@ -81,8 +83,8 @@ def gen_model(dataset, dataset_train, num_users):
 
     # copy weights
     w_glob = net_glob.state_dict()
-    net_glob_list = [net_glob for i in range(num_users)]
-    w_glob_list = [w_glob for i in range(num_users)]
+    net_glob_list = [copy.deepcopy(net_glob) for i in range(num_users)]
+    w_glob_list = [copy.deepcopy(w_glob) for i in range(num_users)]
     
     return net_glob, w_glob, net_glob_list, w_glob_list
 
@@ -122,6 +124,7 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
     return clustering_matrix, est_multi_center_new
 
 def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, multi_center_flag, dataset_test, cluster, cluster_length, outputFile):
+    print('iteration,training_average_loss,training_accuracy, test_accuracy', file = outputFile)
     # training
     loss_train = []
     if multi_center_flag:
@@ -152,30 +155,33 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
             plt.figure()
             plt.imshow(clustering_matrix)
-            plt.savefig(f'{args.results_root_dir}/Clustering/multi_center_nrclust-{args.nr_of_clusters}_num_users-{args.num_users}_{args.epochs}_epoch-{iter}.jpg')
+            plt.savefig(f'{args.results_root_dir}/Clustering/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_-{iter}.png')
             plt.close()
         
+        #print(clustering_matrix)
         w_glob_list = FedAvg(w_locals, clustering_matrix)
 
         # copy weight to net_glob
         for idx in np.arange(num_users): #TODO: fix this
-            net_glob_list0 = copy.deepcopy(net_glob_list[0])
-            net_glob_list0.load_state_dict(w_glob_list[idx])
-            net_glob_list[idx] = net_glob_list0
+            net_glob_list[idx] = copy.deepcopy(net_glob_list[0])
+            net_glob_list[idx].load_state_dict(w_glob_list[idx])
 
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
         print(f'Round {iter}, Average loss {loss_avg}')
-        print(f'Round {iter}, Average loss {loss_avg}', file = outputFile)
+        print(f'{iter}, {loss_avg}, ', end = '', file = outputFile)
         loss_train.append(loss_avg)
 
         if args.iter_to_iter_results == True:
-            print(f'iteration under process: {iter, }')
-            print(f'iteration under process: {iter, }', file = outputFile)
+            print(f'iteration under process: {iter}')
+            #print(f'iteration under process: {iter}', file = outputFile)
             # testing: average over all clients
             evaluation_index_range = extract_evaluation_range(args)
             evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, args, outputFile)
     
+    if args.iter_to_iter_results == False:
+        print(f'{iter}, {loss_avg}, ', end = '', file = outputFile)
+
     return loss_train, net_glob_list, clustering_matrix
 
 def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, args, outputFile):
@@ -189,11 +195,12 @@ def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cl
         print("user under process: ", idx)
         acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, cluster[idx//cluster_length], args)
         acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, cluster[idx//cluster_length], args)
+
     print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[evaluation_index_range])))
     print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[evaluation_index_range])))
 
-    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[evaluation_index_range])), file = outputFile)
-    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[evaluation_index_range])), file = outputFile)
+    print('{:.2f}, '.format(np.average(acc_train_final[evaluation_index_range])), end = '', file = outputFile)
+    print('{:.2f}'.format(np.average(acc_test_final[evaluation_index_range])), file = outputFile)
 
     return
 
@@ -225,7 +232,9 @@ def extract_clustering(dict_users, dataset_train, args):
 
     if args.clustering_method == 'single':
         clustering_matrix = clustering_single(args.num_users)
-    if args.clustering_method == 'umap':
+    elif args.clustering_method == 'perfect':
+        clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
+    elif args.clustering_method == 'umap':
         clustering_matrix, _, _ = clustering_umap(args.num_users, dict_users, dataset_train, args)
     elif args.clustering_method == 'encoder':
         clustering_matrix, _, _, _ =\
@@ -239,6 +248,10 @@ def extract_clustering(dict_users, dataset_train, args):
         clustering_matrix, _, _, _ =\
             clustering_umap_central(args.num_users, dict_users, dataset_train, args.ae_model_name, 
                                         args.nr_epochs_sequential_training, args)
+        plt.figure()
+        plt.imshow(clustering_matrix)
+        plt.savefig(f'{args.results_root_dir}/Clustering/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}.png')
+        plt.close()
     
     return clustering_matrix
 
@@ -248,26 +261,26 @@ def extract_evaluation_range(args):
         evaluation_index_max = 1
     elif args.clustering_method == 'single' and args.multi_center == False:
         evaluation_index_step = args.num_users // args.nr_of_clusters# clustering_length
-        evaluation_index_max = args.num_users-1
+        evaluation_index_max = args.num_users
     else:
         evaluation_index_step = 1
-        evaluation_index_max = args.num_users-1
+        evaluation_index_max = args.num_users
 
     evaluation_index_range = np.arange(0, evaluation_index_max, evaluation_index_step)
 
     return evaluation_index_range
 
-def run(args, config_file_name):
+def main(args, config_file_name):
     # set the random genertors' seed
     set_random_seed()
 
     # ----------------------------------
     # open the output file to write the results to
-    outputFile = open(f'{args.results_root_dir}/main_fed/results_configfile_{config_file_name}_{args.num_users}_{args.iid}_{args.epochs}_{args.local_ep}_{args.clustering_method}_{args.multi_center}.txt', 'w')
+    outputFile = open(f'{args.results_root_dir}/main_fed/results_configfilename_{config_file_name[:-5]}_nr_users_{args.num_users}_iid_{args.iid}_model_{args.model}_ep_{args.epochs}_lep_{args.local_ep}_cl_method_{args.clustering_method}_multicenter_{args.multi_center}.csv', 'w')
 
-    description_text =f'{args.num_users} clients with {args.iid} iid data, iter = {args.epochs}, local epoch = {args.local_ep}, clustering method = {args.clustering_method}, MC = {args.multi_center}'
+    description_text =f'{args.num_users} clients with {args.iid} iid data, iter = {args.epochs}, local epoch = {args.local_ep}, model = {args.model}, clustering method = {args.clustering_method}, MC = {args.multi_center}'
     print(description_text)
-    print(description_text, file = outputFile)
+    #print(description_text, file = outputFile)
 
     # setting the clustering format
     cluster, cluster_length = gen_cluster(args)
@@ -282,15 +295,14 @@ def run(args, config_file_name):
 
     # ----------------------------------
     # testing: average over all clients
-    evaluation_index_range = extract_evaluation_range(args)
-
-    evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, args, outputFile)
+    if args.iter_to_iter_results == False:
+        evaluation_index_range = extract_evaluation_range(args)
+        evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, args, outputFile)
 
     outputFile.close()
 
     return loss_train
-import argparse
-import os
+
 if __name__ == '__main__':
     # parse args
     args = args_parser()
@@ -301,6 +313,9 @@ if __name__ == '__main__':
     entries = os.listdir(f'{args.config_root_dir}/')
     for entry in entries:
         with open(f'{args.config_root_dir}/{entry}') as f:
+            args = args_parser()
+            args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
+        
             config_file_name = entry
             print(f'working on the cofig file: {args.config_root_dir}/{entry}')
             parser = argparse.ArgumentParser()
@@ -311,5 +326,5 @@ if __name__ == '__main__':
             t_args.__dict__.update(argparse_dict)
             args = parser.parse_args(namespace=t_args)
 
-        run(args, config_file_name)
+        main(args, config_file_name)
   
