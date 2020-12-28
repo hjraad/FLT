@@ -57,7 +57,7 @@ def args_parser():
 
     # config file settings
     parser.add_argument('--iter_to_iter_results', default='False', help='generate results for each iteration')
-    parser.add_argument('--config_root_dir', default='./config', help='config file location')
+    parser.add_argument('--config_root_dir', default='./configs', help='config file location')
 
 
     args = parser.parse_args()
