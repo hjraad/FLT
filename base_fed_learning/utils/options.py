@@ -45,7 +45,7 @@ def args_parser():
     parser.add_argument('--pre_trained_dataset', default='FMNIST', help='data on which the initial model has been pretrained')
 
     # clustering options
-    parser.add_argument('--clustering_method', default='umap_central', help='clustering method: single, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central')
+    parser.add_argument('--clustering_method', default='umap_central', help='clustering method: single, local, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central')
     parser.add_argument('--nr_of_clusters', default=5, help='number of clusters')
     parser.add_argument('--flag_with_overlap', default='True', help='clustering with overlapped labels')
 

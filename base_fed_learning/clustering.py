@@ -70,6 +70,11 @@ def clustering_single(num_users):
                 
     return clustering_matrix
 
+def clustering_seperate(num_users):
+    clustering_matrix = np.eye(num_users)
+                
+    return clustering_matrix
+
 def clustering_perfect(num_users, dict_users, dataset_train, args):
     idxs_users = np.arange(num_users)
     ar_label = np.zeros((args.num_users, args.num_classes))-1

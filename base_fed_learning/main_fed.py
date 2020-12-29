@@ -23,7 +23,7 @@ from base_fed_learning.models.Update import LocalUpdate
 from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar
 from base_fed_learning.models.Fed import FedAvg
 from base_fed_learning.models.test import test_img, test_img_classes
-from clustering import clustering_single, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, clustering_sequential_encoder
+from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, clustering_sequential_encoder
 from sklearn.cluster import KMeans
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
@@ -124,7 +124,7 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
     return clustering_matrix, est_multi_center_new
 
 def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, multi_center_flag, dataset_test, cluster, cluster_length, outputFile):
-    print('iteration,training_average_loss,training_accuracy, test_accuracy', file = outputFile)
+    print('iteration,training_average_loss,training_accuracy,test_accuracy', file = outputFile)
     # training
     loss_train = []
     if multi_center_flag:
@@ -232,6 +232,8 @@ def extract_clustering(dict_users, dataset_train, args):
 
     if args.clustering_method == 'single':
         clustering_matrix = clustering_single(args.num_users)
+    elif args.clustering_method == 'local':
+        clustering_matrix = clustering_seperate(args.num_users)
     elif args.clustering_method == 'perfect':
         clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
     elif args.clustering_method == 'umap':
