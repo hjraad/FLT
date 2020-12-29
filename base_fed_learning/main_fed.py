@@ -312,6 +312,8 @@ if __name__ == '__main__':
     plt.close('all')
     entries = os.listdir(f'{args.config_root_dir}/')
     for entry in entries:
+        if not entry.endswith(".json"):
+            continue
         with open(f'{args.config_root_dir}/{entry}') as f:
             args = args_parser()
             args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
