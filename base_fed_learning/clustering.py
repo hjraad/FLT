@@ -18,7 +18,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid
+from utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid, emnist_noniid_cluster
 from utils.options import args_parser
 from models.Update import LocalUpdate
 import pickle
@@ -52,6 +52,25 @@ def gen_data(iid, dataset_type, num_users, cluster):
             dict_users = mnist_iid(dataset_train, num_users)
         else:
             dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
+    #
+    elif dataset_type == 'EMNIST':
+        dataset_train = datasets.EMNIST(root='../data', split=args.dataset_split, 
+                                                train=True, download=True, 
+                                                transform=transforms.Compose([
+                                                lambda img: transforms.functional.rotate(img, -90),
+                                                lambda img: transforms.functional.hflip(img),
+                                                transforms.ToTensor()]))
+
+        dataset_test = datasets.EMNIST(root='../data', split=args.dataset_split, 
+                                                    train=False, download=True, 
+                                                    transform= transforms.Compose([
+                                                    lambda img: transforms.functional.rotate(img, -90),
+                                                    lambda img: transforms.functional.hflip(img),
+                                                    transforms.ToTensor()]))      
+        if not iid:
+            dict_users = emnist_noniid_cluster(dataset_train, num_users, cluster, 
+                                               random_shuffle=True)
+    #       
     elif dataset_type == 'cifar':
         trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         dataset_train = datasets.CIFAR10('../data/cifar', train=True, download=True, transform=trans_cifar)
@@ -89,13 +108,17 @@ def clustering_perfect(num_users, dict_users, dataset_train, args):
     clustering_matrix = np.zeros((num_users, num_users))
     for idx in idxs_users:
         for idx0 in idxs_users:
-            if ar_label[idx][0] == ar_label[idx0][0] and ar_label[idx][1] == ar_label[idx0][1]:
-                clustering_matrix[idx][idx0] = 1
+            set_1 = set(ar_label[idx0][np.where(ar_label[idx0] != -1)].astype(int))
+            set_2 = set(ar_label[idx][np.where(ar_label[idx] != -1)].astype(int))
+            if np.intersect1d(set_1, set_2):
+                if len( np.intersect1d(set_1, set_2)[0] ) >= np.floor(0.6 * min(len(set_1), len(set_2))):   
+                #if ar_label[idx][0] == ar_label[idx0][0] and ar_label[idx][1] == ar_label[idx0][1]:
+                    clustering_matrix[idx][idx0] = 1
                 
     return clustering_matrix
 
 def clustering_umap(num_users, dict_users, dataset_train, args):
-    reducer_loaded = pickle.load( open( "./model_weights/umap_reducer_EMNIST.p", "rb" ) )
+    reducer_loaded = pickle.load( open( "../model_weights/umap_reducer_EMNIST.p", "rb" ) )
     reducer = reducer_loaded
 
     idxs_users = np.arange(num_users)
@@ -105,9 +128,10 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
         images_matrix = np.empty((0,28*28))
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
         for batch_idx, (images, labels) in enumerate(local.ldr_train):#TODO: concatenate the matrices
+            # print(batch_idx)
             # if batch_idx == 3:# TODO: abalation test
             #     break
-            ne = images.numpy().flatten().T.reshape((10,28*28))
+            ne = images.numpy().flatten().T.reshape((len(labels),28*28))
             images_matrix = np.vstack((images_matrix, ne))
         embedding1 = reducer.transform(images_matrix)
         X = list(embedding1)
@@ -168,18 +192,7 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model_name,
         
         encoder.autoencoder()
         encoder.manifold_approximation_umap()
-        reducer = encoder.umap_reducer
-        embedding1 = encoder.umap_embedding
-        
-        # ----------------------------------
-        # use Kmeans to cluster the data into 2 clusters
-        X = list(embedding1)
-        embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding1
-        kmeans = KMeans(n_clusters=2, random_state=0).fit(np.array(X))
-        centers[user_id,:,:] = kmeans.cluster_centers_
-    
-    clustering_matrix_soft = np.zeros((num_users, num_users))
-    clustering_matrix = np.zeros((num_users, num_users))
+        reducer = encoder.umap_reducerclustering_matrix
 
     for idx0 in idxs_users:
         for idx1 in idxs_users:
@@ -342,9 +355,16 @@ if __name__ == '__main__':
     # parse args
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-    args.num_users = 20
-    args.ae_model_name = "model-1607623811-epoch40-latent128"
-    args.pre_trained_dataset = 'FMNIST'
+
+    # args.num_users = 20
+    # args.ae_model_name = "model-1607623811-epoch40-latent128"
+    # args.pre_trained_dataset = 'FMNIST'
+
+    args.num_users = 2400
+    args.num_classes = 47
+    args.dataset = 'EMNIST'
+    args.model_name = "model-1606927012-epoch40-latent128"
+    args.pre_trained_dataset = 'EMNIST'
     args.iid = False
     
     # ----------------------------------
@@ -352,15 +372,30 @@ if __name__ == '__main__':
     
     # ----------------------------------
     # generate cluster settings    
-    cluster_length = args.num_users // args.nr_of_clusters
-    cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
-    if args.flag_with_overlap:
-        for i in range(args.nr_of_clusters):
-            cluster[i] = np.random.choice(10, 2, replace=False)
-    else:
-        cluster_array = np.random.choice(10, 10, replace=False)
-        for i in range(args.nr_of_clusters):
-            cluster[i] = cluster_array[i*2: i*2 + 1]
+
+    nr_of_clusters = 10
+    cluster_length = args.num_users // nr_of_clusters
+    cluster = np.zeros((nr_of_clusters, 2), dtype='int64')
+    for i in range(nr_of_clusters):
+        cluster[i] = np.random.choice(10, 2, replace=False)
+        
+    # cluster_array = np.random.choice(10, 10, replace=False)
+    # for i in range(nr_of_clusters):
+    #     cluster[i] = cluster_array[i*2: i*2 + 1]
+    
+    if args.dataset == 'EMNIST': 
+        n_1 = 47 // (nr_of_clusters - 1)
+        n_2 = 47 % n_1
+        cluster = np.zeros((nr_of_clusters, n_1), dtype='int64')
+        # cluster_array = np.random.choice(47, 47, replace=False)
+        cluster_array = np.arange(47)
+        for i in range(nr_of_clusters - 1):
+            cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
+        cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]  
+    # ----------------------------------       
+    manifold_dim = 2
+    nr_epochs_sequential_training = 5
+    encoding_method = 'umap'    # umap, encoder, sequential_encoder, umap_central
     
     # ----------------------------------       
     clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
@@ -392,9 +427,12 @@ if __name__ == '__main__':
     # plot results
     plt.figure(1)
     plt.imshow(clustering_matrix,cmap=plt.cm.viridis)
+    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_perfect_nrclust-{nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+    
     plt.figure(2)
     plt.imshow(clustering_matrix0,cmap=plt.cm.viridis)
     plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+    
     plt.figure(3)
     plt.imshow(-1*clustering_matrix0_soft,cmap=plt.cm.viridis)
     plt.savefig(f'{args.results_root_dir}/Clustering/softClustMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
@@ -407,7 +445,7 @@ if __name__ == '__main__':
         plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
     plt.savefig(f'{args.results_root_dir}/Clustering/centers_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
     
-    if clustering_method != 'umap_central':
+    if clustering_method not in ['umap_central', 'umap']:
         plt.figure(5)
         nr_of_centers = len(dict_users[0])*cluster_length
         colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
