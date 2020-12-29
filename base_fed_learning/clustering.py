@@ -105,9 +105,10 @@ def clustering_perfect(num_users, dict_users, dataset_train, args):
         for idx0 in idxs_users:
             set_1 = set(ar_label[idx0][np.where(ar_label[idx0] != -1)].astype(int))
             set_2 = set(ar_label[idx][np.where(ar_label[idx] != -1)].astype(int))
-            if len( np.intersect1d(set_1, set_2) ) > np.floor(0.6 * min(len(set_1), len(set_2))):   
-            #if ar_label[idx][0] == ar_label[idx0][0] and ar_label[idx][1] == ar_label[idx0][1]:
-                clustering_matrix[idx][idx0] = 1
+            if np.intersect1d(set_1, set_2):
+                if len( np.intersect1d(set_1, set_2)[0] ) >= np.floor(0.6 * min(len(set_1), len(set_2))):   
+                #if ar_label[idx][0] == ar_label[idx0][0] and ar_label[idx][1] == ar_label[idx0][1]:
+                    clustering_matrix[idx][idx0] = 1
                 
     return clustering_matrix
 
@@ -363,7 +364,8 @@ if __name__ == '__main__':
     clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
     
     if encoding_method == 'umap':
-        clustering_matrix0, clustering_matrix0_soft, centers = clustering_umap(args.num_users, dict_users, dataset_train, args)
+        pass
+        # clustering_matrix0, clustering_matrix0_soft, centers = clustering_umap(args.num_users, dict_users, dataset_train, args)
         
     elif encoding_method == 'encoder':
         clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\

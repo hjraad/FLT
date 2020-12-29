@@ -93,7 +93,7 @@ def emnist_noniid_cluster(dataset, num_users, cluster,
     '''
     Author: Hadi Jamali-Rad 
     Sampling method for non-IID federated-type power-law based EMNIST dataset. 
-    Paramteres: 
+    Parameters: 
         dataset: dataset (torchvision)
         num_users: number of clients/users
         cluster: np.arrary with cluster label ID's
