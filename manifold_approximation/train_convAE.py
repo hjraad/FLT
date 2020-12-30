@@ -88,7 +88,7 @@ torch.cuda.device_count()
 # For now both have no special transformation 
 #TODO: test the imapct of transformation later
 # ToTensor() automatically converts everything to [0, 1]
-if dataset_name in ['MNIST', 'FMNIST', 'EMNIST', 'CIFAR10']:
+if dataset_name in ['MNIST', 'FMNIST', 'EMNIST', 'CIFAR10', 'CINIC10']:
     data_transforms = {
         'train': transforms.Compose([
             transforms.ToTensor()

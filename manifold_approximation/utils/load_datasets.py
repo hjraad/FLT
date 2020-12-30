@@ -64,6 +64,12 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, shu
 
         test_data = datasets.CIFAR10(root=data_root_dir, train=False, 
                                     download=True, transform=transforms_dict['test'])
+        
+        
+    elif dataset_name == 'CINIC10':
+        train_data = datasets.ImageFolder(root=data_root_dir + '/cinic-10/train', transform=transforms_dict['train'])
+
+        test_data = datasets.ImageFolder(root=data_root_dir + '/cinic-10/test', transform=transforms_dict['test'])
          
     else:
         pass
