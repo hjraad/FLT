@@ -43,10 +43,10 @@ TRAIN_FLAG = True  # train or not?
  
 latent_size = 128
 #TODO eval_interval = every how many epochs to evlaute 
-batch_size = 20
-nr_epochs = 2
+batch_size = 64
+nr_epochs = 40
 
-dataset_name = 'FMNIST'
+dataset_name = 'CIFAR10'
 dataset_split = 'balanced'
 # train_val_split = (100000, 12800)
 
@@ -58,6 +58,7 @@ phases = ['train', 'test']
 
 # which model to use? 
 from models.convAE_128D import ConvAutoencoder
+from models.convAE_cifar10_128D import ConvAutoencoderCIFAR10
 
 # ----------------------------------
 # Reproducability
@@ -87,7 +88,7 @@ torch.cuda.device_count()
 # For now both have no special transformation 
 #TODO: test the imapct of transformation later
 # ToTensor() automatically converts everything to [0, 1]
-if dataset_name in ['MNIST', 'FMNIST', 'EMNIST']:
+if dataset_name in ['MNIST', 'FMNIST', 'EMNIST', 'CIFAR10']:
     data_transforms = {
         'train': transforms.Compose([
             transforms.ToTensor()
@@ -98,6 +99,17 @@ if dataset_name in ['MNIST', 'FMNIST', 'EMNIST']:
             #transforms.Normalize((0.1307,), (0.3081,))
             ])
         }
+# elif dataset_name in ['CIFAR10', 'cifar10']:
+#     data_transforms = {
+#         'train': transforms.Compose(
+#         [transforms.ToTensor(),
+#         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+#         ]),
+#         'test': transforms.Compose(
+#         [transforms.ToTensor(),
+#         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+#         ])                
+#     }
 
 dataloaders, image_datasets, dataset_sizes, class_names = load_dataset(dataset_name, data_root_dir, data_transforms, 
                                                                        batch_size=batch_size, shuffle_flag=False, 
@@ -117,9 +129,15 @@ if dataset_name == 'EMNIST' and dataset_split == 'balanced':
 #     img = img / 2 + 0.5  # unnormalize
 #     plt.imshow(np.transpose(img, (1, 2, 0)))  # convert from Tensor image
 
-def imshow(img):
-    img = np.squeeze(img, axis=0) 
-    plt.imshow(img)  # convert from Tensor image
+if dataset_name in ['cifar10', 'CIFAR10']:
+    def imshow(img):
+        img = img / 2 + 0.5     # unnormalize
+        # npimg = img.numpy()
+        plt.imshow(np.transpose(img, (1, 2, 0)))
+else:
+    def imshow(img):
+        img = np.squeeze(img, axis=0) 
+        plt.imshow(img)  # convert from Tensor image
     
 # get some training images
 for dataset_type in ['train', 'test']: 
@@ -138,7 +156,10 @@ for dataset_type in ['train', 'test']:
 # ----------------------------------
 # Initialize the model
 # ----------------------------------
-model = ConvAutoencoder().to(device)
+if dataset_name in ['cifar10', 'CIFAR10']:
+    model = ConvAutoencoderCIFAR10().to(device)
+else:
+    model = ConvAutoencoder().to(device)
 print(model)
 
 # ----------------------------------
@@ -224,7 +245,7 @@ output = output.cpu()
 latent = latent.cpu()
 
 # output is resized into a batch of images
-output = output.view(batch_size, 1, 28, 28)
+output = output.view(batch_size, 3, images.shape[-1], images.shape[-1])
 # use detach when it's an output that requires_grad
 output = output.detach().numpy()
 
