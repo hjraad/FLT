@@ -58,6 +58,13 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, shu
                                     download=True, transform=transforms_dict['test'])
         
         
+    elif dataset_name == 'CIFAR10':
+        train_data = datasets.CIFAR10(root=data_root_dir, train=True, 
+                                     download=True, transform=transforms_dict['train'])
+
+        test_data = datasets.CIFAR10(root=data_root_dir, train=False, 
+                                    download=True, transform=transforms_dict['test'])
+         
     else:
         pass
 
