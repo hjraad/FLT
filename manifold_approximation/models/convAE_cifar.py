@@ -5,12 +5,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
   
-latent_size = 256
+# latent_size = 256
 
 # batch norm is not a common proactice in AE's 
-class ConvAutoencoderCIFAR10(nn.Module):
-    def __init__(self):
-        super(ConvAutoencoderCIFAR10, self).__init__()
+class ConvAutoencoderCIFAR(nn.Module):
+    def __init__(self, latent_size):
+        super(ConvAutoencoderCIFAR, self).__init__()
         ## encoder layers ##
         # conv layer (depth from 3 --> 16), 3x3 kernels
         self.conv1 = nn.Conv2d(3, 16, 3, padding=1) 
@@ -60,9 +60,9 @@ class ConvAutoencoderCIFAR10(nn.Module):
         else:
             return x
 
-# class ConvAutoencoderCIFAR10(nn.Module):
+# class ConvAutoencoderCIFAR(nn.Module):
 #     def __init__(self):
-#         super(ConvAutoencoderCIFAR10, self).__init__()
+#         super(ConvAutoencoderCIFAR, self).__init__()
 #         ## encoder layers ##
 #         # conv layer (depth from 3 --> 16), 3x3 kernels
 #         self.conv1 = nn.Conv2d(3, 16, 3, padding=1) 
