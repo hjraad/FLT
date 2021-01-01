@@ -44,9 +44,9 @@ TRAIN_FLAG = True  # train or not?
 latent_size = 256
 #TODO eval_interval = every how many epochs to evlaute 
 batch_size = 64
-nr_epochs = 100
+nr_epochs = 4
 
-dataset_name = 'CIFAR100'
+dataset_name = 'CIFAR110'
 dataset_split = 'balanced'
 # train_val_split = (100000, 12800)
 
@@ -130,7 +130,7 @@ if dataset_name == 'EMNIST' and dataset_split == 'balanced':
 #     img = img / 2 + 0.5  # unnormalize
 #     plt.imshow(np.transpose(img, (1, 2, 0)))  # convert from Tensor image
 
-if dataset_name in ['CIFAR10', 'CIFAR100']:
+if dataset_name in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
     def imshow(img):
         img = img / 2 + 0.5     # unnormalize
         # npimg = img.numpy()
@@ -158,7 +158,7 @@ for dataset_type in ['train', 'test']:
 # ----------------------------------
 # Initialize the model
 # ----------------------------------
-if dataset_name in ['CIFAR10', 'CIFAR100']:
+if dataset_name in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
     model = ConvAutoencoderCIFAR(latent_size).to(device)
 else:
     model = ConvAutoencoder().to(device)
