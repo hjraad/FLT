@@ -44,7 +44,7 @@ TRAIN_FLAG = True  # train or not?
 latent_size = 256
 #TODO eval_interval = every how many epochs to evlaute 
 batch_size = 64
-nr_epochs = 4
+nr_epochs = 50
 
 dataset_name = 'CIFAR110'
 dataset_split = 'balanced'
@@ -112,7 +112,7 @@ data_transforms = {
 #     }
 
 dataloaders, image_datasets, dataset_sizes, class_names = load_dataset(dataset_name, data_root_dir, data_transforms, 
-                                                                       batch_size=batch_size, shuffle_flag=False, 
+                                                                       batch_size=batch_size, shuffle_flag=True, 
                                                                        dataset_split=dataset_split)
 
 if dataset_name == 'EMNIST' and dataset_split == 'balanced':    
@@ -141,7 +141,7 @@ else:
         plt.imshow(img)  # convert from Tensor image
     
 # get some training images
-plot_sample_size = 20
+plot_sample_size = 40
 for dataset_type in ['train', 'test']: 
     dataiter = iter(dataloaders[dataset_type])
     images, labels = dataiter.next()

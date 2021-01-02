@@ -108,12 +108,12 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, shu
                          25:'couch',
                          29:'dinosaur',
                          31:'elephant',
-                         37:'couse',
+                         37:'house',
                          43:'lion',
                          46:'man',
                          51:'mushroom',
                          54:'orchid',
-                         65:'rabit',
+                         65:'rabbit',
                          84:'table',
                          85:'tank',
                          86:'telephone',
@@ -142,39 +142,23 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, shu
         test_data = Subset(test_data_o, idx_to_keep_test)
         
     elif dataset_name == 'CIFAR110':
-        # train_data_100 = datasets.CIFAR100(root=data_root_dir, train=True, 
-        #                              download=True, transform=transforms_dict['train'])
-
-        # test_data_100 = datasets.CIFAR100(root=data_root_dir, train=False, 
-        #                             download=True, transform=transforms_dict['test'])
-        
         train_data_o = datasets.CIFAR100(root=data_root_dir, train=True, 
                                      download=True, transform=transforms_dict['train'])
 
         test_data_o = datasets.CIFAR100(root=data_root_dir, train=False, 
                                     download=True, transform=transforms_dict['test'])
         
-        # subselect 20 classes out of 100 and create a dataset accordingly
-        selected_dict = {3:'bear',
-                         8:'bicycle', 
-                         13:'bus', 
-                         15:'camel',
+        # subselect 10 classes out of 100 (all after 9) and create a dataset accordingly
+        selected_dict = {11:'boy', 
                          20:'chair', 
                          22:'clock', 
-                         25:'couch',
-                         29:'dinosaur',
                          31:'elephant',
-                         37:'couse',
-                         43:'lion',
-                         46:'man',
+                         37:'house',
                          51:'mushroom',
                          54:'orchid',
-                         65:'rabit',
-                         84:'table',
-                         85:'tank',
+                         65:'rabbit',
                          86:'telephone',
                          90:'train',
-                         92:'tulip'
                         }
     
         # Get all targets
@@ -192,11 +176,10 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, shu
         targets_train = np.array(targets_train)[np.array(idx_to_keep_train)]
         targets_test = np.array(targets_test)[np.array(idx_to_keep_test)]
         
-        # train_data = MySubset(train_data, list(idx_to_keep_train), list(targets_train))
-        
         train_data_100 = Subset(train_data_o, idx_to_keep_train)
         test_data_100 = Subset(test_data_o, idx_to_keep_test)
         
+        # the rest up to 20 comes from CIFAR10
         train_data_10 = datasets.CIFAR10(root=data_root_dir, train=True, 
                                      download=True, transform=transforms_dict['train'])
 
@@ -225,8 +208,8 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, shu
     
     if dataset_name == 'CIFAR100':
         class_names = train_data_o.classes
-    elif dataset_name == 'CIFAR110':
-        class_names = train_data_o.classes + train_data_10.classes
+    elif dataset_name == 'CIFAR110': #TODO: fix this in a smarter way; order matters here! 
+        class_names = train_data_10.classes + train_data_o.classes[10:] 
     else:
         class_names = image_datasets['train'].classes
     
