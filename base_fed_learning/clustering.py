@@ -342,7 +342,7 @@ def clustering_umap_central(num_users, dict_users, dataset_train, ae_model_name,
         
         # ----------------------------------
         # use Kmeans to cluster the data into 2 clusters
-        embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
+        #embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
         kmeans = KMeans(n_clusters=2, random_state=43).fit(embedding)
         centers[user_id,:,:] = kmeans.cluster_centers_
     
@@ -358,12 +358,23 @@ def clustering_umap_central(num_users, dict_users, dataset_train, ae_model_name,
             c0 = centers[idx0]
             c1 = centers[idx1]
         
-            m = min([len(c0), len(c1)])
+            if len(c0) < len(c1):
+                c_small = c0
+                c_big = c1
+            else:
+                c_small = c1
+                c_big = c0
 
             distance = 1000000
-            if m > 0:
-                for p in multiset_permutations(c1):
-                    dist = (np.linalg.norm(c0[0:m] - p[0:m])**2)/m
+            if len(c_small) > 0:
+                s = set(range(len(c_big)))
+                for p in multiset_permutations(s):
+                    summation = 0
+
+                    for i in range(len(c_small)):
+                        summation = summation + (np.linalg.norm(c_small[i] - c_big[p][i])**2)
+
+                    dist = summation/len(c_small)
                     if dist < distance:
                         distance = dist
 
@@ -424,7 +435,7 @@ if __name__ == '__main__':
     encoding_method = 'umap'    # umap, encoder, sequential_encoder, umap_central
     
     # ----------------------------------       
-    clustering_method = 'umap'    # umap, encoder, sequential_encoder, umap_central
+    clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
 
     # ----------------------------------
     # generate clustered data
