@@ -18,7 +18,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid, emnist_noniid_cluster
+from utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster
+from utils.sampling import cifar_iid, cifar_noniid_cluster, emnist_noniid_cluster
 from utils.options import args_parser
 from models.Update import LocalUpdate
 import pickle
@@ -30,6 +31,7 @@ import umap
 from tqdm import tqdm
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
+from manifold_approximation.models.convAE_cifar import ConvAutoencoderCIFAR
 from manifold_approximation.encoder import Encoder
 from manifold_approximation.sequential_encoder import Sequential_Encoder
 from manifold_approximation.utils.load_datasets import load_dataset
@@ -65,7 +67,8 @@ def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, clust
         if iid:
             dict_users = cifar_iid(dataset_train, num_users)
         else:
-            exit('Error: only consider IID setting in CIFAR10')
+            dict_users = cifar_noniid_cluster(dataset_train, num_users, cluster)
+    #
     else:
         exit('Error: unrecognized dataset')
 
@@ -109,16 +112,18 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
     reducer = reducer_loaded
 
     idxs_users = np.arange(num_users)
+    
+    input_dim = dataset_train[0][0].shape[-1]
 
     centers = np.zeros((num_users, 2, 2))
     for idx in tqdm(idxs_users, desc='Clustering progress'):
-        images_matrix = np.empty((0,28*28))
+        images_matrix = np.empty((0, input_dim*input_dim))
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
         for batch_idx, (images, labels) in enumerate(local.ldr_train):#TODO: concatenate the matrices
             # print(batch_idx)
             # if batch_idx == 3:# TODO: abalation test
             #     break
-            ne = images.numpy().flatten().T.reshape((len(labels),28*28))
+            ne = images.numpy().flatten().T.reshape((len(labels), input_dim*input_dim))
             images_matrix = np.vstack((images_matrix, ne))
         embedding1 = reducer.transform(images_matrix)
         X = list(embedding1)
@@ -266,11 +271,14 @@ def clustering_sequential_encoder(num_users, dict_users, dataset_train, ae_model
                 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
-def clustering_umap_central(num_users, dict_users, dataset_train, ae_model_name, 
-                            nr_epochs_sequential_training, args):
+def clustering_umap_central(num_users, dict_users, dataset_train, dataset_name, ae_model_name, 
+                            latent_size, nr_epochs_sequential_training, args):
 
     # model
-    ae_model = ConvAutoencoder().to(args.device)
+    if dataset_name in ['cifar10', 'CIFAR10']:
+        ae_model = ConvAutoencoderCIFAR(latent_size).to(args.device)
+    else:
+        ae_model = ConvAutoencoder().to(args.device)
     
     # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     ae_optimizer = optim.Adam(ae_model.parameters(), lr=0.001)
@@ -287,8 +295,8 @@ def clustering_umap_central(num_users, dict_users, dataset_train, ae_model_name,
 
     # idxs_users = np.random.shuffle(np.arange(num_users))
     idxs_users = np.random.choice(num_users, num_users, replace=False)
-    centers = np.zeros((num_users, 2, 128)) # AE latent size going to be hyperparamter
-    embedding_matrix = np.zeros((len(dict_users[0])*num_users, 128))
+    centers = np.zeros((num_users, 2, latent_size)) # AE latent size going to be hyperparamter
+    embedding_matrix = np.zeros((len(dict_users[0])*num_users, latent_size))
 
     for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
@@ -348,7 +356,7 @@ if __name__ == '__main__':
     # args.pre_trained_dataset = 'FMNIST'
 
     args.num_users = 20
-    args.num_classes = 5
+    args.num_classes = 10
     args.dataset = 'CIFAR10'
     
     if args.dataset in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
@@ -363,7 +371,7 @@ if __name__ == '__main__':
         }
     
     args.pre_trained_dataset = 'CIFAR110'
-    args.model_name = "model-1609606795-epoch50-latent256_last"
+    args.ae_model_name = "model-1609606795-epoch50-latent256"
     
     args.iid = False
     
@@ -393,12 +401,12 @@ if __name__ == '__main__':
             cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]  
     # ----------------------------------       
-    manifold_dim = 2
+    args.latent_dim = 256
     args.nr_epochs_sequential_training = 0
     
     # ----------------------------------       
     clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
-
+    
     # ----------------------------------
     # generate clustered data
     dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.data_root_dir, 
@@ -420,8 +428,8 @@ if __name__ == '__main__':
                                         args.nr_epochs_sequential_training, args)
     elif clustering_method == 'umap_central':
         clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-            clustering_umap_central(args.num_users, dict_users, dataset_train, args.ae_model_name, 
-                                        args.nr_epochs_sequential_training, args)
+            clustering_umap_central(args.num_users, dict_users, dataset_train, args.dataset, args.ae_model_name, 
+                                    args.latent_dim, args.nr_epochs_sequential_training, args)
     
     # ----------------------------------    
     # plot results

@@ -51,7 +51,7 @@ def mnist_noniid(dataset, num_users):
 
 def mnist_noniid_cluster(dataset, num_users, cluster):
     """
-    By: Mohammad Abdizadeh
+    Author: Mohammad Abdizadeh
     Sample clustered non-I.I.D client data from MNIST dataset
     :param dataset:
     :param num_users:
@@ -185,6 +185,49 @@ def cifar_iid(dataset, num_users):
     for i in range(num_users):
         dict_users[i] = set(np.random.choice(all_idxs, num_items, replace=False))
         all_idxs = list(set(all_idxs) - dict_users[i])
+    return dict_users
+
+def cifar_noniid_cluster(dataset, num_users, cluster):
+    """
+    Author: Hadi Jamali-Rad and Mohammad Abdizadeh
+    Sample clustered non-I.I.D client data from CIFAR10 dataset
+    Parameters:
+        dataset
+        num_users
+        cluster: cluster formation np.array
+    
+    :param num_users:
+    Returns:
+        dic_users: dictionary of user data sample indices
+    """
+    cluster_size = cluster.shape[0]
+    num_shards, num_imgs = 200, 250
+    dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
+    idxs = np.arange(num_shards*num_imgs)
+    labels = np.array(dataset.targets)
+
+    # sort labels
+    idxs_labels = np.vstack((idxs, labels))
+    idxs_labels = idxs_labels[:,idxs_labels[1,:].argsort()]
+    idxs = idxs_labels[0,:]
+    
+    indices_array = np.zeros((10,10000), dtype='int64') - 1
+    for i in range(len(idxs_labels.T)):
+        k = np.where(indices_array[ idxs_labels[1][i] ] == -1)[0][0]
+        indices_array[ idxs_labels[1][i] ][k] = idxs_labels[0][i]
+
+    nr_of_clusters = num_users // cluster_size
+
+    for i in range(num_users):
+        cluster_index = (i//nr_of_clusters)
+        k = np.where(indices_array[ cluster[cluster_index][0] ] == -1)[0][0]
+        rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
+        dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][0] ][list(rand_set)]), axis=0)
+                                       
+        k = np.where(indices_array[ cluster[cluster_index][1] ] == -1)[0][0]
+        rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
+        dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][1] ][list(rand_set)]), axis=0)
+    
     return dict_users
 
 
