@@ -42,7 +42,7 @@ umap_random_state=42
 
 def gen_data(iid, dataset_type, num_users, cluster):
     # load dataset and split users
-    if dataset_type == 'mnist':
+    if dataset_type in ['mnist', 'MNIST']:
         # trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
         trans_mnist = transforms.Compose([transforms.ToTensor()])
         dataset_train = datasets.MNIST('../data/mnist/', train=True, download=True, transform=trans_mnist)
@@ -53,7 +53,7 @@ def gen_data(iid, dataset_type, num_users, cluster):
         else:
             dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
     #
-    elif dataset_type == 'EMNIST':
+    elif dataset_type in ['emnist', 'EMNIST']:
         dataset_train = datasets.EMNIST(root='../data', split=args.dataset_split, 
                                                 train=True, download=True, 
                                                 transform=transforms.Compose([
@@ -71,7 +71,7 @@ def gen_data(iid, dataset_type, num_users, cluster):
             dict_users = emnist_noniid_cluster(dataset_train, num_users, cluster, 
                                                random_shuffle=True)
     #       
-    elif dataset_type == 'cifar':
+    elif dataset_type in ['cifar', 'CIFAR10']:
         trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         dataset_train = datasets.CIFAR10('../data/cifar', train=True, download=True, transform=trans_cifar)
         dataset_test = datasets.CIFAR10('../data/cifar', train=False, download=True, transform=trans_cifar)
@@ -360,9 +360,9 @@ if __name__ == '__main__':
     # args.ae_model_name = "model-1607623811-epoch40-latent128"
     # args.pre_trained_dataset = 'FMNIST'
 
-    args.num_users = 2400
-    args.num_classes = 47
-    args.dataset = 'EMNIST'
+    args.num_users = 20
+    args.num_classes = 10
+    args.dataset = 'MNIST'
     args.model_name = "model-1606927012-epoch40-latent128"
     args.pre_trained_dataset = 'EMNIST'
     args.iid = False
@@ -373,7 +373,7 @@ if __name__ == '__main__':
     # ----------------------------------
     # generate cluster settings    
 
-    nr_of_clusters = 10
+    nr_of_clusters = 5
     cluster_length = args.num_users // nr_of_clusters
     cluster = np.zeros((nr_of_clusters, 2), dtype='int64')
     for i in range(nr_of_clusters):
@@ -394,8 +394,7 @@ if __name__ == '__main__':
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]  
     # ----------------------------------       
     manifold_dim = 2
-    nr_epochs_sequential_training = 5
-    encoding_method = 'umap'    # umap, encoder, sequential_encoder, umap_central
+    args.nr_epochs_sequential_training = 5
     
     # ----------------------------------       
     clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central

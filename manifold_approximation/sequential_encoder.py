@@ -82,10 +82,13 @@ class Sequential_Encoder():
         dataset_sizes = {'train': len(self.image_dataset)}
         phases = ['train']
         
-        _, model_l = train_model(self.ae_model, self.new_model_name, dataloaders, dataset_sizes, phases, 
-                                       self.criterion, self.ae_opt, self.lr_scheduler, num_epochs=self.nr_epochs, 
-                                       model_save_dir=self.model_root_dir, log_save_dir=self.log_root_dir)
-        model = model_l
+        if self.nr_epochs == 0:
+            model = self.ae_model
+        else:
+            _, model_l = train_model(self.ae_model, self.new_model_name, dataloaders, dataset_sizes, phases, 
+                                        self.criterion, self.ae_opt, self.lr_scheduler, num_epochs=self.nr_epochs, 
+                                        model_save_dir=self.model_root_dir, log_save_dir=self.log_root_dir)
+            model = model_l
         
         # extract the AE embedding of test data
         # if not os.path.exists(f'{self.model_root_dir}/AE_embedding_{self.dataset_name}_{self.ae_model_name}_client{self.client_name}.p'):
