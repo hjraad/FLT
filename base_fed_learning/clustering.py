@@ -32,7 +32,7 @@ from tqdm import tqdm
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.encoder import Encoder
 from manifold_approximation.sequential_encoder import Sequential_Encoder
-
+from sympy.utilities.iterables import multiset_permutations
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -95,16 +95,20 @@ def clustering_seperate(num_users):
     return clustering_matrix
 
 def clustering_perfect(num_users, dict_users, dataset_train, args):
+    args.local_bs = 10
     idxs_users = np.arange(num_users)
     ar_label = np.zeros((args.num_users, args.num_classes))-1
     for idx in idxs_users:
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
         label_matrix = np.empty(0, dtype=int)
         for batch_idx, (images, labels) in enumerate(local.ldr_train):
+            #print(batch_idx)
+            #if batch_idx == 3:# TODO: abalation test
+            #    break
             label_matrix = np.concatenate((label_matrix, labels.numpy()), axis=0)
         label_matrix = np.unique(label_matrix)
         ar_label[idx][0:len(label_matrix)] = label_matrix
-    
+    args.local_bs = 10
     clustering_matrix = np.zeros((num_users, num_users))
     for idx in idxs_users:
         for idx0 in idxs_users:
@@ -118,19 +122,19 @@ def clustering_perfect(num_users, dict_users, dataset_train, args):
     return clustering_matrix
 
 def clustering_umap(num_users, dict_users, dataset_train, args):
-    reducer_loaded = pickle.load( open( "../model_weights/umap_reducer_EMNIST.p", "rb" ) )
+    reducer_loaded = pickle.load( open( "./model_weights/umap_reducer_EMNIST.p", "rb" ) )
     reducer = reducer_loaded
 
     idxs_users = np.arange(num_users)
-
+    args.local_bs = 10
     centers = np.zeros((num_users, 2, 2))
-    for idx in tqdm(idxs_users, desc='Clustering progress'):
+    for idx in tqdm(idxs_users, desc='Clustering progress, embedding'):
         images_matrix = np.empty((0,28*28))
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
         for batch_idx, (images, labels) in enumerate(local.ldr_train):#TODO: concatenate the matrices
-            # print(batch_idx)
-            # if batch_idx == 3:# TODO: abalation test
-            #     break
+            #print(batch_idx)
+            #if batch_idx == 3:# TODO: abalation test
+            #    break
             ne = images.numpy().flatten().T.reshape((len(labels),28*28))
             images_matrix = np.vstack((images_matrix, ne))
         embedding1 = reducer.transform(images_matrix)
@@ -138,18 +142,35 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
         kmeans = KMeans(n_clusters=2, random_state=0).fit(np.array(X))
         centers[idx,:,:] = kmeans.cluster_centers_
     
+    args.local_bs = 10
     clustering_matrix_soft = np.zeros((num_users, num_users))
     clustering_matrix = np.zeros((num_users, num_users))
 
-    for idx0 in idxs_users:
+    for idx0 in tqdm(idxs_users, desc='Clustering matrix generation'):
         for idx1 in idxs_users:
             c0 = centers[idx0]
             c1 = centers[idx1]
         
-            dist0 = np.linalg.norm(c0[0] - c1[0])**2 + np.linalg.norm(c0[1] - c1[1])**2
-            dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
-        
-            distance = min([dist0, dist1])#min (max)
+            if len(c0) < len(c1):
+                c_small = c0
+                c_big = c1
+            else:
+                c_small = c1
+                c_big = c0
+
+            distance = 1000000
+            if len(c_small) > 0:
+                s = set(range(len(c_big)))
+                for p in multiset_permutations(s):
+                    summation = 0
+
+                    for i in range(len(c_small)):
+                        summation = summation + (np.linalg.norm(c_small[i] - c_big[p][i])**2)
+
+                    dist = summation/len(c_small)
+                    if dist < distance:
+                        distance = dist
+
             clustering_matrix_soft[idx0][idx1] = distance
         
             if distance < 1:
@@ -337,10 +358,15 @@ def clustering_umap_central(num_users, dict_users, dataset_train, ae_model_name,
             c0 = centers[idx0]
             c1 = centers[idx1]
         
-            dist0 = np.linalg.norm(c0[0] - c1[0])**2 + np.linalg.norm(c0[1] - c1[1])**2
-            dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
-        
-            distance = min([dist0, dist1])#min (max)
+            m = min([len(c0), len(c1)])
+
+            distance = 1000000
+            if m > 0:
+                for p in multiset_permutations(c1):
+                    dist = (np.linalg.norm(c0[0:m] - p[0:m])**2)/m
+                    if dist < distance:
+                        distance = dist
+
             clustering_matrix_soft[idx0][idx1] = distance
         
             if distance < 1:
@@ -360,7 +386,7 @@ if __name__ == '__main__':
     # args.ae_model_name = "model-1607623811-epoch40-latent128"
     # args.pre_trained_dataset = 'FMNIST'
 
-    args.num_users = 2400
+    args.num_users = 240
     args.num_classes = 47
     args.dataset = 'EMNIST'
     args.model_name = "model-1606927012-epoch40-latent128"
@@ -398,7 +424,7 @@ if __name__ == '__main__':
     encoding_method = 'umap'    # umap, encoder, sequential_encoder, umap_central
     
     # ----------------------------------       
-    clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
+    clustering_method = 'umap'    # umap, encoder, sequential_encoder, umap_central
 
     # ----------------------------------
     # generate clustered data
