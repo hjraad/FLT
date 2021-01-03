@@ -32,6 +32,7 @@ from tqdm import tqdm
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.encoder import Encoder
 from manifold_approximation.sequential_encoder import Sequential_Encoder
+from manifold_approximation.utils.load_datasets import load_dataset
 
 # ----------------------------------
 # Reproducability
@@ -40,41 +41,27 @@ torch.manual_seed(123)
 np.random.seed(321)
 umap_random_state=42
 
-def gen_data(iid, dataset_type, num_users, cluster):
-    # load dataset and split users
+def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, cluster):
+    # load dataset 
+    _, image_datasets, dataset_sizes, class_names =\
+            load_dataset(dataset_type, data_root_dir, transforms_dict, batch_size=8, shuffle_flag=False, dataset_split='')
+    
+    dataset_train = image_datasets['train']
+    dataset_test = image_datasets['test']
+    
     if dataset_type in ['mnist', 'MNIST']:
-        # trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-        trans_mnist = transforms.Compose([transforms.ToTensor()])
-        dataset_train = datasets.MNIST('../data/mnist/', train=True, download=True, transform=trans_mnist)
-        dataset_test = datasets.MNIST('../data/mnist/', train=False, download=True, transform=trans_mnist)
         # sample users
         if iid:
             dict_users = mnist_iid(dataset_train, num_users)
         else:
             dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
     #
-    elif dataset_type in ['emnist', 'EMNIST']:
-        dataset_train = datasets.EMNIST(root='../data', split=args.dataset_split, 
-                                                train=True, download=True, 
-                                                transform=transforms.Compose([
-                                                lambda img: transforms.functional.rotate(img, -90),
-                                                lambda img: transforms.functional.hflip(img),
-                                                transforms.ToTensor()]))
-
-        dataset_test = datasets.EMNIST(root='../data', split=args.dataset_split, 
-                                                    train=False, download=True, 
-                                                    transform= transforms.Compose([
-                                                    lambda img: transforms.functional.rotate(img, -90),
-                                                    lambda img: transforms.functional.hflip(img),
-                                                    transforms.ToTensor()]))      
+    elif dataset_type in ['emnist', 'EMNIST']:     
         if not iid:
             dict_users = emnist_noniid_cluster(dataset_train, num_users, cluster, 
                                                random_shuffle=True)
     #       
     elif dataset_type in ['cifar', 'CIFAR10']:
-        trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        dataset_train = datasets.CIFAR10('../data/cifar', train=True, download=True, transform=trans_cifar)
-        dataset_test = datasets.CIFAR10('../data/cifar', train=False, download=True, transform=trans_cifar)
         if iid:
             dict_users = cifar_iid(dataset_train, num_users)
         else:
@@ -361,10 +348,23 @@ if __name__ == '__main__':
     # args.pre_trained_dataset = 'FMNIST'
 
     args.num_users = 20
-    args.num_classes = 10
-    args.dataset = 'MNIST'
-    args.model_name = "model-1606927012-epoch40-latent128"
-    args.pre_trained_dataset = 'EMNIST'
+    args.num_classes = 5
+    args.dataset = 'CIFAR10'
+    
+    if args.dataset in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
+        transforms_dict = {    
+        'train': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
+        'test': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        }
+    else:  
+        transforms_dict = {
+            'train': transforms.Compose([transforms.ToTensor()]),
+            'test': transforms.Compose([transforms.ToTensor()])
+        }
+    
+    args.pre_trained_dataset = 'CIFAR110'
+    args.model_name = "model-1609606795-epoch50-latent256_last"
+    
     args.iid = False
     
     # ----------------------------------
@@ -394,14 +394,15 @@ if __name__ == '__main__':
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]  
     # ----------------------------------       
     manifold_dim = 2
-    args.nr_epochs_sequential_training = 5
+    args.nr_epochs_sequential_training = 0
     
     # ----------------------------------       
     clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
 
     # ----------------------------------
     # generate clustered data
-    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
+    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.data_root_dir, 
+                                                       transforms_dict, args.num_users, cluster)
     
     # ----------------------------------    
     #average over clients in a same cluster
