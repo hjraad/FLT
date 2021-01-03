@@ -75,7 +75,7 @@ class Sequential_Encoder():
         epoch = checkpoint['epoch']
         loss = checkpoint['loss']
         
-        self.new_model_name = f"model-{int(time.time())}-epoch{self.nr_epochs}-client{self.client_name}" # use time to make the name unique
+        self.new_model_name = f"model-{dataset_name}-{int(time.time())}-epoch{self.nr_epochs}-client{self.client_name}" # use time to make the name unique
 
         # make a dataloader from the image dataset for training
         dataloaders = {'train': DataLoader(self.image_dataset, batch_size=self.batch_size, shuffle=False, num_workers=4)}
