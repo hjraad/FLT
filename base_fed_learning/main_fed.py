@@ -16,25 +16,18 @@ import json
 import argparse
 from torchvision import datasets, transforms
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.optim import lr_scheduler
-
-from utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid, emnist_noniid_cluster
-from utils.options import args_parser
-from models.Update import LocalUpdate
+import torchvision
+from base_fed_learning.utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid, emnist_noniid_cluster
+from base_fed_learning.utils.options import args_parser
+from base_fed_learning.models.Update import LocalUpdate
+from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar
+from base_fed_learning.models.Fed import FedAvg
+from base_fed_learning.models.test import test_img, test_img_classes
 from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, clustering_sequential_encoder
 from sklearn.cluster import KMeans
-import itertools
-import copy
-import umap
-
-from tqdm import tqdm
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
-from manifold_approximation.encoder import Encoder
-from manifold_approximation.sequential_encoder import Sequential_Encoder
-from sympy.utilities.iterables import multiset_permutations
+
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -345,65 +338,27 @@ def main(args, config_file_name):
     description_text =f'{args.num_users} clients with {args.iid} iid data, iter = {args.epochs}, local epoch = {args.local_ep}, model = {args.model}, clustering method = {args.clustering_method}, MC = {args.multi_center}'
     print(description_text)
     #print(description_text, file = outputFile)
-    
-    # ----------------------------------
-    plt.close('all')
-    
 
     # setting the clustering format
     cluster, cluster_length = gen_cluster(args)
 
     dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
 
-     
-    clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
+    # clustering the clients
+    clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args)
 
-    # ----------------------------------    
-    #average over clients in a same cluster
-    clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
-    
-    if clustering_method == 'umap':
-        clustering_matrix0, clustering_matrix0_soft, centers = clustering_umap(args.num_users, dict_users, dataset_train, args)
-    elif clustering_method == 'encoder':
-        clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-            clustering_encoder(args.num_users, dict_users, dataset_train, 
-                               args.ae_model_name, args.model_root_dir, args.manifold_dim, args)
-    elif clustering_method == 'sequential_encoder':
-        clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-            clustering_sequential_encoder(args.num_users, dict_users, dataset_train, args.ae_model_name, 
-                                        args.nr_epochs_sequential_training, args)
-    elif clustering_method == 'umap_central':
-        clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-            clustering_umap_central(args.num_users, dict_users, dataset_train, args.ae_model_name, 
-                                        args.nr_epochs_sequential_training, args)
-    
-    # ----------------------------------    
-    # plot results
-    plt.figure(1)
-    plt.imshow(clustering_matrix,cmap=plt.cm.viridis)
-    
-    plt.figure(2)
-    plt.imshow(clustering_matrix0,cmap=plt.cm.viridis)
-    
-    plt.figure(3)
-    plt.imshow(-1*clustering_matrix0_soft,cmap=plt.cm.viridis)
-    
-    nr_of_centers = 2*cluster_length
-    colors = itertools.cycle(["r"] * nr_of_centers +["b"]*nr_of_centers+["g"]*nr_of_centers+["k"]*nr_of_centers+["y"]*nr_of_centers)
-    plt.figure(4)
-    for i in range(0,args.num_users):
-        plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
-        plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
-    
-    if clustering_method not in ['umap_central', 'umap']:
-        plt.figure(5)
-        nr_of_centers = len(dict_users[0])*cluster_length
-        colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
-        for i in range(args.nr_of_clusters):
-            plt.scatter(embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers, 0], embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers:, 1], color=next(colors))
+    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
+    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, args.multi_center, dataset_test, cluster, cluster_length, outputFile)
 
-    plt.show()
-    return
+    # ----------------------------------
+    # testing: average over all clients
+    if args.iter_to_iter_results == False:
+        evaluation_index_range = extract_evaluation_range(args)
+        evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, args, outputFile)
+
+    outputFile.close()
+
+    return loss_train
 
 if __name__ == '__main__':
     # parse args
