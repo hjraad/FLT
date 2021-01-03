@@ -21,6 +21,7 @@ from torch.optim import lr_scheduler
 from utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster
 from utils.sampling import cifar_iid, cifar_noniid_cluster, emnist_noniid_cluster
 from utils.options import args_parser
+from utils.utils import extract_model_name
 from models.Update import LocalUpdate
 import pickle
 from sklearn.cluster import KMeans
@@ -304,7 +305,9 @@ if __name__ == '__main__':
         }
     
     args.pre_trained_dataset = 'CIFAR110'
-    args.ae_model_name = "model-1609606795-epoch50-latent256"
+    
+    # find the model name automatically
+    args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
     
     args.iid = False
     
