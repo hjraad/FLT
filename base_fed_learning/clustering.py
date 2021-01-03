@@ -37,6 +37,8 @@ from manifold_approximation.encoder import Encoder
 from manifold_approximation.sequential_encoder import Sequential_Encoder
 from manifold_approximation.utils.load_datasets import load_dataset
 
+from sympy.utilities.iterables import multiset_permutations
+
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -115,16 +117,17 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
     idxs_users = np.arange(num_users)
     
     input_dim = dataset_train[0][0].shape[-1]
-
+    channel_dim = dataset_train[0][0].shape[0]
+    
     centers = np.zeros((num_users, 2, 2))
     for idx in tqdm(idxs_users, desc='Clustering progress'):
-        images_matrix = np.empty((0, input_dim*input_dim))
+        images_matrix = np.empty((0, channel_dim*input_dim*input_dim))
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
         for batch_idx, (images, labels) in enumerate(local.ldr_train):#TODO: concatenate the matrices
             # print(batch_idx)
             # if batch_idx == 3:# TODO: abalation test
             #     break
-            ne = images.numpy().flatten().T.reshape((len(labels), input_dim*input_dim))
+            ne = images.numpy().flatten().T.reshape((len(labels), channel_dim*input_dim*input_dim))
             images_matrix = np.vstack((images_matrix, ne))
         embedding1 = reducer.transform(images_matrix)
         X = list(embedding1)
@@ -138,11 +141,27 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
         for idx1 in idxs_users:
             c0 = centers[idx0]
             c1 = centers[idx1]
-        
-            dist0 = np.linalg.norm(c0[0] - c1[0])**2 + np.linalg.norm(c0[1] - c1[1])**2
-            dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
-        
-            distance = min([dist0, dist1])#min (max)
+
+            if len(c0) < len(c1):
+                c_small = c0
+                c_big = c1
+            else:
+                c_small = c1
+                c_big = c0
+
+            distance = 1000000
+            if len(c_small) > 0:
+                s = set(range(len(c_big)))
+                for p in multiset_permutations(s):
+                    summation = 0
+
+                    for i in range(len(c_small)):
+                        summation = summation + (np.linalg.norm(c_small[i] - c_big[p][i])**2)
+
+                    dist = summation/len(c_small)
+                    if dist < distance:
+                        distance = dist
+
             clustering_matrix_soft[idx0][idx1] = distance
         
             if distance < 1:
@@ -304,7 +323,7 @@ if __name__ == '__main__':
             'test': transforms.Compose([transforms.ToTensor()])
         }
     
-    args.pre_trained_dataset = 'CIFAR110'
+    args.pre_trained_dataset = 'CIFAR10'
     
     # find the model name automatically
     args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
@@ -341,7 +360,7 @@ if __name__ == '__main__':
     args.nr_epochs_sequential_training = 0
     
     # ----------------------------------       
-    clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
+    clustering_method = 'umap'    # umap, encoder, sequential_encoder, umap_central
     
     # ----------------------------------
     # generate clustered data
