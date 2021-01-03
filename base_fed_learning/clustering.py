@@ -203,73 +203,6 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model_name,
                 clustering_matrix[idx0][idx1] = 0
 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
- 
-def clustering_sequential_encoder(num_users, dict_users, dataset_train, ae_model_name, 
-                                  nr_epochs_sequential_training, args):
-
-    # model
-    ae_model = ConvAutoencoder().to(args.device)
-    
-    # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    ae_optimizer = optim.Adam(ae_model.parameters(), lr=0.001)
-
-    # Decay LR by a factor of x*gamma every step_size epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(ae_optimizer, step_size=10, gamma=0.5)
-    
-    # loss
-    criterion = nn.BCELoss()
-    
-    # Load the model ckpt
-    checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt')
-    ae_model.load_state_dict(checkpoint['model_state_dict']) 
-
-    # idxs_users = np.random.shuffle(np.arange(num_users))
-    idxs_users = np.random.choice(num_users, num_users, replace=False)
-    centers = np.zeros((num_users, 2, 2))
-    embedding_matrix = np.zeros((len(dict_users[0])*num_users, 2))
-
-    for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
-        local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
-        
-        user_dataset_train = local.ldr_train.dataset
-            
-        encoder = Sequential_Encoder(ae_model, ae_optimizer, criterion, exp_lr_scheduler, nr_epochs_sequential_training, 
-                                     ae_model_name, args.model_root_dir, args.log_root_dir, args.manifold_dim, user_dataset_train, 
-                                     user_id, args.pre_trained_dataset)
-        
-        encoder.autoencoder()
-        encoder.manifold_approximation_umap()
-        # reducer = encoder.umap_reducer
-        embedding = encoder.umap_embedding
-        # ae_model_name = encoder.new_model_name
-        
-        # ----------------------------------
-        # use Kmeans to cluster the data into 2 clusters
-        X = list(embedding)
-        embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
-        kmeans = KMeans(n_clusters=2, random_state=0).fit(np.array(X))
-        centers[user_id,:,:] = kmeans.cluster_centers_
-    
-    clustering_matrix_soft = np.zeros((num_users, num_users))
-    clustering_matrix = np.zeros((num_users, num_users))
-
-    for idx0 in idxs_users:
-        for idx1 in idxs_users:
-            c0 = centers[idx0]
-            c1 = centers[idx1]
-        
-            dist0 = np.linalg.norm(c0[0] - c1[0])**2 + np.linalg.norm(c0[1] - c1[1])**2
-            dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
-        
-            distance = min([dist0, dist1])#min (max)
-            clustering_matrix_soft[idx0][idx1] = distance
-        
-            if distance < 1:
-                clustering_matrix[idx0][idx1] = 1
-            else:
-                clustering_matrix[idx0][idx1] = 0
-                
-    return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
 def clustering_umap_central(num_users, dict_users, dataset_train, dataset_name, ae_model_name, 
                             latent_size, nr_epochs_sequential_training, args):
@@ -305,7 +238,7 @@ def clustering_umap_central(num_users, dict_users, dataset_train, dataset_name, 
             
         encoder = Sequential_Encoder(ae_model, ae_optimizer, criterion, exp_lr_scheduler, nr_epochs_sequential_training, 
                                      ae_model_name, args.model_root_dir, args.log_root_dir, args.manifold_dim, user_dataset_train, 
-                                     user_id, args.pre_trained_dataset, train_umap=False, use_AE=True)
+                                     user_id, args.pre_trained_dataset, dataset_name=dataset_name, train_umap=False, use_AE=True)
         
         encoder.autoencoder()
         # encoder.manifold_approximation_umap()
