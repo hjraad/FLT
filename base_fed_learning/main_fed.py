@@ -23,7 +23,6 @@ from torch.optim import lr_scheduler
 from utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid, emnist_noniid_cluster
 from utils.options import args_parser
 from models.Update import LocalUpdate
-import pickle
 from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, clustering_sequential_encoder
 from sklearn.cluster import KMeans
 import itertools
@@ -39,9 +38,12 @@ from sympy.utilities.iterables import multiset_permutations
 # ----------------------------------
 # Reproducability
 # ----------------------------------
-torch.manual_seed(123)
-np.random.seed(321)
-umap_random_state=42
+def set_random_seed():
+    torch.manual_seed(123)
+    np.random.seed(321)
+    umap_random_state=42
+
+    return
 
 def gen_data(iid, dataset_type, num_users, cluster):
     # load dataset and split users
@@ -252,6 +254,23 @@ def gen_cluster(args):
         for i in range(nr_of_clusters):
             # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
             cluster[i] = np.random.choice(10, 10, replace=False)
+
+    elif args.dataset == 'EMNIST': 
+        nr_of_clusters = args.nr_of_clusters
+        cluster_length = args.num_users // nr_of_clusters
+        cluster = np.zeros((nr_of_clusters, 2), dtype='int64')
+        for i in range(nr_of_clusters):
+            cluster[i] = np.random.choice(10, 2, replace=False)
+    
+        n_1 = 47 // (nr_of_clusters - 1)
+        n_2 = 47 % n_1
+        cluster = np.zeros((nr_of_clusters, n_1), dtype='int64')
+        # cluster_array = np.random.choice(47, 47, replace=False)
+        cluster_array = np.arange(47)
+        for i in range(nr_of_clusters - 1):
+            cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
+        cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
+
     else:
         cluster_length = args.num_users // args.nr_of_clusters
         # generate cluster settings    
@@ -315,45 +334,30 @@ def extract_evaluation_range(args):
 
     return evaluation_index_range
 
-def main(args):
+def main(args, config_file_name):
+    # set the random genertors' seed
+    set_random_seed()
+
+    # ----------------------------------
+    # open the output file to write the results to
+    outputFile = open(f'{args.results_root_dir}/main_fed/results_configfilename_{config_file_name[:-5]}_nr_users_{args.num_users}_iid_{args.iid}_model_{args.model}_ep_{args.epochs}_lep_{args.local_ep}_cl_method_{args.clustering_method}_multicenter_{args.multi_center}.csv', 'w')
+
+    description_text =f'{args.num_users} clients with {args.iid} iid data, iter = {args.epochs}, local epoch = {args.local_ep}, model = {args.model}, clustering method = {args.clustering_method}, MC = {args.multi_center}'
+    print(description_text)
+    #print(description_text, file = outputFile)
     
     # ----------------------------------
     plt.close('all')
     
-    # ----------------------------------
-    # generate cluster settings    
 
-    nr_of_clusters = 10
-    cluster_length = args.num_users // nr_of_clusters
-    cluster = np.zeros((nr_of_clusters, 2), dtype='int64')
-    for i in range(nr_of_clusters):
-        cluster[i] = np.random.choice(10, 2, replace=False)
-        
-    # cluster_array = np.random.choice(10, 10, replace=False)
-    # for i in range(nr_of_clusters):
-    #     cluster[i] = cluster_array[i*2: i*2 + 1]
-    
-    if args.dataset == 'EMNIST': 
-        n_1 = 47 // (nr_of_clusters - 1)
-        n_2 = 47 % n_1
-        cluster = np.zeros((nr_of_clusters, n_1), dtype='int64')
-        # cluster_array = np.random.choice(47, 47, replace=False)
-        cluster_array = np.arange(47)
-        for i in range(nr_of_clusters - 1):
-            cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
-        cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]  
-    # ----------------------------------       
-    manifold_dim = 2
-    nr_epochs_sequential_training = 5
-    encoding_method = 'umap'    # umap, encoder, sequential_encoder, umap_central
-    
-    # ----------------------------------       
+    # setting the clustering format
+    cluster, cluster_length = gen_cluster(args)
+
+    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
+
+     
     clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
 
-    # ----------------------------------
-    # generate clustered data
-    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
-    
     # ----------------------------------    
     #average over clients in a same cluster
     clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
@@ -377,15 +381,12 @@ def main(args):
     # plot results
     plt.figure(1)
     plt.imshow(clustering_matrix,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_perfect_nrclust-{nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
     
     plt.figure(2)
     plt.imshow(clustering_matrix0,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
     
     plt.figure(3)
     plt.imshow(-1*clustering_matrix0_soft,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/softClustMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
     
     nr_of_centers = 2*cluster_length
     colors = itertools.cycle(["r"] * nr_of_centers +["b"]*nr_of_centers+["g"]*nr_of_centers+["k"]*nr_of_centers+["y"]*nr_of_centers)
@@ -393,7 +394,6 @@ def main(args):
     for i in range(0,args.num_users):
         plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
         plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
-    plt.savefig(f'{args.results_root_dir}/Clustering/centers_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
     
     if clustering_method not in ['umap_central', 'umap']:
         plt.figure(5)
@@ -401,7 +401,7 @@ def main(args):
         colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
         for i in range(args.nr_of_clusters):
             plt.scatter(embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers, 0], embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers:, 1], color=next(colors))
-        plt.savefig(f'{args.results_root_dir}/Clustering/embeddingMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+
     plt.show()
     return
 
@@ -430,4 +430,5 @@ if __name__ == '__main__':
             t_args.__dict__.update(argparse_dict)
             args = parser.parse_args(namespace=t_args)
 
-            main(args)
+        main(args, config_file_name)
+  
