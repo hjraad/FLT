@@ -143,10 +143,6 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 # number of epochs to train the model
 n_epochs = 20
 
-
-
-
-
 if TRAIN_FLAG:
     for epoch in range(1, n_epochs+1):
         # monitor training loss
@@ -166,9 +162,6 @@ if TRAIN_FLAG:
             # calculate the loss
             loss = criterion(outputs, images)
             
-            
-            
-            
             # backward pass: compute gradient of the loss with respect to model parameters
             loss.backward()
             # perform a single optimization step (parameter update)
@@ -176,10 +169,6 @@ if TRAIN_FLAG:
             # update running training loss
             train_loss += loss.item()
             
-        
-                
-        
-                
         # print avg training statistics 
         train_loss = train_loss/len(train_loader)
         print('Epoch: {} \tTraining Loss: {:.6f}'.format(epoch, train_loss))

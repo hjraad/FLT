@@ -46,7 +46,7 @@ latent_size = 256
 batch_size = 64
 nr_epochs = 50
 
-dataset_name = 'CIFAR110'
+dataset_name = 'CIFAR10'
 dataset_split = 'balanced'
 # train_val_split = (100000, 12800)
 
@@ -91,11 +91,13 @@ torch.cuda.device_count()
 #if dataset_name in ['MNIST', 'FMNIST', 'EMNIST', 'CIFAR10', 'CINIC10','CIFAR100']:
 data_transforms = {
     'train': transforms.Compose([
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         #transforms.Normalize((0.1307,), (0.3081,))
         ]),
     'test': transforms.Compose([
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         #transforms.Normalize((0.1307,), (0.3081,))
         ])
     }
@@ -174,7 +176,8 @@ if not os.path.exists(model_root_dir):
 # only use BCE for data in range [0, 1]
 # else best to use sum of squared differences
 # see => https://www.youtube.com/watch?v=xTU79Zs4XKY
-criterion = nn.BCELoss()
+# criterion = nn.BCELoss()
+criterion = nn.MSELoss()
 
 # specify loss function
 # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
