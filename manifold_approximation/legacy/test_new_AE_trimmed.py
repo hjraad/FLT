@@ -279,13 +279,16 @@ if eval_flag == True:
 else:
     (ae_embedding_np, ae_labels_np) = pickle.load(open('./new_embedding.p', 'rb'))
 
-nr_clsuters_kmeans = 2
-centers = np.zeros((len(np.unique(ae_labels_np)), nr_clsuters_kmeans, 128))
+nr_clsuters_kmeans = 1
+num_user = 10
+centers = np.zeros((num_user*len(np.unique(ae_labels_np)), nr_clsuters_kmeans, 128))
 for ind in range(len(np.unique(ae_labels_np))):
     selec_inds = np.where(ae_labels_np == ind)[0]
-    selec_embedding = np.squeeze(ae_embedding_np[selec_inds,:])
-    kmeans = KMeans(n_clusters=nr_clsuters_kmeans, random_state=43).fit(selec_embedding)
-    centers[ind,:,:] = kmeans.cluster_centers_
+    np.random.shuffle(selec_inds)
+    for i in range(num_user):
+        selec_embedding = np.squeeze(ae_embedding_np[selec_inds[i*len(selec_inds)//num_user:(i+1)*len(selec_inds)//num_user],:])
+        kmeans = KMeans(n_clusters=nr_clsuters_kmeans, random_state=43).fit(selec_embedding)
+        centers[num_user*ind+i,:,:] = kmeans.cluster_centers_
 
 # umap_reducer = umap.UMAP(n_components=2, random_state=43)
 # umap_embedding = umap_reducer.fit_transform(np.reshape(centers, (-1, embedding_dim)))
@@ -303,7 +306,7 @@ umap_embedding = np.reshape(centers, (-1, embedding_dim))
 
 plt.figure()
 classes = [str(nr) for nr in range(0, len(np.unique(ae_labels_np)))]
-colors = np.repeat(np.arange(len(np.unique(ae_labels_np))), nr_clsuters_kmeans)
+colors = np.repeat(np.arange(len(np.unique(ae_labels_np))), num_user)
 plt.scatter(umap_embedding[:,0], umap_embedding[:,1], c=colors, 
                 s=8, cmap='tab10', label=classes)
 plt.show()
