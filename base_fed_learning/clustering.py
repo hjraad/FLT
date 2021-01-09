@@ -33,6 +33,7 @@ from tqdm import tqdm
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.models.convAE_cifar import ConvAutoencoderCIFAR
+from manifold_approximation.models.convAE_cifar_residual import ConvAutoencoderCIFARResidual
 from manifold_approximation.encoder import Encoder
 from manifold_approximation.sequential_encoder import Sequential_Encoder
 from manifold_approximation.utils.load_datasets import load_dataset
@@ -228,8 +229,13 @@ def clustering_umap_central(num_users, dict_users, dataset_train, dataset_name, 
                             latent_size, nr_epochs_sequential_training, args):
 
     # model
-    if dataset_name in ['cifar10', 'CIFAR10']:
-        ae_model = ConvAutoencoderCIFAR(latent_size).to(args.device)
+    if dataset_name in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
+        # ae_model = ConvAutoencoderCIFAR(latent_size).to(args.device)
+        num_hiddens = 128
+        num_residual_hiddens = 32
+        num_residual_layers = 2
+        ae_model = ConvAutoencoderCIFARResidual(num_hiddens, num_residual_layers, 
+                                         num_residual_hiddens, args.latent_dim).to(args.device)
     else:
         ae_model = ConvAutoencoder().to(args.device)
     
@@ -274,7 +280,7 @@ def clustering_umap_central(num_users, dict_users, dataset_train, dataset_name, 
         centers[user_id,:,:] = kmeans.cluster_centers_
     
     umap_reducer = umap.UMAP(n_components=2, random_state=42)
-    umap_embedding = umap_reducer.fit_transform(np.reshape(centers, (-1, 128)))
+    umap_embedding = umap_reducer.fit_transform(np.reshape(centers, (-1, args.latent_dim)))
     centers = np.reshape(umap_embedding, (num_users, -1, 2))
     
     clustering_matrix_soft = np.zeros((num_users, num_users))
@@ -356,11 +362,11 @@ if __name__ == '__main__':
             cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]  
     # ----------------------------------       
-    args.latent_dim = 256
+    args.latent_dim = 64
     args.nr_epochs_sequential_training = 0
     
     # ----------------------------------       
-    clustering_method = 'umap'    # umap, encoder, sequential_encoder, umap_central
+    clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
     
     # ----------------------------------
     # generate clustered data
