@@ -26,6 +26,13 @@ from sklearn.cluster import KMeans
 
 from tqdm import tqdm
 
+# ----------------------------------
+# Reproducability
+# ----------------------------------
+torch.manual_seed(123)
+np.random.seed(321)
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 training_data = datasets.CIFAR10(root="data", train=True, download=True,
@@ -81,14 +88,23 @@ class Encoder(nn.Module):
                                  out_channels=num_hiddens//2,
                                  kernel_size=4,
                                  stride=2, padding=1)
+        #
+        self._batchnorm_1 = nn.BatchNorm2d(num_hiddens//2)
+        #
         self._conv_2 = nn.Conv2d(in_channels=num_hiddens//2,
                                  out_channels=num_hiddens,
                                  kernel_size=4,
                                  stride=2, padding=1)
+        # 
+        self._batchnorm_2 = nn.BatchNorm2d(num_hiddens)
+        #
         self._conv_3 = nn.Conv2d(in_channels=num_hiddens,
                                  out_channels=num_hiddens,
                                  kernel_size=3,
                                  stride=1, padding=1)
+        #
+        self._batchnorm_3 = nn.BatchNorm2d(num_hiddens)
+        #
         self._residual_stack = ResidualStack(in_channels=num_hiddens,
                                              num_hiddens=num_hiddens,
                                              num_residual_layers=num_residual_layers,
@@ -96,28 +112,36 @@ class Encoder(nn.Module):
         
         self._conv_4 = nn.Conv2d(in_channels=num_hiddens, out_channels=num_hiddens//2, 
                                  kernel_size=1, stride=1)
-        
+        #
+        self._batchnorm_4 = nn.BatchNorm2d(num_hiddens//2)
+        #
         self._conv_5 = nn.Conv2d(in_channels=num_hiddens//2, out_channels=num_hiddens//16, 
                                  kernel_size=1, stride=1)
-        
+        #
+        self._batchnorm_5 = nn.BatchNorm2d(num_hiddens//16)
+        #
         self.fc1 = nn.Linear(8*8*num_hiddens//16, embedding_dim)
         
-
     def forward(self, inputs):
         x = self._conv_1(inputs)
         x = F.relu(x)
+        x = self._batchnorm_1(x)
         
         x = self._conv_2(x)
         x = F.relu(x)
+        x = self._batchnorm_2(x)
         
         x = self._conv_3(x)
+        #x = self._batchnorm_3(x)
         x = self._residual_stack(x)
         
         x = self._conv_4(x)
         x = F.relu(x)
+        #x = self._batchnorm_4(x)
         
         x = self._conv_5(x)
         x = F.relu(x)
+        #x = self._batchnorm_5(x)
 
         x = x.view(-1, 8*8*num_hiddens//16)
         x_comp = self.fc1(x)
@@ -179,13 +203,13 @@ class Decoder(nn.Module):
         return self._conv_trans_5(x)
 
 batch_size = 256
-num_training_updates = 20000
+num_training_updates = 5000
 
 num_hiddens = 128
 num_residual_hiddens = 32
 num_residual_layers = 2
 
-embedding_dim = 128
+embedding_dim = 64
 
 # commitment_cost = 0.25
 # decay = 0.99
@@ -224,8 +248,8 @@ model = Model(num_hiddens, num_residual_layers, num_residual_hiddens, embedding_
 
 optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=False)
 
-train_flag = False
-eval_flag = False
+train_flag = True
+eval_flag = True
 
 if train_flag == True:
     model.train()
@@ -281,7 +305,7 @@ else:
 
 nr_clsuters_kmeans = 1
 num_user = 10
-centers = np.zeros((num_user*len(np.unique(ae_labels_np)), nr_clsuters_kmeans, 128))
+centers = np.zeros((num_user*len(np.unique(ae_labels_np)), nr_clsuters_kmeans, embedding_dim))
 for ind in range(len(np.unique(ae_labels_np))):
     selec_inds = np.where(ae_labels_np == ind)[0]
     np.random.shuffle(selec_inds)
