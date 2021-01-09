@@ -44,7 +44,7 @@ TRAIN_FLAG = True  # train or not?
 
 #TODO eval_interval = every how many epochs to evlaute 
 batch_size = 64
-nr_epochs = 2
+nr_epochs = 25
 
 dataset_name = 'CIFAR10'
 dataset_split = 'balanced'
