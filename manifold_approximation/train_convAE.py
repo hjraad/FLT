@@ -44,7 +44,7 @@ TRAIN_FLAG = True  # train or not?
 
 #TODO eval_interval = every how many epochs to evlaute 
 batch_size = 64
-nr_epochs = 25
+nr_epochs = 2
 
 dataset_name = 'CIFAR10'
 dataset_split = 'balanced'
@@ -203,7 +203,7 @@ if TRAIN_FLAG:
     # generate a model name
     MODEL_NAME = f'model-{int(time.time())}-epoch{nr_epochs}-latent{latent_size}' # use time to make the name unique
     model_b, model_l = train_model(model, MODEL_NAME, dataloaders, dataset_sizes, phases, criterion, 
-                                    optimizer, exp_lr_scheduler, num_epochs=nr_epochs, num_hiddens=num_hiddens,
+                                    optimizer, exp_lr_scheduler, num_epochs=nr_epochs,
                                     model_save_dir=model_root_dir, log_save_dir=log_root_dir)
     
     if 'test' in phases:
@@ -221,7 +221,7 @@ if TRAIN_FLAG:
         for _, (image, label) in enumerate(tqdm(image_datasets['train'], desc='Inferencing training embedding')):
             image = image.to(device)
             labels_list.append(label) 
-            _, embedding = model(image.unsqueeze(0), num_hiddens)
+            _, embedding = model(image.unsqueeze(0))
             embedding_list.append(embedding.cpu().detach().numpy())
             
     ae_embedding_np = np.concatenate(embedding_list, axis=0)

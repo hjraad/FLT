@@ -12,7 +12,7 @@ import numpy as np
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train_model(model, model_name, dataloaders, dataset_sizes, phases, criterion, optimizer, scheduler, 
-                num_epochs=10, num_hiddens=128,  model_save_dir='./', log_save_dir='./', save_flag=True):
+                num_epochs=10, model_save_dir='./', log_save_dir='./', save_flag=True):
     '''
     Trains the AE model 
     Paramteres:
@@ -58,7 +58,7 @@ def train_model(model, model_name, dataloaders, dataset_sizes, phases, criterion
                     # forward
                     # track history if only in train
                     with torch.set_grad_enabled(phase == 'train'):
-                        outputs, _ = model(images, num_hiddens)
+                        outputs, _ = model(images)
                         loss = criterion(outputs, images)
 
                         # backward + optimize only if in training phase

@@ -37,6 +37,8 @@ class ResidualStack(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, in_channels, num_hiddens, num_residual_layers, num_residual_hiddens, embedding_dim):
         super(Encoder, self).__init__()
+        
+        self.num_hiddens = num_hiddens
 
         self._conv_1 = nn.Conv2d(in_channels=in_channels,
                                  out_channels=num_hiddens//2,
@@ -76,7 +78,7 @@ class Encoder(nn.Module):
         #
         self.fc1 = nn.Linear(8*8*num_hiddens//16, embedding_dim)
         
-    def forward(self, inputs, num_hiddens):
+    def forward(self, inputs):
         x = self._conv_1(inputs)
         x = F.relu(x)
         x = self._batchnorm_1(x)
@@ -97,13 +99,15 @@ class Encoder(nn.Module):
         x = F.relu(x)
         #x = self._batchnorm_5(x)
 
-        x = x.view(-1, 8*8*num_hiddens//16)
+        x = x.view(-1, 8*8*self.num_hiddens//16)
         x_comp = self.fc1(x)
         return x_comp
         
 class Decoder(nn.Module):
     def __init__(self, in_channels, num_hiddens, num_residual_layers, num_residual_hiddens):
         super(Decoder, self).__init__()
+        
+        self.num_hiddens = num_hiddens
         
         self._linear_1 = nn.Linear(in_channels, 8*8*num_hiddens//16)
         
@@ -133,11 +137,11 @@ class Decoder(nn.Module):
                                                 kernel_size=4, 
                                                 stride=2, padding=1)
 
-    def forward(self, inputs, num_hiddens):
+    def forward(self, inputs):
         
         x = self._linear_1(inputs)
         
-        x = x.view(-1, num_hiddens//16, 8, 8)
+        x = x.view(-1, self.num_hiddens//16, 8, 8)
         
         x = self._conv_trans_1(x)
         x = F.relu(x)
@@ -169,9 +173,9 @@ class ConvAutoencoderCIFARResidual(nn.Module):
                                 num_residual_layers, 
                                 num_residual_hiddens)
 
-    def forward(self, x, num_hiddens):
-        x_comp = self._encoder(x, num_hiddens)
-        x_recon = self._decoder(x_comp, num_hiddens)
+    def forward(self, x):
+        x_comp = self._encoder(x)
+        x_recon = self._decoder(x_comp)
 
         return x_recon, x_comp
 
