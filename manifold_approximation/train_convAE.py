@@ -256,7 +256,7 @@ images = images.to(device)
 labels = labels.to(device)
 
 # get sample outputs
-output, latent = model(images, num_hiddens)
+output, latent = model(images)
 # prep images for display
 
 # back to cpu for numpy manipulations
