@@ -50,6 +50,7 @@ def args_parser():
     parser.add_argument('--nr_of_clusters', default=5, help='number of clusters')
     parser.add_argument('--flag_with_overlap', default='True', help='clustering with overlapped labels')
 
+    parser.add_argument('--latent_dim', default=128, help='manifold dimension')
     parser.add_argument('--manifold_dim', default=2, help='manifold dimension')
     parser.add_argument('--nr_epochs_sequential_training', default=2, help='number of epochs for training the encoder')
 

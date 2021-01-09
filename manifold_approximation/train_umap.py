@@ -36,6 +36,10 @@ from tqdm import tqdm
 
 from manifold_approximation.utils.load_datasets import load_dataset
 from manifold_approximation.utils.train_AE import train_model
+from manifold_approximation.models.convAE_128D import ConvAutoencoder
+from manifold_approximation.models.convAE_cifar import ConvAutoencoderCIFAR
+
+from base_fed_learning.utils.utils import extract_model_name
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -45,19 +49,18 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 batch_size = 1
 num_workers = 0
 
-train_on_AE_embedding = True
+train_on_AE_embedding = False
 
-dataset_name = 'FMNIST'
+dataset_name = 'CIFAR110'
 dataset_split = 'balanced'
-# train_val_split = (100000, 12800)
 
 data_root_dir = '../data'
 model_root_dir = '../model_weights'
 results_root_dir = '../results/UMAP'
 
-MODEL_NAME = 'model-1607623811-epoch40-latent128'
-# which model to use? 
-from models.convAE_128D import ConvAutoencoder
+# find the model name automatically
+MODEL_NAME = extract_model_name(model_root_dir, dataset_name)
+# MODEL_NAME = 'model-1607623811-epoch40-latent128'
 
 # ----------------------------------
 # Reproducability
@@ -86,14 +89,9 @@ torch.cuda.device_count()
 # ---------------------
 # For now both have no special transformation 
 #TODO: test the imapct of transformation later
-data_transforms = {
-    'train': transforms.Compose([
-        transforms.ToTensor()
-    ]),
-    'test': transforms.Compose([
-        transforms.ToTensor()
-    ]),
-}
+data_transforms = {'train': transforms.Compose([transforms.ToTensor()]),
+    'test': transforms.Compose([transforms.ToTensor()])
+    }
 
 dataloaders, image_datasets, dataset_sizes, class_names = load_dataset(dataset_name, data_root_dir, data_transforms, 
                                                                     batch_size=batch_size, dataset_split=dataset_split)
@@ -102,7 +100,7 @@ dataloaders, image_datasets, dataset_sizes, class_names = load_dataset(dataset_n
 # Load data or embedding 
 # ----------------------------------
 if train_on_AE_embedding:
-    if not os.path.exists(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}.p'):
+    if not os.path.exists(f'{model_root_dir}/AE_embedding_{MODEL_NAME}.p'):
         # load the model
         model = ConvAutoencoder().to(device)
         checkpoint = torch.load(f'{model_root_dir}/{MODEL_NAME}_best.pt')
@@ -121,17 +119,18 @@ if train_on_AE_embedding:
                     embedding_list.append(embedding.cpu().detach().numpy())
         ae_embedding_np = np.concatenate(embedding_list, axis=0)
         ae_labels_np = np.array(labels_list)
-        pickle.dump((ae_embedding_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}.p', 'wb'))
+        pickle.dump((ae_embedding_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{MODEL_NAME}.p', 'wb'))
         train_data_2D_np, train_labels_np = ae_embedding_np, ae_labels_np
     else:
-        train_data_2D_np, train_labels_np = pickle.load(open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}.p', 'rb'))
+        train_data_2D_np, train_labels_np = pickle.load(open(f'{model_root_dir}/AE_embedding_{MODEL_NAME}.p', 'rb'))
         print('AE embedding loaded.')
 else:
     # If train on the whole dataset (not embedding)
     # This is a semi-supervised setting and labels are of no immediate use except for visualization
-    train_data_list = [data[0] for data in image_datasets['train']]
+    train_data_list = [data[0].view(1, -1) for data in image_datasets['train']]
     train_data_tensor = torch.cat(train_data_list, dim=0)
-    train_data_2D_np = torch.reshape(train_data_tensor, (train_data_tensor.shape[0], -1)).numpy()
+    train_data_2D_np = train_data_tensor.numpy()
+    # train_data_2D_np = torch.reshape(train_data_tensor, (train_data_tensor.shape[0], -1)).numpy()
     train_labels_np = np.array([data[1] for data in image_datasets['train']])
 
 # -------------------------------------------
@@ -139,15 +138,15 @@ else:
 # -------------------------------------------
 # train or load the upmap reducer
 if train_on_AE_embedding:
-    if not os.path.exists(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p'):
+    if not os.path.exists(f'{model_root_dir}/umap_embedding_{MODEL_NAME}.p'):
         print('Training on AE embedding ...')
         reducer = umap.UMAP(random_state=umap_random_state)
         embedding = reducer.fit_transform(train_data_2D_np)
-        pickle.dump(embedding, open(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p', 'wb'))
-        pickle.dump(reducer, open(f'{model_root_dir}/umap_reducer_{dataset_name}_{MODEL_NAME}.p', 'wb'))  
+        pickle.dump(embedding, open(f'{model_root_dir}/umap_embedding_{MODEL_NAME}.p', 'wb'))
+        pickle.dump(reducer, open(f'{model_root_dir}/umap_reducer_{MODEL_NAME}.p', 'wb'))  
     else:
-        # embedding = pickle.load(open(f'{model_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.p', 'rb'))
-        reducer = pickle.load(open(f'{model_root_dir}/umap_reducer_{dataset_name}_{MODEL_NAME}.p', 'rb'))
+        # embedding = pickle.load(open(f'{model_root_dir}/umap_embedding_{MODEL_NAME}.p', 'rb'))
+        reducer = pickle.load(open(f'{model_root_dir}/umap_reducer_{MODEL_NAME}.p', 'rb'))
         embedding = reducer.transform(train_data_2D_np)
         print('Model trained on AE embedding is loaded.')
 else: 
@@ -169,7 +168,7 @@ plt.setp(ax, xticks=[], yticks=[])
 
 if train_on_AE_embedding:
     plt.title(f'{dataset_name} dimensionality reduction by UMAP with AE', fontsize=18)
-    plt.savefig(f'{results_root_dir}/umap_embedding_{dataset_name}_{MODEL_NAME}.jpg')
+    plt.savefig(f'{results_root_dir}/umap_embedding_{MODEL_NAME}.jpg')
 else:
     plt.title(f'{dataset_name} dimensionality reduction by UMAP', fontsize=18)
     plt.savefig(f'{results_root_dir}/umap_embedding_{dataset_name}.jpg')

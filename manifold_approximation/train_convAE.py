@@ -201,7 +201,7 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 
 if TRAIN_FLAG:
     # generate a model name
-    MODEL_NAME = f'model-{int(time.time())}-epoch{nr_epochs}-latent{latent_size}' # use time to make the name unique
+    MODEL_NAME = f'model-{dataset_name}-{int(time.time())}-epoch{nr_epochs}-latent{latent_size}' # use time to make the name unique
     model_b, model_l = train_model(model, MODEL_NAME, dataloaders, dataset_sizes, phases, criterion, 
                                     optimizer, exp_lr_scheduler, num_epochs=nr_epochs,
                                     model_save_dir=model_root_dir, log_save_dir=log_root_dir)
