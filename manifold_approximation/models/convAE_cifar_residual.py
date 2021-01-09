@@ -76,7 +76,7 @@ class Encoder(nn.Module):
         #
         self.fc1 = nn.Linear(8*8*num_hiddens//16, embedding_dim)
         
-    def forward(self, inputs):
+    def forward(self, inputs, num_hiddens):
         x = self._conv_1(inputs)
         x = F.relu(x)
         x = self._batchnorm_1(x)
@@ -133,7 +133,7 @@ class Decoder(nn.Module):
                                                 kernel_size=4, 
                                                 stride=2, padding=1)
 
-    def forward(self, inputs):
+    def forward(self, inputs, num_hiddens):
         
         x = self._linear_1(inputs)
         
@@ -156,18 +156,9 @@ class Decoder(nn.Module):
         return self._conv_trans_5(x)
 
 
-training_loader = DataLoader(training_data, 
-                             batch_size=batch_size, 
-                             shuffle=True,
-                             pin_memory=True)
-validation_loader = DataLoader(validation_data,
-                               batch_size=32,
-                               shuffle=True,
-                               pin_memory=True)
-
 class ConvAutoencoderCIFARResidual(nn.Module):
     def __init__(self, num_hiddens, num_residual_layers, num_residual_hiddens, embedding_dim):
-        super(Model, self).__init__()
+        super(ConvAutoencoderCIFARResidual, self).__init__()
         
         self._encoder = Encoder(3, num_hiddens,
                                 num_residual_layers, 
@@ -178,9 +169,9 @@ class ConvAutoencoderCIFARResidual(nn.Module):
                                 num_residual_layers, 
                                 num_residual_hiddens)
 
-    def forward(self, x):
-        x_comp = self._encoder(x)
-        x_recon = self._decoder(x_comp)
+    def forward(self, x, num_hiddens):
+        x_comp = self._encoder(x, num_hiddens)
+        x_recon = self._decoder(x_comp, num_hiddens)
 
         return x_recon, x_comp
 

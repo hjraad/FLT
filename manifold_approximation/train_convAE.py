@@ -41,10 +41,10 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # ----------------------------------
 TRAIN_FLAG = True  # train or not?
  
-latent_size = 256
+
 #TODO eval_interval = every how many epochs to evlaute 
 batch_size = 64
-nr_epochs = 50
+nr_epochs = 2
 
 dataset_name = 'CIFAR10'
 dataset_split = 'balanced'
@@ -56,9 +56,16 @@ results_root_dir = '../results/AE'
 log_root_dir = '../logs'
 phases = ['train', 'test']
 
+latent_size = 64
+num_hiddens = 128
+num_residual_hiddens = 32
+num_residual_layers = 2
+
 # which model to use? 
 from models.convAE_128D import ConvAutoencoder
 from models.convAE_cifar import ConvAutoencoderCIFAR
+from models import convAE_cifar_residual
+from models.convAE_cifar_residual import ConvAutoencoderCIFARResidual
 
 # ----------------------------------
 # Reproducability
@@ -161,7 +168,10 @@ for dataset_type in ['train', 'test']:
 # Initialize the model
 # ----------------------------------
 if dataset_name in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
-    model = ConvAutoencoderCIFAR(latent_size).to(device)
+    # model = ConvAutoencoderCIFAR(latent_size).to(device)
+    model = ConvAutoencoderCIFARResidual(num_hiddens, num_residual_layers, 
+                                         num_residual_hiddens, latent_size).to(device)
+    
 else:
     model = ConvAutoencoder().to(device)
 print(model)
@@ -176,12 +186,15 @@ if not os.path.exists(model_root_dir):
 # only use BCE for data in range [0, 1]
 # else best to use sum of squared differences
 # see => https://www.youtube.com/watch?v=xTU79Zs4XKY
+
+
 # criterion = nn.BCELoss()
 criterion = nn.MSELoss()
 
 # specify loss function
 # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 optimizer = optim.Adam(model.parameters(), lr=0.001)
+# optimizer = optim.Adam(model.parameters(), lr=0.001, amsgrad=False)
 
 # Decay LR by a factor of x*gamma every step_size epochs
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
@@ -190,7 +203,7 @@ if TRAIN_FLAG:
     # generate a model name
     MODEL_NAME = f'model-{int(time.time())}-epoch{nr_epochs}-latent{latent_size}' # use time to make the name unique
     model_b, model_l = train_model(model, MODEL_NAME, dataloaders, dataset_sizes, phases, criterion, 
-                                    optimizer, exp_lr_scheduler, num_epochs=nr_epochs,
+                                    optimizer, exp_lr_scheduler, num_epochs=nr_epochs, num_hiddens=num_hiddens,
                                     model_save_dir=model_root_dir, log_save_dir=log_root_dir)
     
     if 'test' in phases:
@@ -208,7 +221,7 @@ if TRAIN_FLAG:
         for _, (image, label) in enumerate(tqdm(image_datasets['train'], desc='Inferencing training embedding')):
             image = image.to(device)
             labels_list.append(label) 
-            _, embedding = model(image.unsqueeze(0))
+            _, embedding = model(image.unsqueeze(0), num_hiddens)
             embedding_list.append(embedding.cpu().detach().numpy())
             
     ae_embedding_np = np.concatenate(embedding_list, axis=0)
@@ -243,7 +256,7 @@ images = images.to(device)
 labels = labels.to(device)
 
 # get sample outputs
-output, latent = model(images)
+output, latent = model(images, num_hiddens)
 # prep images for display
 
 # back to cpu for numpy manipulations
