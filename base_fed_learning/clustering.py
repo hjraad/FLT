@@ -370,7 +370,6 @@ if __name__ == '__main__':
                                                        transforms_dict, args.num_users, cluster)
     
     # ----------------------------------    
-    #average over clients in a same cluster
     clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
     
     if clustering_method == 'umap':
