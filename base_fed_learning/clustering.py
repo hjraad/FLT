@@ -172,36 +172,20 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
 
     return clustering_matrix, clustering_matrix_soft, centers
 
-def clustering_encoder(num_users, dict_users, dataset_train, ae_model_name, 
-                                                        model_root_dir, manifold_dim, args):
+def clustering_encoder(dict_users, dataset_train, ae_model_dict, args):
 
-    # model
-    ae_model = ConvAutoencoder().to(args.device)
-    
-    # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    ae_optimizer = optim.Adam(ae_model.parameters(), lr=0.001)
+    idxs_users = np.arange(args.num_users)
 
-    # Decay LR by a factor of x*gamma every step_size epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(ae_optimizer, step_size=10, gamma=0.5)
-    
-    # loss
-    criterion = nn.BCELoss()
-    
-    # Load the model ckpt
-    checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt')
-    ae_model.load_state_dict(checkpoint['model_state_dict']) 
-
-    idxs_users = np.arange(num_users)
-
-    centers = np.zeros((num_users, 2, 2))
-    embedding_matrix = np.zeros((len(dict_users[0])*num_users, 2))
+    centers = np.zeros((args.num_users, 2, 2))
+    embedding_matrix = np.zeros((len(dict_users[0])*args.num_users, 2))
     for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
         
         user_dataset_train = local.ldr_train.dataset
             
-        encoder = Encoder(ae_model, ae_model_name, model_root_dir, 
-                                    manifold_dim, user_dataset_train, user_id)
+        encoder = Encoder(ae_model_dict['model'], ae_model_dict['name'], 
+                          args.model_root_dir, args.manifold_dim, 
+                          user_dataset_train, user_id)
         
         encoder.autoencoder()
         encoder.manifold_approximation_umap()
@@ -225,46 +209,24 @@ def clustering_encoder(num_users, dict_users, dataset_train, ae_model_name,
 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
-def clustering_umap_central(num_users, dict_users, dataset_train, dataset_name, ae_model_name, 
-                            latent_size, nr_epochs_sequential_training, args):
-
-    # model
-    if dataset_name in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
-        # ae_model = ConvAutoencoderCIFAR(latent_size).to(args.device)
-        num_hiddens = 128
-        num_residual_hiddens = 32
-        num_residual_layers = 2
-        ae_model = ConvAutoencoderCIFARResidual(num_hiddens, num_residual_layers, 
-                                         num_residual_hiddens, args.latent_dim).to(args.device)
-    else:
-        ae_model = ConvAutoencoder().to(args.device)
-    
-    # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    ae_optimizer = optim.Adam(ae_model.parameters(), lr=0.001)
-
-    # Decay LR by a factor of x*gamma every step_size epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(ae_optimizer, step_size=10, gamma=0.5)
-    
-    # loss
-    criterion = nn.BCELoss()
-    
-    # Load the model ckpt
-    checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt')
-    ae_model.load_state_dict(checkpoint['model_state_dict']) 
+def clustering_umap_central(dict_users, dataset_train, ae_model_dict, args):
 
     # idxs_users = np.random.shuffle(np.arange(num_users))
-    idxs_users = np.random.choice(num_users, num_users, replace=False)
-    centers = np.zeros((num_users, 2, latent_size)) # AE latent size going to be hyperparamter
-    embedding_matrix = np.zeros((len(dict_users[0])*num_users, latent_size))
-
+    idxs_users = np.random.choice(args.num_users, args.num_users, replace=False)
+    centers = np.zeros((args.num_users, 2, args.latent_dim)) # AE latent size going to be hyperparamter
+    embedding_matrix = np.zeros((len(dict_users[0])*args.num_users, args.latent_dim))
+    
     for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
         
         user_dataset_train = local.ldr_train.dataset
             
-        encoder = Sequential_Encoder(ae_model, ae_optimizer, criterion, exp_lr_scheduler, nr_epochs_sequential_training, 
-                                     ae_model_name, args.model_root_dir, args.log_root_dir, args.manifold_dim, user_dataset_train, 
-                                     user_id, args.pre_trained_dataset, dataset_name=dataset_name, train_umap=False, use_AE=True)
+        encoder = Sequential_Encoder(ae_model_dict['model'], ae_model_dict['opt'], 
+                                     ae_model_dict['criterion'], ae_model_dict['scheduler'], 
+                                     args.nr_epochs_sequential_training, ae_model_dict['name'],
+                                     args.model_root_dir, args.log_root_dir, args.manifold_dim, user_dataset_train, 
+                                     user_id, args.pre_trained_dataset, dataset_name=args.target_dataset, 
+                                     train_umap=False, use_AE=True)
         
         encoder.autoencoder()
         # encoder.manifold_approximation_umap()
@@ -281,10 +243,10 @@ def clustering_umap_central(num_users, dict_users, dataset_train, dataset_name, 
     
     umap_reducer = umap.UMAP(n_components=2, random_state=42)
     umap_embedding = umap_reducer.fit_transform(np.reshape(centers, (-1, args.latent_dim)))
-    centers = np.reshape(umap_embedding, (num_users, -1, 2))
+    centers = np.reshape(umap_embedding, (args.num_users, -1, 2))
     
-    clustering_matrix_soft = np.zeros((num_users, num_users))
-    clustering_matrix = np.zeros((num_users, num_users))
+    clustering_matrix_soft = np.zeros((args.num_users, args.num_users))
+    clustering_matrix = np.zeros((args.num_users, args.num_users))
 
     for idx0 in idxs_users:
         for idx1 in idxs_users:
@@ -316,9 +278,9 @@ if __name__ == '__main__':
 
     args.num_users = 20
     args.num_classes = 10
-    args.dataset = 'CIFAR10'
+    args.target_dataset = 'CIFAR10'
     
-    if args.dataset in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
+    if args.target_dataset in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
         transforms_dict = {    
         'train': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
         'test': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -352,7 +314,7 @@ if __name__ == '__main__':
     # for i in range(nr_of_clusters):
     #     cluster[i] = cluster_array[i*2: i*2 + 1]
     
-    if args.dataset == 'EMNIST': 
+    if args.target_dataset == 'EMNIST': 
         n_1 = 47 // (nr_of_clusters - 1)
         n_2 = 47 % n_1
         cluster = np.zeros((nr_of_clusters, n_1), dtype='int64')
@@ -361,8 +323,42 @@ if __name__ == '__main__':
         for i in range(nr_of_clusters - 1):
             cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]  
-    # ----------------------------------       
+    # ---------------------------------- 
+    # model
     args.latent_dim = 64
+    #
+    if args.target_dataset in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
+        # ae_model = ConvAutoencoderCIFAR(latent_size).to(args.device)
+        args.num_hiddens = 128
+        args.num_residual_hiddens = 32
+        args.num_residual_layers = 2
+        
+        ae_model = ConvAutoencoderCIFARResidual(args.num_hiddens, args.num_residual_layers, 
+                                                args.num_residual_hiddens, args.latent_dim).to(args.device)
+    else:
+        ae_model = ConvAutoencoder().to(args.device)
+    
+    # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    ae_optimizer = optim.Adam(ae_model.parameters(), lr=0.001)
+
+    # Decay LR by a factor of x*gamma every step_size epochs
+    exp_lr_scheduler = lr_scheduler.StepLR(ae_optimizer, step_size=10, gamma=0.5)
+    
+    # loss
+    criterion = nn.BCELoss()
+    
+    # Load the model ckpt
+    checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt')
+    ae_model.load_state_dict(checkpoint['model_state_dict']) 
+    
+    ae_model_dict = {
+        'model':ae_model,
+        'name': args.ae_model_name,
+        'opt':ae_optimizer,
+        'criterion':criterion,
+        'scheduler':exp_lr_scheduler
+    }
+    
     args.nr_epochs_sequential_training = 0
     
     # ----------------------------------       
@@ -370,7 +366,7 @@ if __name__ == '__main__':
     
     # ----------------------------------
     # generate clustered data
-    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.data_root_dir, 
+    dataset_train, dataset_test, dict_users = gen_data(args.iid, args.target_dataset, args.data_root_dir, 
                                                        transforms_dict, args.num_users, cluster)
     
     # ----------------------------------    
@@ -379,32 +375,28 @@ if __name__ == '__main__':
     
     if clustering_method == 'umap':
         clustering_matrix0, clustering_matrix0_soft, centers = clustering_umap(args.num_users, dict_users, dataset_train, args)
+    #
     elif clustering_method == 'encoder':
         clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-            clustering_encoder(args.num_users, dict_users, dataset_train, 
-                               args.ae_model_name, args.model_root_dir, args.manifold_dim, args)
-    elif clustering_method == 'sequential_encoder':
-        clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-            clustering_sequential_encoder(args.num_users, dict_users, dataset_train, args.ae_model_name, 
-                                        args.nr_epochs_sequential_training, args)
+            clustering_encoder(dict_users, dataset_train, ae_model_dict, args)
+    #
     elif clustering_method == 'umap_central':
         clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-            clustering_umap_central(args.num_users, dict_users, dataset_train, args.dataset, args.ae_model_name, 
-                                    args.latent_dim, args.nr_epochs_sequential_training, args)
+            clustering_umap_central(dict_users, dataset_train, ae_model_dict, args)
     
     # ----------------------------------    
     # plot results
     plt.figure(1)
     plt.imshow(clustering_matrix,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_perfect_nrclust-{nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_perfect_nrclust-{nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
     plt.figure(2)
     plt.imshow(clustering_matrix0,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
     plt.figure(3)
     plt.imshow(-1*clustering_matrix0_soft,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/softClustMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/softClustMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
     nr_of_centers = 2*cluster_length
     colors = itertools.cycle(["r"] * nr_of_centers +["b"]*nr_of_centers+["g"]*nr_of_centers+["k"]*nr_of_centers+["y"]*nr_of_centers)
@@ -412,7 +404,7 @@ if __name__ == '__main__':
     for i in range(0,args.num_users):
         plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
         plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
-    plt.savefig(f'{args.results_root_dir}/Clustering/centers_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/centers_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
     if clustering_method not in ['umap_central', 'umap']:
         plt.figure(5)
@@ -420,5 +412,5 @@ if __name__ == '__main__':
         colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
         for i in range(args.nr_of_clusters):
             plt.scatter(embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers, 0], embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers:, 1], color=next(colors))
-        plt.savefig(f'{args.results_root_dir}/Clustering/embeddingMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+        plt.savefig(f'{args.results_root_dir}/Clustering/embeddingMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     plt.show()

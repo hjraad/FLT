@@ -24,7 +24,8 @@ def args_parser():
                         help="Whether use max pooling rather than strided convolutions")
 
     # other arguments
-    parser.add_argument('--dataset', type=str, default='mnist', help="name of dataset")
+    parser.add_argument('--target_dataset', type=str, default='mnist', help="name of dataset")
+    parser.add_argument('--pre_trained_dataset', default='FMNIST', help='data on which the initial model has been pretrained')
     parser.add_argument('--dataset_split', type=str, default='balanced', help="type of split for EMNIST")
     parser.add_argument('--iid', action='store_true', help='whether i.i.d or not')
     parser.add_argument('--num_classes', type=int, default=10, help="number of classes")
@@ -42,18 +43,22 @@ def args_parser():
     parser.add_argument('--log_root_dir', default='../logs', help='results location')
     #parser.add_argument('--ae_model_name', default='model-1606927012-epoch40-latent128', help='Autoencoder model name')
     #parser.add_argument('--pre_trained_dataset', default='EMNIST', help='data on which the initial model has been pretrained')
-    parser.add_argument('--ae_model_name', default='model-1607623811-epoch40-latent128', help='Autoencoder model name')
-    parser.add_argument('--pre_trained_dataset', default='FMNIST', help='data on which the initial model has been pretrained')
+    
 
     # clustering options
     parser.add_argument('--clustering_method', default='umap_central', help='clustering method: single, local, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central')
     parser.add_argument('--nr_of_clusters', default=5, help='number of clusters')
     parser.add_argument('--flag_with_overlap', default='True', help='clustering with overlapped labels')
 
-    parser.add_argument('--latent_dim', default=128, help='manifold dimension')
+    # AE model
+    parser.add_argument('--ae_model_name', default='model-1607623811-epoch40-latent128', help='Autoencoder model name')
+    parser.add_argument('--latent_dim', default=128, help='latent dimension')
     parser.add_argument('--manifold_dim', default=2, help='manifold dimension')
+    parser.add_argument('--num_hiddens', default=2, help='number of hidden layers')
+    parser.add_argument('--num_residual_hiddens', default=2, help='number of residual hidden layers')
+    parser.add_argument('--num_residual_layers', default=2, help='number of residual layers in the stack')
     parser.add_argument('--nr_epochs_sequential_training', default=2, help='number of epochs for training the encoder')
-
+    
     # third party results
     parser.add_argument('--multi_center', default='False', help='generate results for multi_center paper')
 

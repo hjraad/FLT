@@ -1,5 +1,7 @@
 '''
-Contains the convolutional autoencode (AE) model with residual architecture for CIFAR10 dataset 
+Contains the convolutional autoencoder (AE) class with residual architecture for CIFAR datasets 
+Author: Hadi Jamali-Rad
+e-mail: h.jamali.rad@gmail.com
 '''
 import torch
 import torch.nn as nn
