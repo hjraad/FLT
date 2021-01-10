@@ -17,7 +17,7 @@ import argparse
 from torchvision import datasets, transforms
 import torch
 import torchvision
-from base_fed_learning.utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid
+from base_fed_learning.utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid, emnist_noniid_cluster
 from base_fed_learning.utils.options import args_parser
 from base_fed_learning.models.Update import LocalUpdate
 from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar
@@ -42,7 +42,7 @@ def gen_data(iid, dataset_type, num_users, cluster):
     # load dataset and split users
     if dataset_type == 'mnist':
         # trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-        trans_mnist = transforms.Compose([transforms.ToTensor()])# TODO: fix transform
+        trans_mnist = transforms.Compose([transforms.ToTensor()])
         dataset_train = datasets.MNIST('../data/mnist/', train=True, download=True, transform=trans_mnist)
         dataset_test = datasets.MNIST('../data/mnist/', train=False, download=True, transform=trans_mnist)
         # sample users
@@ -50,6 +50,25 @@ def gen_data(iid, dataset_type, num_users, cluster):
             dict_users = mnist_iid(dataset_train, num_users)
         else:
             dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
+    #
+    elif dataset_type == 'EMNIST':
+        dataset_train = datasets.EMNIST(root='../data', split=args.dataset_split, 
+                                                train=True, download=True, 
+                                                transform=transforms.Compose([
+                                                lambda img: transforms.functional.rotate(img, -90),
+                                                lambda img: transforms.functional.hflip(img),
+                                                transforms.ToTensor()]))
+
+        dataset_test = datasets.EMNIST(root='../data', split=args.dataset_split, 
+                                                    train=False, download=True, 
+                                                    transform= transforms.Compose([
+                                                    lambda img: transforms.functional.rotate(img, -90),
+                                                    lambda img: transforms.functional.hflip(img),
+                                                    transforms.ToTensor()]))      
+        if not iid:
+            dict_users = emnist_noniid_cluster(dataset_train, num_users, cluster, 
+                                               random_shuffle=True)
+    #       
     elif dataset_type == 'cifar':
         trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         dataset_train = datasets.CIFAR10('../data/cifar', train=True, download=True, transform=trans_cifar)
@@ -172,6 +191,20 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         print(f'{iter}, {loss_avg}, ', end = '', file = outputFile)
         loss_train.append(loss_avg)
 
+
+        if args.change_dataset_flag == True:
+            if iter == (args.change_dataset_epoch-1):
+                #generate dict_users, num_users, clustering_matrix, multi_center_flag, dataset_test, cluster, cluster_length
+                args.flag_with_overlap = True
+                # setting the clustering format
+                cluster, cluster_length = gen_cluster(args)
+
+                dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
+
+                # clustering the clients
+                clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args)
+                pass
+
         if args.iter_to_iter_results == True:
             print(f'iteration under process: {iter}')
             #print(f'iteration under process: {iter}', file = outputFile)
@@ -214,28 +247,50 @@ def gen_cluster(args):
         for i in range(nr_of_clusters):
             # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
             cluster[i] = np.random.choice(10, 10, replace=False)
+
+    elif args.dataset == 'EMNIST': 
+        nr_of_clusters = args.nr_of_clusters
+        cluster_length = args.num_users // nr_of_clusters
+        cluster = np.zeros((nr_of_clusters, 2), dtype='int64')
+        for i in range(nr_of_clusters):
+            cluster[i] = np.random.choice(10, 2, replace=False)
+    
+        n_1 = 47 // (nr_of_clusters - 1)
+        n_2 = 47 % n_1
+        cluster = np.zeros((nr_of_clusters, n_1), dtype='int64')
+        # cluster_array = np.random.choice(47, 47, replace=False)
+        cluster_array = np.arange(47)
+        for i in range(nr_of_clusters - 1):
+            cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
+        cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
+
     else:
         cluster_length = args.num_users // args.nr_of_clusters
         # generate cluster settings    
-        cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
         if args.flag_with_overlap:
-            for i in range(args.nr_of_clusters):
-                cluster[i] = np.random.choice(10, 2, replace=False)
+            cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
+            lst = np.random.choice(10, 10, replace=False)
+            cluster[0] = lst[0:3]
+            cluster[1] = lst[2:5]
+            cluster[2] = lst[4:7]
+            cluster[3] = lst[6:9]
+            cluster[4] = [lst[-2], lst[-1], lst[0]]
         else:
+            cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
             cluster_array = np.random.choice(10, 10, replace=False)
             for i in range(args.nr_of_clusters):
                 cluster[i] = cluster_array[i*2: i*2 + 2]
 
     return cluster, cluster_length
 
-def extract_clustering(dict_users, dataset_train, args):
+def extract_clustering(dict_users, dataset_train, cluster, args):
 
     if args.clustering_method == 'single':
         clustering_matrix = clustering_single(args.num_users)
     elif args.clustering_method == 'local':
         clustering_matrix = clustering_seperate(args.num_users)
     elif args.clustering_method == 'perfect':
-        clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
+        clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, cluster, args)
     elif args.clustering_method == 'umap':
         clustering_matrix, _, _ = clustering_umap(args.num_users, dict_users, dataset_train, args)
     elif args.clustering_method == 'encoder':
@@ -290,7 +345,7 @@ def main(args, config_file_name):
     dataset_train, dataset_test, dict_users = gen_data(args.iid, args.dataset, args.num_users, cluster)
 
     # clustering the clients
-    clustering_matrix = extract_clustering(dict_users, dataset_train, args)
+    clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args)
 
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
     loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, args.multi_center, dataset_test, cluster, cluster_length, outputFile)

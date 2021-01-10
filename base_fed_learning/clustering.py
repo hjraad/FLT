@@ -97,7 +97,6 @@ def clustering_perfect(num_users, dict_users, dataset_train, args):
             label_matrix = np.concatenate((label_matrix, labels.numpy()), axis=0)
         label_matrix = np.unique(label_matrix)
         ar_label[idx][0:len(label_matrix)] = label_matrix
-    
     clustering_matrix = np.zeros((num_users, num_users))
     for idx in idxs_users:
         for idx0 in idxs_users:
@@ -137,7 +136,7 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
     clustering_matrix_soft = np.zeros((num_users, num_users))
     clustering_matrix = np.zeros((num_users, num_users))
 
-    for idx0 in idxs_users:
+    for idx0 in tqdm(idxs_users, desc='Clustering matrix generation'):
         for idx1 in idxs_users:
             c0 = centers[idx0]
             c1 = centers[idx1]
@@ -269,7 +268,7 @@ def clustering_umap_central(num_users, dict_users, dataset_train, dataset_name, 
         
         # ----------------------------------
         # use Kmeans to cluster the data into 2 clusters
-        embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
+        #embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
         kmeans = KMeans(n_clusters=2, random_state=43).fit(embedding)
         centers[user_id,:,:] = kmeans.cluster_centers_
     
@@ -285,10 +284,26 @@ def clustering_umap_central(num_users, dict_users, dataset_train, dataset_name, 
             c0 = centers[idx0]
             c1 = centers[idx1]
         
-            dist0 = np.linalg.norm(c0[0] - c1[0])**2 + np.linalg.norm(c0[1] - c1[1])**2
-            dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
-        
-            distance = min([dist0, dist1])#min (max)
+            if len(c0) < len(c1):
+                c_small = c0
+                c_big = c1
+            else:
+                c_small = c1
+                c_big = c0
+
+            distance = 1000000
+            if len(c_small) > 0:
+                s = set(range(len(c_big)))
+                for p in multiset_permutations(s):
+                    summation = 0
+
+                    for i in range(len(c_small)):
+                        summation = summation + (np.linalg.norm(c_small[i] - c_big[p][i])**2)
+
+                    dist = summation/len(c_small)
+                    if dist < distance:
+                        distance = dist
+
             clustering_matrix_soft[idx0][idx1] = distance
         
             if distance < 1:
