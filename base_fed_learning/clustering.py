@@ -47,6 +47,29 @@ torch.manual_seed(123)
 np.random.seed(321)
 umap_random_state=42
 
+def min_matching_distance(center_0, center_1):
+    if len(center_0) < len(center_1):
+        center_small = center_0
+        center_big = center_1
+    else:
+        center_small = center_1
+        center_big = center_0
+
+    distance = 1000000
+    if len(center_small) > 0:
+        s = set(range(len(center_big)))
+        for p in multiset_permutations(s):
+            summation = 0
+
+            for i in range(len(center_small)):
+                summation = summation + (np.linalg.norm(center_small[i] - center_big[p][i])**2)
+
+            dist = summation/len(center_small)
+            if dist < distance:
+                distance = dist
+    
+    return distance
+
 def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, cluster):
     # load dataset 
     _, image_datasets, dataset_sizes, class_names =\
@@ -143,25 +166,7 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
             c0 = centers[idx0]
             c1 = centers[idx1]
 
-            if len(c0) < len(c1):
-                c_small = c0
-                c_big = c1
-            else:
-                c_small = c1
-                c_big = c0
-
-            distance = 1000000
-            if len(c_small) > 0:
-                s = set(range(len(c_big)))
-                for p in multiset_permutations(s):
-                    summation = 0
-
-                    for i in range(len(c_small)):
-                        summation = summation + (np.linalg.norm(c_small[i] - c_big[p][i])**2)
-
-                    dist = summation/len(c_small)
-                    if dist < distance:
-                        distance = dist
+            distance = min_matching_distance(c0, c1)
 
             clustering_matrix_soft[idx0][idx1] = distance
         
@@ -196,10 +201,8 @@ def clustering_encoder(dict_users, dataset_train, ae_model_dict, args):
             c0 = centers[idx0]
             c1 = centers[idx1]
         
-            dist0 = np.linalg.norm(c0[0] - c1[0])**2 + np.linalg.norm(c0[1] - c1[1])**2
-            dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
-        
-            distance = min([dist0, dist1])#min (max)
+            distance = min_matching_distance(c0, c1)
+            
             clustering_matrix_soft[idx0][idx1] = distance
         
             if distance < 1:
@@ -216,7 +219,7 @@ def clustering_umap_central(dict_users, dataset_train, ae_model_dict, args):
     centers = np.zeros((args.num_users, 2, args.latent_dim)) # AE latent size going to be hyperparamter
     embedding_matrix = np.zeros((len(dict_users[0])*args.num_users, args.latent_dim))
     
-    for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
+    for user_id in tqdm(idxs_users, desc='Clustering in progress ...'):
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
         
         user_dataset_train = local.ldr_train.dataset
@@ -253,10 +256,8 @@ def clustering_umap_central(dict_users, dataset_train, ae_model_dict, args):
             c0 = centers[idx0]
             c1 = centers[idx1]
         
-            dist0 = np.linalg.norm(c0[0] - c1[0])**2 + np.linalg.norm(c0[1] - c1[1])**2
-            dist1 = np.linalg.norm(c0[0] - c1[1])**2 + np.linalg.norm(c0[1] - c1[0])**2
-        
-            distance = min([dist0, dist1])#min (max)
+            distance = min_matching_distance(c0, c1)
+            
             clustering_matrix_soft[idx0][idx1] = distance
         
             if distance < 1:
@@ -291,7 +292,7 @@ if __name__ == '__main__':
             'test': transforms.Compose([transforms.ToTensor()])
         }
     
-    args.pre_trained_dataset = 'CIFAR10'
+    args.pre_trained_dataset = 'CIFAR100'
     
     # find the model name automatically
     args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
@@ -307,12 +308,13 @@ if __name__ == '__main__':
     nr_of_clusters = 5
     cluster_length = args.num_users // nr_of_clusters
     cluster = np.zeros((nr_of_clusters, 2), dtype='int64')
-    for i in range(nr_of_clusters):
-        cluster[i] = np.random.choice(10, 2, replace=False)
-        
-    # cluster_array = np.random.choice(10, 10, replace=False)
+    #
     # for i in range(nr_of_clusters):
-    #     cluster[i] = cluster_array[i*2: i*2 + 1]
+    #     cluster[i] = np.random.choice(10, 2, replace=False)
+    #    
+    cluster_array = np.random.choice(10, 10, replace=False)
+    for i in range(nr_of_clusters):
+        cluster[i] = cluster_array[i*2: i*2 + 2]
     
     if args.target_dataset == 'EMNIST': 
         n_1 = 47 // (nr_of_clusters - 1)
@@ -345,7 +347,7 @@ if __name__ == '__main__':
     exp_lr_scheduler = lr_scheduler.StepLR(ae_optimizer, step_size=10, gamma=0.5)
     
     # loss
-    criterion = nn.BCELoss()
+    criterion = nn.MSELoss()
     
     # Load the model ckpt
     checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt')
@@ -359,7 +361,7 @@ if __name__ == '__main__':
         'scheduler':exp_lr_scheduler
     }
     
-    args.nr_epochs_sequential_training = 0
+    args.nr_epochs_sequential_training = 30
     
     # ----------------------------------       
     clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central

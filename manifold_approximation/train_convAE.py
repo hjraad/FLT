@@ -44,9 +44,9 @@ TRAIN_FLAG = True  # train or not?
 
 #TODO eval_interval = every how many epochs to evlaute 
 batch_size = 64
-nr_epochs = 2
+nr_epochs = 25
 
-dataset_name = 'CIFAR10'
+dataset_name = 'CIFAR100'
 dataset_split = 'balanced'
 # train_val_split = (100000, 12800)
 
@@ -226,12 +226,12 @@ if TRAIN_FLAG:
             
     ae_embedding_np = np.concatenate(embedding_list, axis=0)
     ae_labels_np = np.array(labels_list)
-    pickle.dump((ae_embedding_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}.p', 'wb'))
+    pickle.dump((ae_embedding_np, ae_labels_np), open(f'{model_root_dir}/AE_embedding_{MODEL_NAME}.p', 'wb'))
 
 # load the model (inference or to continue training)
 if not TRAIN_FLAG:
     # load the model 
-    MODEL_NAME = 'model-1607765429-epoch2-latent128'
+    MODEL_NAME = ''
     if os.path.exists(f'{model_root_dir}/{MODEL_NAME}_best.pt'):
         checkpoint = torch.load(f'{model_root_dir}/{MODEL_NAME}_best.pt')
     elif os.path.exists(f'{model_root_dir}/{MODEL_NAME}_last.pt'):
@@ -244,7 +244,7 @@ if not TRAIN_FLAG:
     loss = checkpoint['loss']
     
     # Load embddings of the contractie AE
-    ae_embedding_np, ae_labels_np = pickle.load(open(f'{model_root_dir}/AE_embedding_{dataset_name}_{MODEL_NAME}.p', 'rb'))
+    ae_embedding_np, ae_labels_np = pickle.load(open(f'{model_root_dir}/AE_embedding_{MODEL_NAME}.p', 'rb'))
     
 # ----------------------------------
 # Test the AE on test data
@@ -274,4 +274,4 @@ for idx in np.arange(20):
     ax = fig.add_subplot(2, 20/2, idx+1, xticks=[], yticks=[])
     imshow(output[idx])
     ax.set_title(class_names[labels[idx]])
-plt.savefig(f'{results_root_dir}/reconstructed_test_samples_{dataset_name}_{MODEL_NAME}.jpg')
+plt.savefig(f'{results_root_dir}/reconstructed_test_samples_{MODEL_NAME}.jpg')
