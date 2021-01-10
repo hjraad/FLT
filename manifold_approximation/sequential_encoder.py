@@ -46,7 +46,7 @@ class Sequential_Encoder():
     on input data. 
     '''
     def __init__(self, ae_model, ae_opt, criterion, scheduler, nr_epochs, ae_model_name, model_root_dir, log_root_dir,
-                                    manifold_dim, image_dataset, client_name, pre_trained_dataset, batch_size=10,  
+                                    manifold_dim, image_dataset, client_name, pre_trained_dataset, batch_size=64,  
                                     dataset_name='', train_umap=False, use_AE=True):
         self.ae_model = ae_model
         self.ae_opt = ae_opt
@@ -68,12 +68,11 @@ class Sequential_Encoder():
     #TODO: make it static method
     def autoencoder(self):
         # load the model
-        # model = ConvAutoencoder().to(device)
-        checkpoint = torch.load(f'{self.model_root_dir}/{self.ae_model_name}_last.pt')
-        self.ae_model.load_state_dict(checkpoint['model_state_dict'])
-        self.ae_opt.load_state_dict(checkpoint['optimizer_state_dict'])
-        epoch = checkpoint['epoch']
-        loss = checkpoint['loss']
+        # checkpoint = torch.load(f'{self.model_root_dir}/{self.ae_model_name}_last.pt')
+        # self.ae_model.load_state_dict(checkpoint['model_state_dict'])
+        # self.ae_opt.load_state_dict(checkpoint['optimizer_state_dict'])
+        # epoch = checkpoint['epoch']
+        # loss = checkpoint['loss']
         
         self.new_model_name = f"model-{self.dataset_name}-{int(time.time())}-epoch{self.nr_epochs}-client{self.client_name}" # use time to make the name unique
 
@@ -87,7 +86,7 @@ class Sequential_Encoder():
         else:
             _, model_l = train_model(self.ae_model, self.new_model_name, dataloaders, dataset_sizes, phases, 
                                         self.criterion, self.ae_opt, self.lr_scheduler, num_epochs=self.nr_epochs, 
-                                        model_save_dir=self.model_root_dir, log_save_dir=self.log_root_dir)
+                                        model_save_dir=self.model_root_dir, log_save_dir=self.log_root_dir, save_flag=False)
             model = model_l
         
         # extract the AE embedding of test data
