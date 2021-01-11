@@ -121,7 +121,6 @@ def clustering_perfect(num_users, dict_users, dataset_train, args):
             label_matrix = np.concatenate((label_matrix, labels.numpy()), axis=0)
         label_matrix = np.unique(label_matrix)
         ar_label[idx][0:len(label_matrix)] = label_matrix
-    
     clustering_matrix = np.zeros((num_users, num_users))
     for idx in idxs_users:
         for idx0 in idxs_users:
@@ -161,7 +160,7 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
     clustering_matrix_soft = np.zeros((num_users, num_users))
     clustering_matrix = np.zeros((num_users, num_users))
 
-    for idx0 in idxs_users:
+    for idx0 in tqdm(idxs_users, desc='Clustering matrix generation'):
         for idx1 in idxs_users:
             c0 = centers[idx0]
             c1 = centers[idx1]
@@ -240,7 +239,7 @@ def clustering_umap_central(dict_users, dataset_train, ae_model_dict, args):
         
         # ----------------------------------
         # use Kmeans to cluster the data into 2 clusters
-        embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
+        #embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
         kmeans = KMeans(n_clusters=2, random_state=43).fit(embedding)
         centers[user_id,:,:] = kmeans.cluster_centers_
     

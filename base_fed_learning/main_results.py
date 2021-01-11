@@ -27,9 +27,10 @@ if __name__ == '__main__':
     
     # plot loss curve
     fig, ax = plt.subplots()
-    line_style = ['k--', 'k:','r--', 'r:','b--', 'b:']
-
+    line_style = ['k--', 'k:', 'r--', 'r:', 'b--', 'b:', 'g--', 'g:']
+    counter = 0
     for (idx, entry) in enumerate(entries):
+        print(idx)
         if not entry.endswith(".csv"):
             continue
 
@@ -47,8 +48,10 @@ if __name__ == '__main__':
 
         df = pd.read_csv(f'{results_path}/{entry}')
 
-        ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx], label=f'{method}: train_accuracy')
-        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx+1], label=f'{method}: test_accuracy')
+        ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*counter], label=f'{method}: train_accuracy')
+        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*counter+1], label=f'{method}: test_accuracy')
+
+        counter += 1
 
     legend = ax.legend(loc='lower right')#, shadow=True, fontsize='x-large')    
     plt.ylabel('accuracy')
