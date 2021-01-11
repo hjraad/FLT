@@ -47,6 +47,38 @@ torch.manual_seed(123)
 np.random.seed(321)
 umap_random_state=42
 
+def encoder_model_capsul(args):
+    '''
+    encapsulates encoder model components
+    '''    
+    if args.target_dataset in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
+        # ae_model = ConvAutoencoderCIFAR(latent_size).to(args.device)
+        args.num_hiddens = 128
+        args.num_residual_hiddens = 32
+        args.num_residual_layers = 2
+        args.latent_dim = 64
+        
+        ae_model = ConvAutoencoderCIFARResidual(args.num_hiddens, args.num_residual_layers, 
+                                                args.num_residual_hiddens, args.latent_dim).to(args.device)
+        
+        # loss
+        criterion = nn.MSELoss()
+        
+    else:
+        args.latent_dim = 128
+        ae_model = ConvAutoencoder().to(args.device)
+        # loss
+        criterion = nn.BCELoss()
+    
+    # optimizer = optim.SGDencoder_model_capsul(args),
+        'name': args.ae_model_name,
+        'opt':ae_optimizer,
+        'criterion':criterion,
+        'scheduler':exp_lr_scheduler
+    }
+    return ae_model_dict
+    
+
 def min_matching_distance(center_0, center_1):
     if len(center_0) < len(center_1):
         center_small = center_0
@@ -202,16 +234,7 @@ def clustering_encoder(dict_users, dataset_train, ae_model_dict, args):
         
             distance = min_matching_distance(c0, c1)
             
-            clustering_matrix_soft[idx0][idx1] = distance
-        
-            if distance < 1:
-                clustering_matrix[idx0][idx1] = 1
-            else:
-                clustering_matrix[idx0][idx1] = 0
-
-    return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
-
-def clustering_umap_central(dict_users, dataset_train, ae_model_dict, args):
+            clustencoder_model_capsul(args)ap_central(dict_users, dataset_train, ae_model_dict, args):
 
     # idxs_users = np.random.shuffle(np.arange(num_users))
     idxs_users = np.random.choice(args.num_users, args.num_users, replace=False)
@@ -326,45 +349,7 @@ if __name__ == '__main__':
     #     cluster[i] = np.random.choice(10, 2, replace=False)
     
     # ---------------------------------- 
-    
-    #
-    if args.target_dataset in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
-        # ae_model = ConvAutoencoderCIFAR(latent_size).to(args.device)
-        args.num_hiddens = 128
-        args.num_residual_hiddens = 32
-        args.num_residual_layers = 2
-        args.latent_dim = 64
-        
-        ae_model = ConvAutoencoderCIFARResidual(args.num_hiddens, args.num_residual_layers, 
-                                                args.num_residual_hiddens, args.latent_dim).to(args.device)
-        
-        # loss
-        criterion = nn.MSELoss()
-        
-    else:
-        args.latent_dim = 128
-        ae_model = ConvAutoencoder().to(args.device)
-        # loss
-        criterion = nn.BCELoss()
-    
-    # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    ae_optimizer = optim.Adam(ae_model.parameters(), lr=0.001)
-
-    # Decay LR by a factor of x*gamma every step_size epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(ae_optimizer, step_size=10, gamma=0.5)
-    
-    # Load the model ckpt
-    checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt')
-    ae_model.load_state_dict(checkpoint['model_state_dict']) 
-    
-    ae_model_dict = {
-        'model':ae_model,
-        'name': args.ae_model_name,
-        'opt':ae_optimizer,
-        'criterion':criterion,
-        'scheduler':exp_lr_scheduler
-    }
-    
+    ae_model_dict = encoder_model_capsul(args)
     args.nr_epochs_sequential_training = 5
     
     # ----------------------------------       
