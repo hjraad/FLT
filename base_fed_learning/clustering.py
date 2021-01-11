@@ -283,7 +283,7 @@ def clustering_umap_central(num_users, dict_users, dataset_train, dataset_name, 
         for idx1 in idxs_users:
             c0 = centers[idx0]
             c1 = centers[idx1]
-        
+
             if len(c0) < len(c1):
                 c_small = c0
                 c_big = c1

@@ -61,7 +61,7 @@ def mnist_noniid_cluster(dataset, num_users, cluster):
     num_shards, num_imgs = 200, 300
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     idxs = np.arange(num_shards*num_imgs)
-    labels = dataset.train_labels.numpy()
+    labels = dataset.train_labels.numpy()[idxs]
 
     # sort labels
     idxs_labels = np.vstack((idxs, labels))
