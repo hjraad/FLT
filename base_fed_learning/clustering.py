@@ -70,10 +70,10 @@ def min_matching_distance(center_0, center_1):
     
     return distance
 
-def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, cluster):
+def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, cluster, dataset_split=''):
     # load dataset 
     _, image_datasets, dataset_sizes, class_names =\
-            load_dataset(dataset_type, data_root_dir, transforms_dict, batch_size=8, shuffle_flag=False, dataset_split='')
+            load_dataset(dataset_type, data_root_dir, transforms_dict, batch_size=8, shuffle_flag=False, dataset_split=dataset_split)
     
     dataset_train = image_datasets['train']
     dataset_test = image_datasets['test']
@@ -276,9 +276,10 @@ if __name__ == '__main__':
     # args.ae_model_name = "model-1607623811-epoch40-latent128"
     # args.pre_trained_dataset = 'FMNIST'
 
-    args.num_users = 20
+    args.num_users = 240
     args.num_classes = 10
-    args.target_dataset = 'CIFAR10'
+    args.target_dataset = 'EMNIST'
+    args.dataset_split = 'balanced'
     
     if args.target_dataset in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
         transforms_dict = {    
@@ -291,7 +292,7 @@ if __name__ == '__main__':
             'test': transforms.Compose([transforms.ToTensor()])
         }
     
-    args.pre_trained_dataset = 'CIFAR100'
+    args.pre_trained_dataset = 'FMNIST'
     
     # find the model name automatically
     args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
@@ -303,17 +304,8 @@ if __name__ == '__main__':
     
     # ----------------------------------
     # generate cluster settings    
-
-    nr_of_clusters = 5
+    nr_of_clusters = 10
     cluster_length = args.num_users // nr_of_clusters
-    cluster = np.zeros((nr_of_clusters, 2), dtype='int64')
-    #
-    # for i in range(nr_of_clusters):
-    #     cluster[i] = np.random.choice(10, 2, replace=False)
-    #    
-    cluster_array = np.random.choice(10, 10, replace=False)
-    for i in range(nr_of_clusters):
-        cluster[i] = cluster_array[i*2: i*2 + 2]
     
     if args.target_dataset == 'EMNIST': 
         n_1 = 47 // (nr_of_clusters - 1)
@@ -323,30 +315,43 @@ if __name__ == '__main__':
         cluster_array = np.arange(47)
         for i in range(nr_of_clusters - 1):
             cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
-        cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]  
+        cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:] 
+        
+    else:
+        cluster = np.zeros((nr_of_clusters, 2), dtype='int64')
+        cluster_array = np.random.choice(10, 10, replace=False)
+        for i in range(nr_of_clusters):
+            cluster[i] = cluster_array[i*2: i*2 + 2] 
+        # for i in range(nr_of_clusters):
+    #     cluster[i] = np.random.choice(10, 2, replace=False)
+    
     # ---------------------------------- 
-    # model
-    args.latent_dim = 64
+    
     #
     if args.target_dataset in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
         # ae_model = ConvAutoencoderCIFAR(latent_size).to(args.device)
         args.num_hiddens = 128
         args.num_residual_hiddens = 32
         args.num_residual_layers = 2
+        args.latent_dim = 64
         
         ae_model = ConvAutoencoderCIFARResidual(args.num_hiddens, args.num_residual_layers, 
                                                 args.num_residual_hiddens, args.latent_dim).to(args.device)
+        
+        # loss
+        criterion = nn.MSELoss()
+        
     else:
+        args.latent_dim = 128
         ae_model = ConvAutoencoder().to(args.device)
+        # loss
+        criterion = nn.BCELoss()
     
     # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     ae_optimizer = optim.Adam(ae_model.parameters(), lr=0.001)
 
     # Decay LR by a factor of x*gamma every step_size epochs
     exp_lr_scheduler = lr_scheduler.StepLR(ae_optimizer, step_size=10, gamma=0.5)
-    
-    # loss
-    criterion = nn.MSELoss()
     
     # Load the model ckpt
     checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt')
@@ -360,7 +365,7 @@ if __name__ == '__main__':
         'scheduler':exp_lr_scheduler
     }
     
-    args.nr_epochs_sequential_training = 30
+    args.nr_epochs_sequential_training = 5
     
     # ----------------------------------       
     clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
@@ -368,7 +373,7 @@ if __name__ == '__main__':
     # ----------------------------------
     # generate clustered data
     dataset_train, dataset_test, dict_users = gen_data(args.iid, args.target_dataset, args.data_root_dir, 
-                                                       transforms_dict, args.num_users, cluster)
+                                                       transforms_dict, args.num_users, cluster, dataset_split=args.dataset_split)
     
     # ----------------------------------    
     clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, args)
