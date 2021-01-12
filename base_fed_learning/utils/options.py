@@ -38,12 +38,11 @@ def args_parser():
 
     # required folders and files
     parser.add_argument('--data_root_dir', default='../data', help='data location')
-    parser.add_argument('--model_root_dir', default='../model_weights', help='clustering model location')
-    parser.add_argument('--results_root_dir', default='../results', help='results location')
-    parser.add_argument('--log_root_dir', default='../logs', help='results location')
+    parser.add_argument('--model_root_dir', default='./model_weights', help='clustering model location')
+    parser.add_argument('--results_root_dir', default='./results', help='results location')
+    parser.add_argument('--log_root_dir', default='./logs', help='results location')
     #parser.add_argument('--ae_model_name', default='model-1606927012-epoch40-latent128', help='Autoencoder model name')
     #parser.add_argument('--pre_trained_dataset', default='EMNIST', help='data on which the initial model has been pretrained')
-    
 
     # clustering options
     parser.add_argument('--clustering_method', default='umap_central', help='clustering method: single, local, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central')
@@ -58,7 +57,7 @@ def args_parser():
     parser.add_argument('--num_residual_hiddens', default=2, help='number of residual hidden layers')
     parser.add_argument('--num_residual_layers', default=2, help='number of residual layers in the stack')
     parser.add_argument('--nr_epochs_sequential_training', default=2, help='number of epochs for training the encoder')
-    
+
     # third party results
     parser.add_argument('--multi_center', default='False', help='generate results for multi_center paper')
 
