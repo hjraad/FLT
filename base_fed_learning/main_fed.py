@@ -40,7 +40,7 @@ def set_random_seed():
 
     return
 
-def emnist_noniid_cluster_test(dataset, num_users, cluster):
+def noniid_cluster_testdata_dict(dataset, num_users, cluster):
     """
     By: Mohammad Abdizadeh
     Sample clustered non-I.I.D client data from MNIST dataset
@@ -83,7 +83,7 @@ def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, clust
         if not iid:
             dict_users = emnist_noniid_cluster(dataset_train, num_users, cluster, 
                                                random_shuffle=True)
-            dict_test_users = emnist_noniid_cluster_test(dataset_test, num_users, cluster)
+            dict_test_users = noniid_cluster_testdata_dict(dataset_test, num_users, cluster)
     #       
     elif dataset_type in ['cifar', 'CIFAR10']:
         if iid:
@@ -281,16 +281,50 @@ def gen_cluster(args):
         if args.flag_with_overlap:
             cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
             lst = np.random.choice(10, 10, replace=False)
-            cluster[0] = lst[0:3]
-            cluster[1] = lst[2:5]
-            cluster[2] = lst[4:7]
-            cluster[3] = lst[6:9]
-            cluster[4] = [lst[-2], lst[-1], lst[0]]
+            #cluster[0] = lst[0:3]
+            #cluster[1] = lst[2:5]
+            #cluster[2] = lst[4:7]
+            #cluster[3] = lst[6:9]
+            #cluster[4] = [lst[-2], lst[-1], lst[0]]
+            """cluster[0][0] = 9
+            cluster[0][1] = 8
+            cluster[0][2] = 4
+            cluster[1][0] = 7
+            cluster[1][1] = 6
+            cluster[0][2] = 2
+            cluster[2][0] = 5
+            cluster[2][1] = 4
+            cluster[0][2] = 1"""
+            cluster[0][0] = 0
+            cluster[0][1] = 1
+            cluster[0][2] = -1
+
+            cluster[1][0] = 2
+            cluster[1][1] = 3
+            cluster[1][2] = 7
+
+            cluster[2][0] = 4
+            cluster[2][1] = 8
+            cluster[2][2] = 9
         else:
             cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
             cluster_array = np.random.choice(10, 10, replace=False)
-            for i in range(args.nr_of_clusters):
-                cluster[i] = cluster_array[i*2: i*2 + 2]
+            #for i in range(args.nr_of_clusters):
+            #    cluster[i] = cluster_array[i*2: i*2 + 2]
+            """cluster[0][0] = 5
+            cluster[0][1] = 4
+            cluster[1][0] = 3
+            cluster[1][1] = 2
+            cluster[2][0] = 1
+            cluster[2][1] = 0"""
+            cluster[0][0] = 0
+            cluster[0][1] = 1
+
+            cluster[1][0] = 2
+            cluster[1][1] = 3
+
+            cluster[2][0] = 4
+            cluster[2][1] = 5
 
     return cluster, cluster_length
 

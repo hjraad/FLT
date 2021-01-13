@@ -155,7 +155,7 @@ def clustering_seperate(num_users):
                 
     return clustering_matrix
 
-def clustering_perfect(num_users, dict_users, dataset_train, args):
+def clustering_perfect(num_users, dict_users, dataset_train, cluster, args):
     idxs_users = np.arange(num_users)
     ar_label = np.zeros((args.num_users, args.num_classes))-1
     for idx in idxs_users:
@@ -168,17 +168,13 @@ def clustering_perfect(num_users, dict_users, dataset_train, args):
     clustering_matrix = np.zeros((num_users, num_users))
     for idx in idxs_users:
         for idx0 in idxs_users:
-            set_1 = set(ar_label[idx0][np.where(ar_label[idx0] != -1)].astype(int))
-            set_2 = set(ar_label[idx][np.where(ar_label[idx] != -1)].astype(int))
-            if np.intersect1d(set_1, set_2):
-                if len( np.intersect1d(set_1, set_2)[0] ) >= np.floor(0.6 * min(len(set_1), len(set_2))):   
-                #if ar_label[idx][0] == ar_label[idx0][0] and ar_label[idx][1] == ar_label[idx0][1]:
-                    clustering_matrix[idx][idx0] = 1
+            if np.all(ar_label[idx0][0:len(cluster.T)] == ar_label[idx][0:len(cluster.T)]):
+                clustering_matrix[idx][idx0] = 1
                 
     return clustering_matrix
 
 def clustering_umap(num_users, dict_users, dataset_train, args):
-    reducer_loaded = pickle.load( open( "../model_weights/umap_reducer_EMNIST.p", "rb" ) )
+    reducer_loaded = pickle.load( open( "./model_weights/umap_reducer_EMNIST.p", "rb" ) )
     reducer = reducer_loaded
 
     idxs_users = np.arange(num_users)
@@ -191,7 +187,6 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
         images_matrix = np.empty((0, channel_dim*input_dim*input_dim))
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
         for batch_idx, (images, labels) in enumerate(local.ldr_train):#TODO: concatenate the matrices
-            # print(batch_idx)
             # if batch_idx == 3:# TODO: abalation test
             #     break
             ne = images.numpy().flatten().T.reshape((len(labels), channel_dim*input_dim*input_dim))
@@ -237,7 +232,18 @@ def clustering_encoder(dict_users, dataset_train, ae_model_dict, args):
         
         encoder.autoencoder()
         encoder.manifold_approximation_umap()
-        reducer = encoder.umap_reducerclustering_matrix
+        reducer = encoder.umap_reducer
+        embedding1 = encoder.umap_embedding
+        
+        # ----------------------------------
+        # use Kmeans to cluster the data into 2 clusters
+        X = list(embedding1)
+        embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding1
+        kmeans = KMeans(n_clusters=2, random_state=0).fit(np.array(X))
+        centers[user_id,:,:] = kmeans.cluster_centers_
+    
+    clustering_matrix_soft = np.zeros((num_users, num_users))
+    clustering_matrix = np.zeros((num_users, num_users))
 
     for idx0 in idxs_users:
         for idx1 in idxs_users:
@@ -258,7 +264,15 @@ def clustering_umap_central(dict_users, dataset_train, ae_model_dict, args):
 
     # idxs_users = np.random.shuffle(np.arange(num_users))
     idxs_users = np.random.choice(args.num_users, args.num_users, replace=False)
-    centers = np.zeros((args.num_users, 2, args.latent_dim)) # AE latent size going to be hyperparamter
+    
+    max_num_center = 2
+    for cluster_index in range(cluster.shape[1]):
+        class_index_range = np. where(cluster[cluster_index] != -1)[0]
+        max_num_center = max(max_num_center, len(class_index_range))
+    
+    #centers = np.zeros((num_users, max_num_center, 128)) # AE latent size going to be hyperparamter
+    centers = np.empty(args.latent_dim, dtype=int)
+    center_dict = {}
     embedding_matrix = np.zeros((len(dict_users[0])*args.num_users, args.latent_dim))
     
     for user_id in tqdm(idxs_users, desc='Clustering in progress ...'):
@@ -283,17 +297,32 @@ def clustering_umap_central(dict_users, dataset_train, ae_model_dict, args):
         # ----------------------------------
         # use Kmeans to cluster the data into 2 clusters
         #embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
-        kmeans = KMeans(n_clusters=2, random_state=43).fit(embedding)
-        centers[user_id,:,:] = kmeans.cluster_centers_
+        cluster_size = cluster.shape[0]
+        nr_in_clusters = num_users // cluster_size
+        cluster_index = (user_id//nr_in_clusters)
+        class_index_range = np. where(cluster[cluster_index] != -1)[0]
+        num_center = len(class_index_range)
+
+        kmeans = KMeans(n_clusters=num_center, random_state=43).fit(embedding)
+        centers = np.vstack((centers, kmeans.cluster_centers_))
+        
+        center_dict[user_id] = kmeans.cluster_centers_
     
     umap_reducer = umap.UMAP(n_components=2, random_state=42)
-    umap_embedding = umap_reducer.fit_transform(np.reshape(centers, (-1, args.latent_dim)))
-    centers = np.reshape(umap_embedding, (args.num_users, -1, 2))
+    umap_reducer.fit(np.reshape(centers, (-1, 128)))
+    #centers = np.reshape(umap_embedding, (num_users, -1, 2))
     
     clustering_matrix_soft = np.zeros((args.num_users, args.num_users))
     clustering_matrix = np.zeros((args.num_users, args.num_users))
 
+    c_dict = {}
+    for idx in idxs_users:
+        c = umap_reducer.transform(center_dict[idx])
+        print(idx, c)
+        c_dict[idx] = c
+
     for idx0 in idxs_users:
+        c0 = c_dict[idx0]#umap_reducer.transform(center_dict[idx0])
         for idx1 in idxs_users:
             c0 = centers[idx0]
             c1 = centers[idx1]
@@ -344,7 +373,8 @@ if __name__ == '__main__':
     
     # ----------------------------------
     plt.close('all')
-    
+    args.nr_of_clusters = 3
+    args.num_users = 6
     # ----------------------------------
     # generate cluster settings    
     nr_of_clusters = 10

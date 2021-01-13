@@ -30,11 +30,11 @@ def mnist_noniid(dataset, num_users):
     :param num_users:
     :return:
     """
-    num_shards, num_imgs = 200, 300
+    num_shards, num_imgs = 50,100#200, 300
     idx_shard = [i for i in range(num_shards)]
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     idxs = np.arange(num_shards*num_imgs)
-    labels = dataset.train_labels.numpy()
+    labels = dataset.train_labels.numpy()[idxs]
 
     # sort labels
     idxs_labels = np.vstack((idxs, labels))
@@ -77,7 +77,8 @@ def mnist_noniid_cluster(dataset, num_users, cluster):
 
     for i in range(num_users):
         cluster_index = (i//nr_in_clusters)
-        for j in range(len(cluster[cluster_index])):
+        class_index_range = np.where(cluster[cluster_index] != -1)[0]
+        for j in class_index_range:
             k = np.where(indices_array[ cluster[cluster_index][j] ] == -1)[0][0]
             rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
             dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][j] ][list(rand_set)]), axis=0)
