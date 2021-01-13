@@ -24,8 +24,8 @@ def args_parser():
                         help="Whether use max pooling rather than strided convolutions")
 
     # other arguments
-    parser.add_argument('--target_dataset', type=str, default='mnist', help="name of dataset")
-    parser.add_argument('--pre_trained_dataset', default='FMNIST', help='data on which the initial model has been pretrained')
+    parser.add_argument('--target_dataset', type=str, default='MNIST', help="name of dataset")
+    parser.add_argument('--pre_trained_dataset', default='EMNIST', help='data on which the initial model has been pretrained')
     parser.add_argument('--dataset_split', type=str, default='balanced', help="type of split for EMNIST")
     parser.add_argument('--iid', action='store_true', help='whether i.i.d or not')
     parser.add_argument('--num_classes', type=int, default=10, help="number of classes")

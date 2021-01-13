@@ -74,10 +74,10 @@ def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, clust
         # sample users
         if iid:
             dict_users = mnist_iid(dataset_train, num_users)
-            dict_test_users = set(range(len(dataset_test)))
+            dict_test_users = noniid_cluster_testdata_dict(dataset_test, num_users, cluster)
         else:
             dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
-            dict_test_users = set(range(len(dataset_test)))
+            dict_test_users = noniid_cluster_testdata_dict(dataset_test, num_users, cluster)
     #
     elif dataset_type in ['emnist', 'EMNIST']:     
         if not iid:
@@ -158,7 +158,8 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
 
     return clustering_matrix, est_multi_center_new
 
-def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, multi_center_flag, dataset_test, cluster, cluster_length, dict_test_users, outputFile):
+def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, 
+              multi_center_flag, dataset_test, transforms_dict, cluster, cluster_length, dict_test_users, outputFile):
     print('iteration,training_average_loss,training_accuracy,test_accuracy', file = outputFile)
     # training
     loss_train = []
@@ -215,7 +216,9 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
                 # setting the clustering format
                 cluster, cluster_length = gen_cluster(args)
 
-                dataset_train, dataset_test, dict_users, dict_test_users = gen_data(args.iid, args.target_dataset, args.num_users, cluster)
+                dataset_train, dataset_test, dict_users, dict_test_users =\
+                    gen_data(args.iid, args.target_dataset, args.data_root_dir, 
+                             transforms_dict, args.num_users, cluster, dataset_split=args.dataset_split)
 
                 # clustering the clients
                 clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, iter)
@@ -281,20 +284,7 @@ def gen_cluster(args):
         if args.flag_with_overlap:
             cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
             lst = np.random.choice(10, 10, replace=False)
-            #cluster[0] = lst[0:3]
-            #cluster[1] = lst[2:5]
-            #cluster[2] = lst[4:7]
-            #cluster[3] = lst[6:9]
-            #cluster[4] = [lst[-2], lst[-1], lst[0]]
-            """cluster[0][0] = 9
-            cluster[0][1] = 8
-            cluster[0][2] = 4
-            cluster[1][0] = 7
-            cluster[1][1] = 6
-            cluster[0][2] = 2
-            cluster[2][0] = 5
-            cluster[2][1] = 4
-            cluster[0][2] = 1"""
+
             cluster[0][0] = 0
             cluster[0][1] = 1
             cluster[0][2] = -1
@@ -309,14 +299,7 @@ def gen_cluster(args):
         else:
             cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
             cluster_array = np.random.choice(10, 10, replace=False)
-            #for i in range(args.nr_of_clusters):
-            #    cluster[i] = cluster_array[i*2: i*2 + 2]
-            """cluster[0][0] = 5
-            cluster[0][1] = 4
-            cluster[1][0] = 3
-            cluster[1][1] = 2
-            cluster[2][0] = 1
-            cluster[2][1] = 0"""
+
             cluster[0][0] = 0
             cluster[0][1] = 1
 
@@ -359,7 +342,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
         ae_model_dict = encoder_model_capsul(args)
 
         clustering_matrix, _, _, _ =\
-            clustering_umap_central(dict_users, dataset_train, ae_model_dict, args)
+            clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
         plt.figure()
         plt.imshow(clustering_matrix)
         plt.savefig(f'{args.results_root_dir}/Clustering/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
@@ -415,7 +398,9 @@ def main(args, config_file_name):
     clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, 0)
 
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
-    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, args.multi_center, dataset_test, cluster, cluster_length, dict_test_users, outputFile)
+    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, 
+                                                             clustering_matrix, args.multi_center, dataset_test, transforms_dict, 
+                                                             cluster, cluster_length, dict_test_users, outputFile)
 
     # ----------------------------------
     # testing: average over all clients
