@@ -38,9 +38,9 @@ def args_parser():
 
     # required folders and files
     parser.add_argument('--data_root_dir', default='../data', help='data location')
-    parser.add_argument('--model_root_dir', default='./model_weights', help='clustering model location')
-    parser.add_argument('--results_root_dir', default='./results', help='results location')
-    parser.add_argument('--log_root_dir', default='./logs', help='results location')
+    parser.add_argument('--model_root_dir', default='../model_weights', help='clustering model location')
+    parser.add_argument('--results_root_dir', default='../results', help='results location')
+    parser.add_argument('--log_root_dir', default='../logs', help='results location')
     #parser.add_argument('--ae_model_name', default='model-1606927012-epoch40-latent128', help='Autoencoder model name')
     #parser.add_argument('--pre_trained_dataset', default='EMNIST', help='data on which the initial model has been pretrained')
 
@@ -63,7 +63,7 @@ def args_parser():
 
     # config file settings
     parser.add_argument('--iter_to_iter_results', default='False', help='generate results for each iteration')
-    parser.add_argument('--config_root_dir', default='./configs', help='config file location')
+    parser.add_argument('--config_root_dir', default='../configs', help='config file location')
 
     # table 3 config
     parser.add_argument('--change_dataset_flag', default='False', help='generating results for a scenario where the dataset is changed')
