@@ -102,7 +102,7 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
     idxs_users = np.arange(num_users)
 
     centers = np.zeros((num_users, 2, 2))
-    for idx in tqdm(idxs_users, desc='Clustering progress'):
+    for idx in tqdm(idxs_users, desc='Clustering progress, embedding'):
         images_matrix = np.empty((0,28*28))
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
         for batch_idx, (images, labels) in enumerate(local.ldr_train):#TODO: concatenate the matrices
@@ -118,11 +118,11 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
     clustering_matrix_soft = np.zeros((num_users, num_users))
     clustering_matrix = np.zeros((num_users, num_users))
 
-    for idx0 in idxs_users:
+    for idx0 in tqdm(idxs_users, desc='Clustering matrix generation'):
         for idx1 in idxs_users:
             c0 = centers[idx0]
             c1 = centers[idx1]
-
+        
             if len(c0) < len(c1):
                 c_small = c0
                 c_big = c1
@@ -284,7 +284,7 @@ def clustering_sequential_encoder(num_users, dict_users, dataset_train, ae_model
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
 def clustering_umap_central(num_users, dict_users, dataset_train, ae_model_name, 
-                            nr_epochs_sequential_training, args):
+                            nr_epochs_sequential_training, cluster, args):
 
     # model
     ae_model = ConvAutoencoder().to(args.device)
@@ -304,7 +304,16 @@ def clustering_umap_central(num_users, dict_users, dataset_train, ae_model_name,
 
     # idxs_users = np.random.shuffle(np.arange(num_users))
     idxs_users = np.random.choice(num_users, num_users, replace=False)
-    centers = np.zeros((num_users, 2, 128)) # AE latent size going to be hyperparamter
+    
+
+    max_num_center = 2
+    for cluster_index in range(cluster.shape[1]):
+        class_index_range = np. where(cluster[cluster_index] != -1)[0]
+        max_num_center = max(max_num_center, len(class_index_range))
+    
+    #centers = np.zeros((num_users, max_num_center, 128)) # AE latent size going to be hyperparamter
+    centers = np.empty(128, dtype=int)
+    center_dict = {}
     embedding_matrix = np.zeros((len(dict_users[0])*num_users, 128))
 
     for user_id in tqdm(idxs_users, desc='Custering in progress ...'):
@@ -325,21 +334,39 @@ def clustering_umap_central(num_users, dict_users, dataset_train, ae_model_name,
         
         # ----------------------------------
         # use Kmeans to cluster the data into 2 clusters
-        embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
-        kmeans = KMeans(n_clusters=2, random_state=43).fit(embedding)
-        centers[user_id,:,:] = kmeans.cluster_centers_
+        #embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
+        cluster_size = cluster.shape[0]
+        nr_in_clusters = num_users // cluster_size
+        cluster_index = (user_id//nr_in_clusters)
+        class_index_range = np. where(cluster[cluster_index] != -1)[0]
+        num_center = len(class_index_range)
+
+        kmeans = KMeans(n_clusters=num_center, random_state=43).fit(embedding)
+        centers = np.vstack((centers, kmeans.cluster_centers_))
+        
+        center_dict[user_id] = kmeans.cluster_centers_
     
     umap_reducer = umap.UMAP(n_components=2, random_state=42)
-    umap_embedding = umap_reducer.fit_transform(np.reshape(centers, (-1, 128)))
-    centers = np.reshape(umap_embedding, (num_users, -1, 2))
+    umap_reducer.fit(np.reshape(centers, (-1, 128)))
+    #centers = np.reshape(umap_embedding, (num_users, -1, 2))
     
     clustering_matrix_soft = np.zeros((num_users, num_users))
     clustering_matrix = np.zeros((num_users, num_users))
 
+    c_dict = {}
+    for idx in idxs_users:
+        c = umap_reducer.transform(center_dict[idx])
+        print(idx, c)
+        c_dict[idx] = c
+
     for idx0 in idxs_users:
+        c0 = c_dict[idx0]#umap_reducer.transform(center_dict[idx0])
         for idx1 in idxs_users:
-            c0 = centers[idx0]
-            c1 = centers[idx1]
+            #c0 = centers[idx0]
+            #c1 = centers[idx1]
+
+            #c0 = umap_reducer.transform(center_dict[idx0])
+            c1 = c_dict[idx1]#umap_reducer.transform(center_dict[idx1])
 
             if len(c0) < len(c1):
                 c_small = c0
@@ -370,6 +397,7 @@ def clustering_umap_central(num_users, dict_users, dataset_train, ae_model_name,
                 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
+
 if __name__ == '__main__':
     # parse args
     args = args_parser()
@@ -381,18 +409,37 @@ if __name__ == '__main__':
     
     # ----------------------------------
     plt.close('all')
-    
+    args.nr_of_clusters = 3
+    args.num_users = 6
     # ----------------------------------
     # generate cluster settings    
-    cluster_length = args.num_users // args.nr_of_clusters
-    cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
-    if args.flag_with_overlap:
-        for i in range(args.nr_of_clusters):
-            cluster[i] = np.random.choice(10, 2, replace=False)
-    else:
-        cluster_array = np.random.choice(10, 10, replace=False)
-        for i in range(args.nr_of_clusters):
-            cluster[i] = cluster_array[i*2: i*2 + 1]
+    cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
+    lst = np.random.choice(10, 10, replace=False)
+    #cluster[0] = lst[0:3]
+    #cluster[1] = lst[2:5]
+    #cluster[2] = lst[4:7]
+    #cluster[3] = lst[6:9]
+    #cluster[4] = [lst[-2], lst[-1], lst[0]]
+    """cluster[0][0] = 9
+    cluster[0][1] = 8
+    cluster[0][2] = 4
+    cluster[1][0] = 7
+    cluster[1][1] = 6
+    cluster[0][2] = 2
+    cluster[2][0] = 5
+    cluster[2][1] = 4
+    cluster[0][2] = 1"""
+    cluster[0][0] = 0
+    cluster[0][1] = 1
+    cluster[0][2] = -1
+
+    cluster[1][0] = 2
+    cluster[1][1] = 3
+    cluster[1][2] = 7
+
+    cluster[2][0] = 4
+    cluster[2][1] = 8
+    cluster[2][2] = 9
     
     # ----------------------------------       
     clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
@@ -418,7 +465,7 @@ if __name__ == '__main__':
     elif clustering_method == 'umap_central':
         clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
             clustering_umap_central(args.num_users, dict_users, dataset_train, args.ae_model_name, 
-                                        args.nr_epochs_sequential_training, args)
+                                        args.nr_epochs_sequential_training, cluster, args)
     
     # ----------------------------------    
     # plot results
@@ -431,19 +478,19 @@ if __name__ == '__main__':
     plt.imshow(-1*clustering_matrix0_soft,cmap=plt.cm.viridis)
     plt.savefig(f'{args.results_root_dir}/Clustering/softClustMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
     
-    nr_of_centers = 2*cluster_length
-    colors = itertools.cycle(["r"] * nr_of_centers +["b"]*nr_of_centers+["g"]*nr_of_centers+["k"]*nr_of_centers+["y"]*nr_of_centers)
-    plt.figure(4)
-    for i in range(0,args.num_users):
-        plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
-        plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
-    plt.savefig(f'{args.results_root_dir}/Clustering/centers_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+    #nr_of_centers = 2*cluster_length
+    #colors = itertools.cycle(["r"] * 2 +["b"]*3+["g"]*3+["k"]*3+["y"]*3)
+    #plt.figure(4)
+    #for i in range(0,args.num_users):
+    #    plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
+    #    plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
+    #plt.savefig(f'{args.results_root_dir}/Clustering/centers_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
     
-    if clustering_method != 'umap_central':
-        plt.figure(5)
-        nr_of_centers = len(dict_users[0])*cluster_length
-        colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
-        for i in range(args.nr_of_clusters):
-            plt.scatter(embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers, 0], embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers:, 1], color=next(colors))
-        plt.savefig(f'{args.results_root_dir}/Clustering/embeddingMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
+    #if clustering_method != 'umap_central':
+    #    plt.figure(5)
+    #    nr_of_centers = len(dict_users[0])*cluster_length
+    #    colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
+    #    for i in range(args.nr_of_clusters):
+    #        plt.scatter(embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers, 0], embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers:, 1], color=next(colors))
+    #    plt.savefig(f'{args.results_root_dir}/Clustering/embeddingMat_{clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.dataset}.jpg')
     plt.show()
