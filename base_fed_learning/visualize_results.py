@@ -56,4 +56,5 @@ if __name__ == '__main__':
     legend = ax.legend(loc='lower right')#, shadow=True, fontsize='x-large')    
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
-    plt.show()
+    Plt.savefig()
+    plt.show(f'{args.results_root_dir}/main_fed/scenario_3/result.png')
