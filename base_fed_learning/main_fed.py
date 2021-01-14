@@ -283,7 +283,7 @@ def gen_cluster(args):
         # generate cluster settings    
         if args.flag_with_overlap:
             cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
-            lst = np.random.choice(10, 10, replace=False)
+            lst = np.random.choice(10, 10, replace=False) # what it this?
 
             cluster[0][0] = 0
             cluster[0][1] = 1
