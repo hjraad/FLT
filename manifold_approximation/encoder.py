@@ -168,12 +168,19 @@ if __name__ == '__main__':
 
     encoder = Encoder(model, model_name, model_root_dir, 
                                 manifold_dim, image_dataset, 
-                                client_name, dataset_name=dataset_name)
+                                client_name, dataset_name=dataset_name, use_AE=True)
     
     encoder.autoencoder()
     encoder.manifold_approximation_umap()
     reducer = encoder.umap_reducer
     umap_embedding = encoder.umap_embedding
+    
+    embedding1 = encoder.ae_embedding_np
+    
+    # # embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding1
+    # kmeans = KMeans(n_clusters=2, random_state=0).fit(np.array(embedding1))
+    # centers[user_id,:,:] = kmeans.cluster_centers_
+    
 
     fig, ax = plt.subplots(figsize=(12, 10))
     labels_np = np.array([data[1] for data in image_datasets['train']])

@@ -231,9 +231,10 @@ def clustering_encoder(dict_users, dataset_train, ae_model_dict, args):
                           user_dataset_train, user_id)
         
         encoder.autoencoder()
-        encoder.manifold_approximation_umap()
-        reducer = encoder.umap_reducer
-        embedding1 = encoder.umap_embedding
+        #encoder.manifold_approximation_umap()
+        #reducer = encoder.umap_reducer
+        # embedding1 = encoder.umap_embedding
+        embedding1 = encoder.ae_embedding_np
         
         # ----------------------------------
         # use Kmeans to cluster the data into 2 clusters
