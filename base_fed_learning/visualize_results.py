@@ -22,7 +22,7 @@ if __name__ == '__main__':
      # ----------------------------------
     plt.close('all')
 
-    results_path = f'{args.results_root_dir}/main_fed/'
+    results_path = f'{args.results_root_dir}/main_fed/scenario_4/'
     entries = os.listdir(results_path)
     
     # plot loss curve
