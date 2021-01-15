@@ -381,11 +381,15 @@ def main(args, config_file_name):
 
     # ----------------------------------
     # open the output file to write the results to
-    outputFile = open(f'{args.results_root_dir}/main_fed/results_cfgfname_{config_file_name[:-5]}_nr_users_{args.num_users}_iid_{args.iid}_model_{args.model}_ep_{args.epochs}_lep_{args.local_ep}_cl_method_{args.clustering_method}_multicenter_{args.multi_center}.csv', 'w')
+    folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}'
+    
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
 
-    description_text =f'{args.num_users} clients with {args.iid} iid data, iter = {args.epochs}, local epoch = {args.local_ep}, model = {args.model}, clustering method = {args.clustering_method}, MC = {args.multi_center}'
-    print(description_text)
-    #print(description_text, file = outputFile)
+    file_name = f'{folder_name}/{config_file_name.split(".")[0]}.csv'
+    outputFile = open(file_name, 'w')
+
+    print(f'Processing configuration: {config_file_name}')   
 
     # setting the clustering format
     cluster, cluster_length = gen_cluster(args)
@@ -445,7 +449,7 @@ if __name__ == '__main__':
 
             t_args = argparse.Namespace()
             t_args.__dict__.update(argparse_dict)
-            args = parser.parse_args(namespace=t_args)
+            #args = parser.parse_args(namespace=t_args)
 
-        main(args, config_file_name)
+        main(t_args, config_file_name)
   

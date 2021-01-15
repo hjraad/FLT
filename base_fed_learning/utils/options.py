@@ -3,6 +3,7 @@ import argparse
 def args_parser():
     parser = argparse.ArgumentParser()
     # federated arguments
+    parser.add_argument('--scenario', type=int, default=1, help="simulation scenario")    
     parser.add_argument('--epochs', type=int, default=5, help="rounds of training")
     parser.add_argument('--num_users', type=int, default=20, help="number of users: K")
     parser.add_argument('--frac', type=float, default=0.2, help="the fraction of clients: C")
