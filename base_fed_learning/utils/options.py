@@ -68,5 +68,6 @@ def args_parser():
     # table 3 config
     parser.add_argument('--change_dataset_flag', default='False', help='generating results for a scenario where the dataset is changed')
     parser.add_argument('--change_dataset_epoch', type=int, default=5, help='epcoh number where the dataset is changed')
+
     args = parser.parse_args()
     return args

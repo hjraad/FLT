@@ -6,8 +6,6 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-
-from torch.utils.data import DataLoader
 from torch.utils.data import DataLoader, Dataset
 
 class DatasetSplit(Dataset):
