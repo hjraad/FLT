@@ -260,6 +260,7 @@ def clustering_encoder(dict_users, dataset_train, ae_model_dict, args):
                 clustering_matrix[idx0][idx1] = 1
             else:
                 clustering_matrix[idx0][idx1] = 0
+
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
 def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args):

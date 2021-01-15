@@ -214,17 +214,15 @@ def cifar_noniid_cluster(dataset, num_users, cluster):
         k = np.where(indices_array[ idxs_labels[1][i] ] == -1)[0][0]
         indices_array[ idxs_labels[1][i] ][k] = idxs_labels[0][i]
 
-    nr_of_clusters = num_users // cluster_size
+    nr_in_clusters = num_users // cluster_size
 
     for i in range(num_users):
-        cluster_index = (i//nr_of_clusters)
-        k = np.where(indices_array[ cluster[cluster_index][0] ] == -1)[0][0]
-        rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
-        dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][0] ][list(rand_set)]), axis=0)
-                                       
-        k = np.where(indices_array[ cluster[cluster_index][1] ] == -1)[0][0]
-        rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
-        dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][1] ][list(rand_set)]), axis=0)
+        cluster_index = (i//nr_in_clusters)
+        class_index_range = np.where(cluster[cluster_index] != -1)[0]
+        for j in class_index_range:
+            k = np.where(indices_array[ cluster[cluster_index][j] ] == -1)[0][0]
+            rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
+            dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][j] ][list(rand_set)]), axis=0)
     
     return dict_users
 

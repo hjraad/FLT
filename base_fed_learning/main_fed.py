@@ -191,7 +191,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
             plt.figure()
             plt.imshow(clustering_matrix)
-            plt.savefig(f'{args.results_root_dir}/Clustering/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_-{iter}.png')
+            plt.savefig(f'{args.results_root_dir}/Clustering/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
             plt.close()
         
         #print(clustering_matrix)
@@ -207,7 +207,6 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         print(f'Round {iter}, Average loss {loss_avg}')
         print(f'{iter}, {loss_avg}, ', end = '', file = outputFile)
         loss_train.append(loss_avg)
-
 
         if args.change_dataset_flag == True:
             if iter == (args.change_dataset_epoch-1):
@@ -283,7 +282,7 @@ def gen_cluster(args):
         # generate cluster settings    
         if args.flag_with_overlap:
             cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
-            lst = np.random.choice(10, 10, replace=False) # what it this?
+            lst = np.random.choice(10, 10, replace=False) # what is this?
 
             cluster[0][0] = 0
             cluster[0][1] = 1
