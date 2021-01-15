@@ -175,7 +175,7 @@ def clustering_perfect(num_users, dict_users, dataset_train, cluster, args):
     return clustering_matrix
 
 def clustering_umap(num_users, dict_users, dataset_train, args):
-    reducer_loaded = pickle.load( open( "./model_weights/umap_reducer_EMNIST.p", "rb" ) )
+    reducer_loaded = pickle.load( open( f'{args.model_root_dir}/umap_reducer_EMNIST.p', "rb" ) )
     reducer = reducer_loaded
 
     idxs_users = np.arange(num_users)
