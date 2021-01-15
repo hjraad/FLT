@@ -30,7 +30,7 @@ def mnist_noniid(dataset, num_users):
     :param num_users:
     :return:
     """
-    num_shards, num_imgs = 50,100#200, 300
+    num_shards, num_imgs = 200, 300
     idx_shard = [i for i in range(num_shards)]
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     idxs = np.arange(num_shards*num_imgs)

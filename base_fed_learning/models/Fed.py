@@ -7,7 +7,6 @@ import torch
 from torch import nn
 
 def FedAvg(w, clustering_matrix):
-
     w_avg = copy.deepcopy(w)
     for idx in range(len(w)):
         for k in w_avg[idx].keys():

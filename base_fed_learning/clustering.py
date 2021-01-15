@@ -165,6 +165,7 @@ def clustering_perfect(num_users, dict_users, dataset_train, cluster, args):
             label_matrix = np.concatenate((label_matrix, labels.numpy()), axis=0)
         label_matrix = np.unique(label_matrix)
         ar_label[idx][0:len(label_matrix)] = label_matrix
+    
     clustering_matrix = np.zeros((num_users, num_users))
     for idx in idxs_users:
         for idx0 in idxs_users:
@@ -335,7 +336,6 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
                 clustering_matrix[idx0][idx1] = 0
                 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
-
 
 if __name__ == '__main__':
     # parse args
