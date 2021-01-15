@@ -50,7 +50,11 @@ def cluster_testdata_dict(dataset, num_users, cluster):
     """
     cluster_size = cluster.shape[0]
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
-    labels = dataset.train_labels.numpy()
+
+    if dataset_type in ['cifar', 'CIFAR10']:
+        labels = np.array(dataset.targets)
+    else:
+        labels = dataset.train_labels.numpy()
 
     nr_in_clusters = num_users // cluster_size
 
@@ -102,9 +106,9 @@ def gen_model(dataset, dataset_train, num_users):
     img_size = dataset_train[0][0].shape
 
     # build model
-    if args.model == 'cnn' and dataset == 'cifar':
+    if args.model == 'cnn' and (dataset == 'cifar' or dataset == 'CIFAR10'):
         net_glob = CNNCifar(args=args).to(args.device)
-    elif args.model == 'cnn' and dataset == 'mnist':
+    elif args.model == 'cnn' and (dataset == 'mnist' or dataset == 'MNIST'):
         net_glob = CNNMnist(args=args).to(args.device)
     elif args.model == 'mlp':
         len_in = 1
@@ -386,7 +390,7 @@ def main(args, config_file_name):
     # setting the clustering format
     cluster, cluster_length = gen_cluster(args)
 
-    if args.target_dataset in ['CIFAR10', 'CIFAR100', 'CIFAR110']:
+    if args.target_dataset in ['cifar', 'CIFAR10', 'CIFAR100', 'CIFAR110']:
         transforms_dict = {    
         'train': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
         'test': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
