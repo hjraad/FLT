@@ -281,17 +281,30 @@ def gen_cluster(args):
             cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
 
-    else:
+    elif args.change_dataset_flag == False:
         cluster_length = args.num_users // args.nr_of_clusters
         # generate cluster settings    
         if args.flag_with_overlap:
             cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
             lst = np.random.choice(10, 10, replace=False) # what is this?
-            #cluster[0] = lst[0:3]
-            #cluster[1] = lst[2:5]
-            #cluster[2] = lst[4:7]
-            #cluster[3] = lst[6:9]
-            #cluster[4] = [lst[-2], lst[-1], lst[0]]
+            cluster[0] = lst[0:3]
+            cluster[1] = lst[2:5]
+            cluster[2] = lst[4:7]
+            cluster[3] = lst[6:9]
+            cluster[4] = [lst[-2], lst[-1], lst[0]]
+
+        else:
+            cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
+            cluster_array = np.random.choice(10, 10, replace=False)
+            for i in range(args.nr_of_clusters):
+                cluster[i] = cluster_array[i*2: i*2 + 2]
+
+    elif args.change_dataset_flag == True:
+        # scenario 3
+        cluster_length = args.num_users // args.nr_of_clusters
+        # generate cluster settings    
+        if args.flag_with_overlap:
+            cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
 
             cluster[0][0] = 0
             cluster[0][1] = 1
@@ -306,9 +319,6 @@ def gen_cluster(args):
             cluster[2][2] = 9
         else:
             cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
-            cluster_array = np.random.choice(10, 10, replace=False)
-            #for i in range(args.nr_of_clusters):
-            #    cluster[i] = cluster_array[i*2: i*2 + 2]
 
             cluster[0][0] = 0
             cluster[0][1] = 1
