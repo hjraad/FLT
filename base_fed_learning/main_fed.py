@@ -40,7 +40,7 @@ def set_random_seed():
 
     return
 
-def cluster_testdata_dict(dataset, num_users, cluster):
+def cluster_testdata_dict(dataset, dataset_type, num_users, cluster):
     """
     By: Mohammad Abdizadeh
     Sample clustered non-I.I.D client data from MNIST dataset
@@ -78,24 +78,24 @@ def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, clust
         # sample users
         if iid:
             dict_users = mnist_iid(dataset_train, num_users)
-            dict_test_users = cluster_testdata_dict(dataset_test, num_users, cluster)
+            dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
         else:
             dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
-            dict_test_users = cluster_testdata_dict(dataset_test, num_users, cluster)
+            dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
     #
     elif dataset_type in ['emnist', 'EMNIST']:     
         if not iid:
             dict_users = emnist_noniid_cluster(dataset_train, num_users, cluster, 
                                                random_shuffle=True)
-            dict_test_users = cluster_testdata_dict(dataset_test, num_users, cluster)
+            dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
     #       
     elif dataset_type in ['cifar', 'CIFAR10']:
         if iid:
             dict_users = cifar_iid(dataset_train, num_users)
-            dict_test_users = cluster_testdata_dict(dataset_test, num_users, cluster)
+            dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
         else:
             dict_users = cifar_noniid_cluster(dataset_train, num_users, cluster)
-            dict_test_users = cluster_testdata_dict(dataset_test, num_users, cluster)
+            dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
     #
     else:
         exit('Error: unrecognized dataset')
