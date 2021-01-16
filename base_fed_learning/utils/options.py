@@ -48,7 +48,7 @@ def args_parser():
     # clustering options
     parser.add_argument('--clustering_method', default='umap_central', help='clustering method: single, local, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central')
     parser.add_argument('--nr_of_clusters', default=5, help='number of clusters')
-    parser.add_argument('--flag_with_overlap', default='True', help='clustering with overlapped labels')
+    parser.add_argument('--flag_with_overlap', default=False, help='clustering with overlapped labels')
 
     # AE model
     parser.add_argument('--ae_model_name', default='model-1607623811-epoch40-latent128', help='Autoencoder model name')
@@ -60,14 +60,14 @@ def args_parser():
     parser.add_argument('--nr_epochs_sequential_training', default=2, help='number of epochs for training the encoder')
 
     # third party results
-    parser.add_argument('--multi_center', default='False', help='generate results for multi_center paper')
+    parser.add_argument('--multi_center', default=False, help='generate results for multi_center paper')
 
     # config file settings
-    parser.add_argument('--iter_to_iter_results', default='False', help='generate results for each iteration')
+    parser.add_argument('--iter_to_iter_results', default=False, help='generate results for each iteration')
     parser.add_argument('--config_root_dir', default='../configs', help='config file location')
 
     # table 3 config
-    parser.add_argument('--change_dataset_flag', default='False', help='generating results for a scenario where the dataset is changed')
+    parser.add_argument('--change_dataset_flag', default=False, help='generating results for a scenario where the dataset is changed')
     parser.add_argument('--change_dataset_epoch', type=int, default=5, help='epcoh number where the dataset is changed')
 
     args = parser.parse_args()
