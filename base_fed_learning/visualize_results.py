@@ -52,7 +52,7 @@ if __name__ == '__main__':
     
         # plot loss curve
         fig, ax = plt.subplots()
-        line_style = ['k^-', 'k^-', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--']
+        line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--']
         
         counter = 0
         for (idx, entry) in enumerate(entries):
