@@ -30,7 +30,16 @@ if __name__ == '__main__':
     marker_step = 5
     marker_size = 5
     legend_text_size = 'x-large'
-    legend_linewidth = 4
+    legend_linewidth = 1.5
+    grid_ticks = np.arange(0, 101, 10)
+    
+    name_dict = {
+        'fedavg': 'FedAvg',
+        'local': 'Local',
+        'fedsem': 'FedSem',
+        'ucfl-enc1': 'Ours (Enc1)',
+        'ucfl-enc2': 'Ours (Enc2)'
+    }
 
     # -----------------------------------
 
@@ -50,12 +59,16 @@ if __name__ == '__main__':
             print(idx)
 
             filename_decoded = entry.split("/")[-1].split("_")
-            if len(filename_decoded) < 3:
+            if len(filename_decoded) < 4:
                 print("Error in filename")
                 continue
-
-            dataset = filename_decoded[1]
-            clustering_method = filename_decoded[2].split(".")[0]
+            
+            if 'enc' not in entry:          
+                dataset = filename_decoded[2]
+                clustering_method = name_dict[filename_decoded[3].split(".")[0]]
+            else:
+                dataset = filename_decoded[2]
+                clustering_method = name_dict[filename_decoded[3] + '-' + filename_decoded[4].split(".")[0]]
        
             print(f'clustering method is {clustering_method}')
 
@@ -79,34 +92,17 @@ if __name__ == '__main__':
 
         plt.rcParams.update({'font.size': text_size})
 
-        legend = ax.legend(loc='lower right')#, shadow=True, fontsize='x-large')
-        leg = plt.legend()
+        # legend = ax.legend(loc='upper ri')#, shadow=True, fontsize='x-large')
+        leg = plt.legend(loc=2, prop={'size': 8})
         # get the individual lines inside legend and set line width
         for line in leg.get_lines():
             line.set_linewidth(legend_linewidth)
         # get label texts inside legend and set font size
-        for text in leg.get_texts():
-            text.set_fontsize(legend_text_size)
+        # for text in leg.get_texts():
+        #     text.set_fontsize(legend_text_size)
         plt.grid(color='k', linestyle=':', linewidth=1, axis='y')
-        plt.ylabel('accuracy (%)')
-        plt.xlabel('epoch')
+        ax.set_yticks(grid_ticks)
+        plt.ylabel('Accuracy (%)')
+        plt.xlabel('Epoch')
         plt.savefig(f'{results_path}/result.png')
         plt.show()
-"""
--   accuracy (%)
--    Text size (on axis, labels and titles and legend) encode in
--   dotted line -> dashed
--    thickness line -> encode in the program
--    marker (^ , s, o, d), and its size encoded
--   spacing of markers (every 5)
-    Naming convention, and order:
-        FedAvg (train),
-        FedAvg (test)
-        Local (train),
-        Local (test),
-        FedSem (train),
-        FedSem (test),
-        Ours (train)
-        Ours (test)
--        Axis grid -> only horizontal and every 10%
-"""
