@@ -195,7 +195,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
             plt.figure()
             plt.imshow(clustering_matrix)
-            plt.savefig(f'{args.results_root_dir}/Clustering/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+            plt.savefig(f'{args.results_root_dir}/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
             plt.close()
         
         #print(clustering_matrix)
@@ -344,7 +344,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
 
         plt.figure()
         plt.imshow(clustering_matrix)
-        plt.savefig(f'{args.results_root_dir}/Clustering/clust_perfect_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.savefig(f'{args.results_root_dir}/clust_perfect_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
 
     elif args.clustering_method == 'umap':
@@ -365,7 +365,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
             clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
         plt.figure()
         plt.imshow(clustering_matrix)
-        plt.savefig(f'{args.results_root_dir}/Clustering/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
     
     return clustering_matrix
