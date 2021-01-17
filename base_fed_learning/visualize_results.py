@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     # ----------------------------------
     # plotting settings
-    plot_linewidth = 3
+    plot_linewidth = 1.5
     text_size = 5
     marker_step = 5
     marker_size = 5
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     
         # plot loss curve
         fig, ax = plt.subplots()
-        line_style = ['k^-', 'k-.', 'rs-', 'r-.', 'bo-', 'b-.', 'gd-', 'g-.']
+        line_style = ['k^-', 'k^-', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--']
         
         counter = 0
         for (idx, entry) in enumerate(entries):
@@ -69,9 +69,11 @@ if __name__ == '__main__':
             markers_on = list(np.arange(0, df.shape[0], marker_step))
 
             ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*counter], 
-                    label=f'{clustering_method}: train_accuracy', linewidth =plot_linewidth, markevery=markers_on, markersize = marker_size)
+                    label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
             ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*counter+1], 
-                    label=f'{clustering_method}: test_accuracy', linewidth =plot_linewidth, markevery=markers_on, markersize = marker_size)
+                    label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
 
             counter += 1
 
