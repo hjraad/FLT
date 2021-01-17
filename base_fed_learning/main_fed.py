@@ -44,9 +44,13 @@ def cluster_testdata_dict(dataset, dataset_type, num_users, cluster):
     """
     By: Mohammad Abdizadeh
     Sample clustered non-I.I.D client data from MNIST dataset
-    :param dataset:
-    :param num_users:
-    :return:
+    Parameters:
+        dataset: target dataset
+        dataset_type 
+        num_users
+        cluster: cluster 2D array
+    Returns:
+        dict_users: user data sample index dictionary
     """
     cluster_size = cluster.shape[0]
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
@@ -67,6 +71,23 @@ def cluster_testdata_dict(dataset, dataset_type, num_users, cluster):
     return dict_users
 
 def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, cluster, dataset_split=''):
+    '''
+    By: Hadi Jamali-Rad
+    Data generation wrapper based on cluster structure 
+    Paramters:
+        iid: determines if iid sampling is employed or not
+        dataset_type: target dataset  
+        data_root_dir
+        transforms_dict: transforms for [train, test] data 
+        num_users
+        cluster: cluster 2D array
+        dataset_split: data split
+    Returns:
+        dataset_train
+        dataset_test
+        dict_train_users: user train data sample index dictionary 
+        dict_test_users: user test data sample index dictionary
+    '''
     # load dataset 
     _, image_datasets, dataset_sizes, class_names =\
             load_dataset(dataset_type, data_root_dir, transforms_dict, batch_size=8, shuffle_flag=False, dataset_split=dataset_split)
@@ -77,30 +98,30 @@ def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, clust
     if dataset_type in ['mnist', 'MNIST']:
         # sample users
         if iid:
-            dict_users = mnist_iid(dataset_train, num_users)
+            dict_train_users = mnist_iid(dataset_train, num_users)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
         else:
-            dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
+            dict_train_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
     #
     elif dataset_type in ['emnist', 'EMNIST']:     
         if not iid:
-            dict_users = emnist_noniid_cluster(dataset_train, num_users, cluster, 
+            dict_train_users = emnist_noniid_cluster(dataset_train, num_users, cluster, 
                                                random_shuffle=True)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
     #       
     elif dataset_type in ['cifar', 'CIFAR10']:
         if iid:
-            dict_users = cifar_iid(dataset_train, num_users)
+            dict_train_users = cifar_iid(dataset_train, num_users)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
         else:
-            dict_users = cifar_noniid_cluster(dataset_train, num_users, cluster)
+            dict_train_users = cifar_noniid_cluster(dataset_train, num_users, cluster)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
     #
     else:
         exit('Error: unrecognized dataset')
 
-    return dataset_train, dataset_test, dict_users, dict_test_users
+    return dataset_train, dataset_test, dict_train_users, dict_test_users
 
 def gen_model(dataset, dataset_train, num_users):
     img_size = dataset_train[0][0].shape
@@ -143,7 +164,6 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
         flat_list = [item for sublist in lst for item in sublist]
 
         models_parameter_list[i] = np.array(flat_list).reshape(1,model_params_length)
-
 
     if multi_center_initialization_flag:                
         kmeans = KMeans(n_clusters=args.nr_of_clusters, n_init=20).fit(models_parameter_list)
@@ -201,7 +221,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         #print(clustering_matrix)
         w_glob_list = FedAvg(w_locals, clustering_matrix)
 
-        # copy weight to net_glob
+        # copy weights to net_glob
         for idx in np.arange(num_users): #TODO: fix this
             net_glob_list[idx] = copy.deepcopy(net_glob_list[0])
             net_glob_list[idx].load_state_dict(w_glob_list[idx])
@@ -214,7 +234,6 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
         if args.change_dataset_flag == True:
             if iter == (args.change_dataset_epoch-1):
-                #generate dict_users, num_users, clustering_matrix, multi_center_flag, dataset_test, cluster, cluster_length
                 args.flag_with_overlap = True
                 # setting the clustering format
                 cluster, cluster_length = gen_cluster(args)
