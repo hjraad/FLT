@@ -1,0 +1,17 @@
+{
+"scenario"            : 4,
+"iid"                 : 0, 
+"clustering_method"   : "single",
+"nr_of_clusters"      : 10,
+"multi_center"        : 1,
+"epochs"              : 100,
+"local_ep"            : 1,
+"num_users"           : 2400,
+"num_classes"         : 47,
+"model"               : "mlp",
+"num_channels"        : 1,
+"flag_with_overlap"   : 0,
+"iter_to_iter_results": 1,
+"target_dataset"      : "EMNIST",
+"dataset_split"       : "balanced"
+}
