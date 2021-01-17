@@ -410,7 +410,7 @@ def main(args, config_file_name):
 
     # ----------------------------------
     # open the output file to write the results to
-    folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}'
+    folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}/{args.target_dataset}'
     
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
