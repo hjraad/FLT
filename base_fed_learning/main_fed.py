@@ -219,7 +219,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
             plt.close()
         
         #print(clustering_matrix)
-        w_glob_list = FedAvg(w_locals, clustering_matrix)
+        w_glob_list = FedAvg(w_locals, clustering_matrix, dict_users)
 
         # copy weights to net_glob
         for idx in np.arange(num_users): #TODO: fix this
