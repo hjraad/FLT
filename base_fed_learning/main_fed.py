@@ -264,16 +264,28 @@ def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cl
     acc_test_final = np.zeros(args.num_users)
     loss_test_final = np.zeros(args.num_users)
 
+    sum_weight_training = 0
+    sum_weight_test = 0
+
     for idx in evaluation_user_index_range:
         print("user under process: ", idx)
         acc_train_final[idx], loss_train_final[idx] = test_img_index(net_glob_list[idx], dataset_train, dict_users[idx], args)
         acc_test_final[idx], loss_test_final[idx] = test_img_index(net_glob_list[idx], dataset_test, dict_test_users[idx], args)
+        
+        sum_weight_training += len(dict_users[idx])
+        acc_train_final[idx] = acc_train_final[idx] * len(dict_users[idx])
+        
+        sum_weight_test += len(dict_test_users[idx])
+        acc_test_final[idx] = acc_test_final[idx] * len(dict_test_users[idx])
 
-    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[evaluation_user_index_range])))
-    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[evaluation_user_index_range])))
+    training_accuracy = np.sum(acc_train_final[evaluation_user_index_range]) / sum_weight_training
+    test_accuracy = np.sum(acc_test_final[evaluation_user_index_range]) / sum_weight_test
 
-    print('{:.2f}, '.format(np.average(acc_train_final[evaluation_user_index_range])), end = '', file = outputFile)
-    print('{:.2f}'.format(np.average(acc_test_final[evaluation_user_index_range])), file = outputFile)
+    print('Training accuracy: {:.2f}'.format(training_accuracy))
+    print('Testing accuracy: {:.2f}'.format(test_accuracy))
+
+    print('{:.2f}, '.format(training_accuracy), end = '', file = outputFile)
+    print('{:.2f}'.format(test_accuracy), file = outputFile)
 
     return
 
