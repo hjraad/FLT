@@ -17,7 +17,7 @@ import pandas as pd
 from glob import glob
 
 
-def visualize(result_directory_name):
+def visualize(result_directory_name, include_train=True):
     # plotting settings
     plot_linewidth = 1.5
     text_size = 5
@@ -40,9 +40,11 @@ def visualize(result_directory_name):
 
     # plot loss curve
     fig, ax = plt.subplots()
-    line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
-    
-    counter = 0
+    if include_train:
+        line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
+    else: 
+        line_style = ['k^-', 'rs-', 'bo-', 'gd-', 'mv-']
+        
     for (idx, entry) in enumerate(entries):
         print(idx)
 
@@ -69,14 +71,13 @@ def visualize(result_directory_name):
         
         markers_on = list(np.arange(0, df.shape[0], marker_step))
 
-        ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*counter], 
-                label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
-                markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*counter+1], 
+        if include_train:
+            ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx], 
+                    label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx+1], 
                 label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
                 markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-
-        counter += 1
 
     plt.rcParams.update({'font.size': text_size})
 
@@ -102,9 +103,9 @@ if __name__ == '__main__':
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
     # ----------------------------------
     plt.close('all')
-    result_directory_name = f'{args.results_root_dir}/main_fed/'
+    result_directory_name = f'{args.results_root_dir}/main_fed/new_weighted_model/'
     folder_list = sorted( glob(f'{result_directory_name}/*/*/') )
     
     for folder in folder_list:
-        visualize(folder)
+        visualize(folder, include_train=True)
     # ----------------------------------
