@@ -40,10 +40,9 @@ def visualize(result_directory_name, include_train=True):
 
     # plot loss curve
     fig, ax = plt.subplots()
-    if include_train:
-        line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
-    else: 
-        line_style = ['k^-', 'rs-', 'bo-', 'gd-', 'mv-']
+    
+    line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
+    
         
     for (idx, entry) in enumerate(entries):
         print(idx)
@@ -72,12 +71,14 @@ def visualize(result_directory_name, include_train=True):
         markers_on = list(np.arange(0, df.shape[0], marker_step))
 
         if include_train:
-            ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx], 
+            ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
                     label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
                     markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx+1], 
+
+        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
                 label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
                 markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+        
 
     plt.rcParams.update({'font.size': text_size})
 
@@ -107,5 +108,5 @@ if __name__ == '__main__':
     folder_list = sorted( glob(f'{result_directory_name}/*/*/') )
     
     for folder in folder_list:
-        visualize(folder, include_train=True)
+        visualize(folder, include_train=False)
     # ----------------------------------
