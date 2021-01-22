@@ -30,12 +30,13 @@ def visualize(result_directory_name, include_train=True):
     '''
     # plotting settings
     plot_linewidth = 1.5
-    text_size = 5
+    text_size = 10
     marker_step = 5
     marker_size = 5
-    legend_text_size = 'x-large'
     legend_linewidth = 1.5
     grid_ticks = np.arange(0, 101, 10)
+    legend_size = 10
+    
     
     name_dict = {
         'fedavg': 'FedAvg',
@@ -89,10 +90,16 @@ def visualize(result_directory_name, include_train=True):
                 label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
                 markevery=markers_on, markerfacecolor='none', markersize = marker_size)
         
+    # plt.rcParams.update({'font.size': text_size})
+    
+    plt.rc('font', size=text_size)          # controls default text sizes
+    plt.rc('axes', titlesize=text_size)     # fontsize of the axes title
+    plt.rc('axes', labelsize=text_size)    # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=text_size)    # fontsize of the tick labels
+    plt.rc('ytick', labelsize=text_size)    # fontsize of the tick labels
 
-    plt.rcParams.update({'font.size': text_size})
-
-    leg = plt.legend(loc=2, prop={'size': 8})
+    grid_ticks = np.arange(0, 101, 10)
+    leg = plt.legend(loc=4, prop={'size': legend_size})
     # get the individual lines inside legend and set line width
     for line in leg.get_lines():
         line.set_linewidth(legend_linewidth)
@@ -100,9 +107,9 @@ def visualize(result_directory_name, include_train=True):
     plt.grid(color='k', linestyle=':', linewidth=1, axis='y')
     ax.set_yticks(grid_ticks)
     plt.ylabel('Accuracy (%)')
-    plt.xlabel('Epoch')
+    plt.xlabel('Communication round')
     plt.savefig(f'{result_directory_name}/result.png')
-    #plt.show()
+    plt.close()
 
 
 if __name__ == '__main__':
@@ -115,5 +122,5 @@ if __name__ == '__main__':
     folder_list = sorted( glob(f'{result_directory_name}/*/*/') )
     
     for folder in folder_list:
-        visualize(folder, include_train=False)
+        visualize(folder, include_train=True)
     # ----------------------------------
