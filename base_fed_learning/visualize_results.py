@@ -18,6 +18,11 @@ from glob import glob
 
 
 def visualize(result_directory_name, include_train=True):
+    '''
+    Visualizes the accuracy results for different methods
+    By: Mohammad Abdizadeh & Hadi Jamali-Rad
+    e-mails:{moh.abdizadeh, h.jamali.rad}@gmail.com
+    '''
     # plotting settings
     plot_linewidth = 1.5
     text_size = 5
@@ -82,14 +87,11 @@ def visualize(result_directory_name, include_train=True):
 
     plt.rcParams.update({'font.size': text_size})
 
-    # legend = ax.legend(loc='upper ri')#, shadow=True, fontsize='x-large')
     leg = plt.legend(loc=2, prop={'size': 8})
     # get the individual lines inside legend and set line width
     for line in leg.get_lines():
         line.set_linewidth(legend_linewidth)
     # get label texts inside legend and set font size
-    # for text in leg.get_texts():
-    #     text.set_fontsize(legend_text_size)
     plt.grid(color='k', linestyle=':', linewidth=1, axis='y')
     ax.set_yticks(grid_ticks)
     plt.ylabel('Accuracy (%)')
