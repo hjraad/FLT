@@ -40,7 +40,7 @@ def visualize(result_directory_name):
 
     # plot loss curve
     fig, ax = plt.subplots()
-    line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--']
+    line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
     
     counter = 0
     for (idx, entry) in enumerate(entries):
