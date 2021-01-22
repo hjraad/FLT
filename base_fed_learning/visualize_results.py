@@ -1,3 +1,8 @@
+'''
+    Visualizes the accuracy results for different methods
+    By: Mohammad Abdizadeh & Hadi Jamali-Rad
+    e-mails:{moh.abdizadeh, h.jamali.rad}@gmail.com
+'''
 import matplotlib
 # matplotlib.use('Agg')
 import sys
@@ -19,9 +24,9 @@ from glob import glob
 
 def visualize(result_directory_name, include_train=True):
     '''
-    Visualizes the accuracy results for different methods
-    By: Mohammad Abdizadeh & Hadi Jamali-Rad
-    e-mails:{moh.abdizadeh, h.jamali.rad}@gmail.com
+    Parameters:
+        result_directory_name: parent folder to analyze and plot folder by folder
+        include_train: if training results should be plotted, defulat: True. 
     '''
     # plotting settings
     plot_linewidth = 1.5
