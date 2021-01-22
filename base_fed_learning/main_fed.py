@@ -183,8 +183,17 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
     return clustering_matrix, est_multi_center_new
 
 def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, 
-              multi_center_flag, dataset_test, transforms_dict, cluster, cluster_length, dict_test_users, outputFile):
-    print('iteration,training_average_loss,training_accuracy,test_accuracy', file = outputFile)
+              multi_center_flag, dataset_test, transforms_dict, cluster, cluster_length, dict_test_users, outputFile, outputFile_log):
+    print('iteration,training_average_loss,training_accuracy,test_accuracy,training_variance,test_variance', file = outputFile)
+    
+    print('0, ', end = '', file = outputFile_log)
+    evaluation_user_index_range = extract_evaluation_range(args)
+    for idx in evaluation_user_index_range:
+        print('{:.2f}, '.format(idx), end = '', file = outputFile_log)
+    for idx in evaluation_user_index_range:
+        print('{:.2f}, '.format(idx), end = '', file = outputFile_log)
+    print('', file = outputFile_log)
+
     # training
     loss_train = []
     if multi_center_flag:
@@ -229,7 +238,10 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
         print(f'Round {iter}, Average loss {loss_avg}')
-        print(f'{iter}, {loss_avg}, ', end = '', file = outputFile)
+        if (iter % args.iter_to_iter_results) == 0 or (iter == args.epochs - 1):
+            print(f'{iter}, {loss_avg}, ', end = '', file = outputFile)
+            print(f'{iter}, ', end = '', file = outputFile_log)
+
         loss_train.append(loss_avg)
 
         if args.change_dataset_flag == True:
@@ -245,19 +257,16 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
                 # clustering the clients
                 clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, iter)
 
-        if args.iter_to_iter_results == True:
+        if (iter % args.iter_to_iter_results) == 0 or (iter == args.epochs - 1):
             print(f'iteration under process: {iter}')
             #print(f'iteration under process: {iter}', file = outputFile)
             # testing: average over all clients
-            evaluation_index_range = extract_evaluation_range(args)
-            evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, dict_users, dict_test_users, args, outputFile)
-    
-    if args.iter_to_iter_results == False:
-        print(f'{iter}, {loss_avg}, ', end = '', file = outputFile)
+            #evaluation_index_range = extract_evaluation_range(args)
+            evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_user_index_range, dict_users, dict_test_users, args, outputFile, outputFile_log)
 
     return loss_train, net_glob_list, clustering_matrix
 
-def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_user_index_range, dict_users, dict_test_users, args, outputFile):
+def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_user_index_range, dict_users, dict_test_users, args, outputFile, outputFile_log):
     # evaluate the performance of the models on train and test datasets
     acc_train_final = np.zeros(args.num_users)
     loss_train_final = np.zeros(args.num_users)
@@ -267,25 +276,46 @@ def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cl
     sum_weight_training = 0
     sum_weight_test = 0
 
+    # ----------------------------------
+    # testing: average over all clients
     for idx in evaluation_user_index_range:
         print("user under process: ", idx)
         acc_train_final[idx], loss_train_final[idx] = test_img_index(net_glob_list[idx], dataset_train, dict_users[idx], args)
         acc_test_final[idx], loss_test_final[idx] = test_img_index(net_glob_list[idx], dataset_test, dict_test_users[idx], args)
         
-        sum_weight_training += len(dict_users[idx])
-        acc_train_final[idx] = acc_train_final[idx] * len(dict_users[idx])
+        if args.weithed_evaluation == True:
+            sum_weight_training += len(dict_users[idx])
+            acc_train_final[idx] = acc_train_final[idx] * len(dict_users[idx])
         
-        sum_weight_test += len(dict_test_users[idx])
-        acc_test_final[idx] = acc_test_final[idx] * len(dict_test_users[idx])
+            sum_weight_test += len(dict_test_users[idx])
+            acc_test_final[idx] = acc_test_final[idx] * len(dict_test_users[idx])
+            
+    if args.weithed_evaluation == True:
+        training_accuracy = np.sum(acc_train_final[evaluation_user_index_range]) / sum_weight_training
+        test_accuracy = np.sum(acc_test_final[evaluation_user_index_range]) / sum_weight_test
 
-    training_accuracy = np.sum(acc_train_final[evaluation_user_index_range]) / sum_weight_training
-    test_accuracy = np.sum(acc_test_final[evaluation_user_index_range]) / sum_weight_test
+        training_variance = np.var(acc_train_final[evaluation_user_index_range]) / sum_weight_training
+        test_variance = np.var(acc_test_final[evaluation_user_index_range]) / sum_weight_test
+    else:
+        training_accuracy = np.mean(acc_train_final[evaluation_user_index_range])
+        test_accuracy = np.mean(acc_test_final[evaluation_user_index_range])
+
+        training_variance = np.var(acc_train_final[evaluation_user_index_range])
+        test_variance = np.var(acc_test_final[evaluation_user_index_range])
 
     print('Training accuracy: {:.2f}'.format(training_accuracy))
     print('Testing accuracy: {:.2f}'.format(test_accuracy))
 
     print('{:.2f}, '.format(training_accuracy), end = '', file = outputFile)
-    print('{:.2f}'.format(test_accuracy), file = outputFile)
+    print('{:.2f}, '.format(test_accuracy), end = '', file = outputFile)
+    print('{:.2f}, '.format(training_variance), end = '', file = outputFile)
+    print('{:.2f}'.format(test_variance), file = outputFile)
+
+    for idx in evaluation_user_index_range:
+        print('{:.2f}, '.format(acc_train_final[idx]), end = '', file = outputFile_log)
+    for idx in evaluation_user_index_range:
+        print('{:.2f}, '.format(acc_test_final[idx]), end = '', file = outputFile_log)
+    print('', file = outputFile_log)
 
     return
 
@@ -430,6 +460,9 @@ def main(args, config_file_name):
     file_name = f'{folder_name}/{config_file_name.split(".")[0]}.csv'
     outputFile = open(file_name, 'w')
 
+    file_name = f'{folder_name}/{config_file_name.split(".")[0]}_log.csv'
+    outputFile_log = open(file_name, 'w')
+
     print(f'Processing configuration: {config_file_name}')   
 
     # setting the clustering format
@@ -455,14 +488,9 @@ def main(args, config_file_name):
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
     loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, 
                                                              clustering_matrix, args.multi_center, dataset_test, transforms_dict, 
-                                                             cluster, cluster_length, dict_test_users, outputFile)
+                                                             cluster, cluster_length, dict_test_users, outputFile, outputFile_log)
 
-    # ----------------------------------
-    # testing: average over all clients
-    if args.iter_to_iter_results == False:
-        evaluation_index_range = extract_evaluation_range(args)
-        evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_index_range, dict_users, dict_test_users, args, outputFile)
-
+    outputFile_log.close()
     outputFile.close()
 
     return loss_train

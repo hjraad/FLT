@@ -63,7 +63,8 @@ def args_parser():
     parser.add_argument('--multi_center', default=False, help='generate results for multi_center paper')
 
     # config file settings
-    parser.add_argument('--iter_to_iter_results', default=False, help='generate results for each iteration')
+    parser.add_argument('--weithed_evaluation', default=False, help='enable weithed accuracy evaluation')
+    parser.add_argument('--iter_to_iter_results', type=int, default=1, help='generate results for each iteration')
     parser.add_argument('--config_root_dir', default='../configs', help='config file location')
 
     # table 3 config
