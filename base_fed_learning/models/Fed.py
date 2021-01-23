@@ -12,12 +12,13 @@ def FedAvg(w, clustering_matrix, dict_users):
         for k in w_avg[idx].keys():
             w_avg[idx][k] = 0*w_avg[idx][k]
 
-            sum_len = 0
+            weight_sum = 0
             for i in range(0, len(w)):
-                if clustering_matrix[idx][i] == 1:
-                    w_avg[idx][k] += w[i][k]*len(dict_users[i])
-                    sum_len += len(dict_users[i])
+                # weighted averaging allowing soft thresholding
+                w_avg[idx][k] += w[i][k]*len(dict_users[i])*clustering_matrix[idx][i]
+                # w_avg[idx][k] += w[i][k]*len(dict_users[i])
+                weight_sum += len(dict_users[i])*clustering_matrix[idx][i]
 
-            w_avg[idx][k] = torch.div(w_avg[idx][k], sum_len)
+            w_avg[idx][k] = torch.div(w_avg[idx][k], weight_sum)
     
     return w_avg

@@ -182,7 +182,7 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
 
     return clustering_matrix, est_multi_center_new
 
-def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, 
+def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, clustering_matrix_soft,
               multi_center_flag, dataset_test, transforms_dict, cluster, cluster_length, dict_test_users, outputFile, outputFile_log):
     print('iteration,training_average_loss,training_accuracy,test_accuracy,training_variance,test_variance', file = outputFile)
     
@@ -228,7 +228,10 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
             plt.close()
         
         #print(clustering_matrix)
-        w_glob_list = FedAvg(w_locals, clustering_matrix, dict_users)
+        if args.flag_soft_clustering:
+            w_glob_list = FedAvg(w_locals, clustering_matrix_soft, dict_users)
+        else:
+            w_glob_list = FedAvg(w_locals, clustering_matrix, dict_users)
 
         # copy weights to net_glob
         for idx in np.arange(num_users): #TODO: fix this
@@ -393,7 +396,7 @@ def gen_cluster(args):
     return cluster, cluster_length
 
 def extract_clustering(dict_users, dataset_train, cluster, args, iter):
-
+    clustering_matrix_soft = np.zeros((args.num_users, args.num_users))
     if args.clustering_method == 'single':
         clustering_matrix = clustering_single(args.num_users)
         
@@ -422,14 +425,14 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
         args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
         ae_model_dict = encoder_model_capsul(args)
 
-        clustering_matrix, _, _, _ =\
+        clustering_matrix, clustering_matrix_soft, _, _ =\
             clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
         plt.figure()
         plt.imshow(clustering_matrix)
         plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
     
-    return clustering_matrix
+    return clustering_matrix, clustering_matrix_soft
 
 def extract_evaluation_range(args):
     if args.iid == True:
@@ -483,11 +486,11 @@ def main(args, config_file_name):
                                                        transforms_dict, args.num_users, cluster, dataset_split=args.dataset_split)
 
     # clustering the clients
-    clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, 0)
+    clustering_matrix, clustering_matrix_soft = extract_clustering(dict_users, dataset_train, cluster, args, 0)
 
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
     loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, 
-                                                             clustering_matrix, args.multi_center, dataset_test, transforms_dict, 
+                                                             clustering_matrix, clustering_matrix_soft, args.multi_center, dataset_test, transforms_dict, 
                                                              cluster, cluster_length, dict_test_users, outputFile, outputFile_log)
 
     outputFile_log.close()

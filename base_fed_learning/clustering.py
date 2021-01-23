@@ -303,7 +303,7 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
         cluster_size = cluster.shape[0]
         nr_in_clusters = args.num_users // cluster_size
         cluster_index = (user_id//nr_in_clusters)
-        class_index_range = np. where(cluster[cluster_index] != -1)[0]
+        class_index_range = np.where(cluster[cluster_index] != -1)[0]
         num_center = len(class_index_range)
 
         kmeans = KMeans(n_clusters=num_center, random_state=43).fit(embedding)

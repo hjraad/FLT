@@ -49,6 +49,7 @@ def args_parser():
     parser.add_argument('--clustering_method', default='umap_central', help='clustering method: single, local, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central')
     parser.add_argument('--nr_of_clusters', default=5, help='number of clusters')
     parser.add_argument('--flag_with_overlap', default=False, help='clustering with overlapped labels')
+    parser.add_argument('--flag_soft_clustering', default=False, help='clustering with soft thresholds')
 
     # AE model
     parser.add_argument('--ae_model_name', default='model-1607623811-epoch40-latent128', help='Autoencoder model name')
