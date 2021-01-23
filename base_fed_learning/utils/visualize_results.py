@@ -12,7 +12,7 @@ sys.path.append("./")
 
 import os
 import matplotlib.pyplot as plt
-from utils.options import args_parser
+from base_fed_learning.utils.options import args_parser
 import argparse
 from torchvision import datasets, transforms
 import torch
@@ -20,6 +20,12 @@ import torchvision
 import numpy as np
 import pandas as pd
 from glob import glob
+
+def cram_scattered_results():
+    '''
+    collects results across different files and spits out aggeregated results
+    '''
+    pass
 
 
 def visualize(result_directory_name, include_train=True):
@@ -118,7 +124,7 @@ if __name__ == '__main__':
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
     # ----------------------------------
     plt.close('all')
-    result_directory_name = f'{args.results_root_dir}/main_fed/new_weighted_model/'
+    result_directory_name = f'./../{args.results_root_dir}/main_fed/new_weighted_model/'
     folder_list = sorted( glob(f'{result_directory_name}/*/*/') )
     
     for folder in folder_list:
