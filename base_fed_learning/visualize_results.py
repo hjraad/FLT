@@ -30,9 +30,9 @@ def visualize(result_directory_name, include_train=True):
     '''
     # plotting settings
     plot_linewidth = 1.5
-    text_size = 10
+    text_size = 12
     marker_step = 5
-    marker_size = 5
+    marker_size = 7
     legend_linewidth = 1.5
     grid_ticks = np.arange(0, 101, 10)
     legend_size = 10
@@ -41,7 +41,7 @@ def visualize(result_directory_name, include_train=True):
     name_dict = {
         'fedavg': 'FedAvg',
         'local': 'Local',
-        'fedsem': 'FedSem',
+        'fedsem': 'FedSEM',
         'ucfl-enc1': 'Ours (Enc1)',
         'ucfl-enc2': 'Ours (Enc2)'
     }
