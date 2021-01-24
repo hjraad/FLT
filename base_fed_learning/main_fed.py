@@ -457,7 +457,7 @@ def main(args, config_file_name):
     file_name = f'{folder_name}/{config_file_name.split(".")[0]}.csv'
     outputFile = open(file_name, 'w')
 
-    file_name = f'{folder_name}/{config_file_name.split(".")[0]}_log.csv'
+    file_name = f'{folder_name}/{config_file_name.split(".")[0]}_allmodels_log.csv'
     outputFile_log = open(file_name, 'w')
 
     print(f'Processing configuration: {config_file_name}')   
