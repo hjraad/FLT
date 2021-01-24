@@ -444,9 +444,7 @@ def extract_evaluation_range(args):
 def main(args, config_file_name):
     # set the random genertors' seed
     set_random_seed()
-    args.scenario = 3
-    args.iter_to_iter_results = 25
-    args.num_users = 100
+
     # ----------------------------------
     # open the output file to write the results to
     folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}/{args.target_dataset}'
@@ -506,8 +504,6 @@ if __name__ == '__main__':
         with open(f'{args.config_root_dir}/{entry}') as f:
             args = args_parser()
             args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-            args.scenario = 3
-            args.iter_to_iter_results = 25
             config_file_name = entry
             print(f'working on the cofig file: {args.config_root_dir}/{entry}')
             parser = argparse.ArgumentParser()
