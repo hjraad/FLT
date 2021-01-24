@@ -335,7 +335,12 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
                 clustering_matrix[idx0][idx1] = 1
             else:
                 clustering_matrix[idx0][idx1] = 0
-                
+    
+    clustering_matrix_soft = - clustering_matrix_soft
+    max_value = np.max(clustering_matrix_soft)
+    min_value = np.min(clustering_matrix_soft)
+    clustering_matrix_soft = (clustering_matrix_soft - min_value)/(max_value - min_value)
+
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
 if __name__ == '__main__':

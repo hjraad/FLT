@@ -428,7 +428,10 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
         clustering_matrix, clustering_matrix_soft, _, _ =\
             clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
         plt.figure()
-        plt.imshow(clustering_matrix)
+        if args.flag_soft_clustering:
+            plt.imshow(clustering_matrix_soft)
+        else:
+            plt.imshow(clustering_matrix)
         plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
     
