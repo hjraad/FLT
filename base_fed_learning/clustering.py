@@ -269,12 +269,12 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
     idxs_users = np.random.choice(args.num_users, args.num_users, replace=False)
     
     max_num_center = 2
-    for cluster_index in range(cluster.shape[1]):
+    for cluster_index in range(cluster.shape[0]):
         class_index_range = np.where(cluster[cluster_index] != -1)[0]
         max_num_center = max(max_num_center, len(class_index_range))
     
     #centers = np.zeros((num_users, max_num_center, 128)) # AE latent size going to be hyperparamter
-    centers = np.empty(args.latent_dim, dtype=int)
+    centers = np.empty((0, args.latent_dim), dtype=int)
     center_dict = {}
     embedding_matrix = np.zeros((len(dict_users[0])*args.num_users, args.latent_dim))
     
@@ -336,7 +336,7 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
             else:
                 clustering_matrix[idx0][idx1] = 0
                 
-    return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
+    return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix, c_dict
 
 if __name__ == '__main__':
     # parse args
@@ -347,7 +347,7 @@ if __name__ == '__main__':
     # args.ae_model_name = "model-1607623811-epoch40-latent128"
     # args.pre_trained_dataset = 'FMNIST'
 
-    args.num_users = 20
+    args.num_users = 100
     args.num_classes = 10
     args.target_dataset = 'CIFAR10'
     args.dataset_split = 'balanced'
@@ -395,7 +395,7 @@ if __name__ == '__main__':
     
     # ---------------------------------- 
     ae_model_dict = encoder_model_capsul(args)
-    args.nr_epochs_sequential_training = 30
+    args.nr_epochs_sequential_training = 5
     
     # ----------------------------------       
     args.clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
@@ -416,8 +416,8 @@ if __name__ == '__main__':
             clustering_encoder(dict_users, dataset_train, ae_model_dict, args)
     #
     elif args.clustering_method == 'umap_central':
-        clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix =\
-            clustering_umap_central(dict_users, dataset_train, ae_model_dict, args)
+        clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix, c_dict =\
+            clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
     
     # ----------------------------------    
     # plot results
@@ -425,15 +425,15 @@ if __name__ == '__main__':
     # ----------------------------------
     plt.figure(1)
     plt.imshow(clustering_matrix,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_perfect_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_perfect_nrclust_nrusers-{args.num_users}-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
     plt.figure(2)
     plt.imshow(clustering_matrix0,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_{args.clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
     plt.figure(3)
     plt.imshow(-1*clustering_matrix0_soft,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/softClustMat_{args.clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/softClustMat_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
     # nr_of_centers = 2*cluster_length
     # colors = itertools.cycle(["r"] * nr_of_centers +["b"]*nr_of_centers+["g"]*nr_of_centers+["k"]*nr_of_centers+["y"]*nr_of_centers)
@@ -443,11 +443,46 @@ if __name__ == '__main__':
     #     plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
     # plt.savefig(f'{args.results_root_dir}/Clustering/centers_{args.clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
+        # ----------------------------------    
+    # plot embedding results in 3D
+    centers_embeding = np.reshape(centers, (args.num_users*2, args.latent_dim))
+
+    from sklearn.decomposition import PCA
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
+    # PCA decomposition
+    pca = PCA(n_components=3)
+    principalComponents = pca.fit_transform(centers_embeding)
+
+
+    fig = plt.figure(figsize = (8,8))
+    ax = fig.add_subplot(111, projection='3d')
+    nr_of_centers = len(c_dict[0])*cluster_length
+    colors = ['r']*nr_of_centers + ['b']*nr_of_centers +['g']*nr_of_centers+['k']*nr_of_centers+['y']*nr_of_centers
+    ax.scatter(principalComponents[:,0]
+               , principalComponents[:,1]
+               , principalComponents[:,2]
+               , s=30
+               , c = colors)
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    ax.set_zticklabels([])
+    plt.savefig(f'{args.results_root_dir}/Clustering/ecnoder_pca_plot3d_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+
+
     if args.clustering_method not in ['umap_central', 'umap']:
         plt.figure(5)
         nr_of_centers = len(dict_users[0])*cluster_length
         colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
         for i in range(args.nr_of_clusters):
             plt.scatter(embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers, 0], embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers:, 1], color=next(colors))
-        plt.savefig(f'{args.results_root_dir}/Clustering/embeddingMat_{args.clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+        plt.savefig(f'{args.results_root_dir}/Clustering/embeddingMat_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+    elif args.clustering_method == 'umap_central':
+        plt.figure(5)
+        nr_of_centers = len(c_dict[0])*cluster_length
+        colors = itertools.cycle(["r"]*nr_of_centers + ["b"]*nr_of_centers + ["g"]*nr_of_centers + ["k"]*nr_of_centers + ["y"]*nr_of_centers)
+        for i in range(args.num_users):
+            plt.scatter(c_dict[i][0][0], c_dict[i][0][1], color=next(colors))
+            plt.scatter(c_dict[i][1][0], c_dict[i][1][1], color=next(colors))
+        #c_dict
+        plt.savefig(f'{args.results_root_dir}/Clustering/umap_embeding_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     plt.show()

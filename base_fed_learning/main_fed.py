@@ -183,7 +183,7 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
     return clustering_matrix, est_multi_center_new
 
 def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, 
-              multi_center_flag, dataset_test, transforms_dict, cluster, cluster_length, dict_test_users, outputFile, outputFile_log):
+              multi_center_flag, dataset_test, transforms_dict, cluster, cluster_length, dict_test_users, args, outputFile, outputFile_log):
     print('iteration,training_average_loss,training_accuracy,test_accuracy,training_variance,test_variance', file = outputFile)
     
     print('0, ', end = '', file = outputFile_log)
@@ -360,35 +360,30 @@ def gen_cluster(args):
             for i in range(args.nr_of_clusters):
                 cluster[i] = cluster_array[i*2: i*2 + 2]
 
-    elif args.change_dataset_flag == True:
+    elif args.scenario == 3:
         # scenario 3
+        args.nr_of_clusters = 2
         cluster_length = args.num_users // args.nr_of_clusters
-        # generate cluster settings    
-        if args.flag_with_overlap:
-            cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
-
-            cluster[0][0] = 0
-            cluster[0][1] = 1
-            cluster[0][2] = -1
-
-            cluster[1][0] = 2
-            cluster[1][1] = 3
-            cluster[1][2] = 7
-
-            cluster[2][0] = 4
-            cluster[2][1] = 8
-            cluster[2][2] = 9
-        else:
-            cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
-
-            cluster[0][0] = 0
-            cluster[0][1] = 1
-
-            cluster[1][0] = 2
-            cluster[1][1] = 3
-
-            cluster[2][0] = 4
-            cluster[2][1] = 5
+        cluster = np.zeros((args.nr_of_clusters, 5), dtype='int64')
+        cluster_array = np.random.choice(10, 10, replace=False)
+        if args.cluster_overlap == 0:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[5:]
+        elif args.cluster_overlap == 20:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[4:9]
+        elif args.cluster_overlap == 40:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[3:8]
+        elif args.cluster_overlap == 60:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[2:7]
+        elif args.cluster_overlap == 80:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[1:6]
+        elif args.cluster_overlap == 100:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[0:5]
 
     return cluster, cluster_length
 
@@ -422,7 +417,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
         args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
         ae_model_dict = encoder_model_capsul(args)
 
-        clustering_matrix, _, _, _ =\
+        clustering_matrix, _, _, _, _ =\
             clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
         plt.figure()
         plt.imshow(clustering_matrix)
@@ -449,7 +444,9 @@ def extract_evaluation_range(args):
 def main(args, config_file_name):
     # set the random genertors' seed
     set_random_seed()
-
+    args.scenario = 3
+    args.iter_to_iter_results = 25
+    args.num_users = 100
     # ----------------------------------
     # open the output file to write the results to
     folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}/{args.target_dataset}'
@@ -488,7 +485,7 @@ def main(args, config_file_name):
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
     loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, 
                                                              clustering_matrix, args.multi_center, dataset_test, transforms_dict, 
-                                                             cluster, cluster_length, dict_test_users, outputFile, outputFile_log)
+                                                             cluster, cluster_length, dict_test_users, args, outputFile, outputFile_log)
 
     outputFile_log.close()
     outputFile.close()
@@ -509,7 +506,8 @@ if __name__ == '__main__':
         with open(f'{args.config_root_dir}/{entry}') as f:
             args = args_parser()
             args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-        
+            args.scenario = 3
+            args.iter_to_iter_results = 25
             config_file_name = entry
             print(f'working on the cofig file: {args.config_root_dir}/{entry}')
             parser = argparse.ArgumentParser()
