@@ -342,7 +342,7 @@ def gen_cluster(args):
             cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
 
-    elif args.change_dataset_flag == False:
+    elif args.scenario == 2:
         cluster_length = args.num_users // args.nr_of_clusters
         # generate cluster settings    
         if args.flag_with_overlap:
