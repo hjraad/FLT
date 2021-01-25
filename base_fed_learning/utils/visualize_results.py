@@ -207,7 +207,7 @@ if __name__ == '__main__':
     result_array = np.empty((0, 6))
     for i, string in enumerate(clustering_methods):
         file_list = sorted( glob(f'../{result_directory_name}scenario_3/MNIST/Scenario3_{i+1}*_{string}.csv') )
-        output_train, output_test = extract_scenario3(file_list)
+        output_train, output_test = extract_scenario_3(file_list)
         result_array = np.vstack((result_array, output_test))
     
     print(result_array)
