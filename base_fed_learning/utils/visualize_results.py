@@ -23,26 +23,25 @@ from glob import glob
 
 # plotting settings
 plot_linewidth = 1.5
-text_size = 5
+text_size = 12
 marker_step = 5
-marker_size = 5
-legend_text_size = 'x-large'
+marker_size = 7
 legend_linewidth = 1.5
-legened_location = 2
-legend_prop_size = 8
+legened_location = 4
+legend_prop_size = 10
 grid_ticks = np.arange(0, 101, 10)
 
 name_dict = {
     'fedavg': 'FedAvg',
     'local': 'Local',
-    'fedsem': 'FedSem',
-    'ucfl-enc1': 'Ours (Enc1)',
-    'ucfl-enc2': 'Ours (Enc2)'
+    'fedsem': 'FedSEM',
+    'ucfl_enc1': 'Ours (Enc1)',
+    'ucfl_enc2': 'Ours (Enc2)'
 }
 
 line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
 
-def visualize(result_directory_name):
+def visualize(result_directory_name, include_train =True):
     # -----------------------------------
     entries = sorted( glob(f'{result_directory_name}/Scenario*.csv') )
 
@@ -57,7 +56,9 @@ def visualize(result_directory_name):
         if len(filename_decoded) < 4:
             print("Error in filename")
             continue
-        if filename_decoded[-1] == 'log.csv':
+
+        # skipping all models_log files
+        if filename_decoded[-1] == 'allmodels_log.csv':
             print("skiping log file")
             continue
         
@@ -66,7 +67,7 @@ def visualize(result_directory_name):
             clustering_method = name_dict[filename_decoded[3].split(".")[0]]
         else:
             dataset = filename_decoded[2]
-            clustering_method = name_dict[filename_decoded[3] + '-' + filename_decoded[4].split(".")[0]]
+            clustering_method = name_dict[filename_decoded[3] + '_' + filename_decoded[4].split(".")[0]]
     
         print(f'clustering method is {clustering_method}')
 
@@ -76,7 +77,6 @@ def visualize(result_directory_name):
             print("Error reading file")
             continue
 
-        
         markers_on = list(np.arange(0, df.shape[0], marker_step))
 
         if include_train:
@@ -96,8 +96,6 @@ def visualize(result_directory_name):
     plt.rc('xtick', labelsize=text_size)    # fontsize of the tick labels
     plt.rc('ytick', labelsize=text_size)    # fontsize of the tick labels
 
-        counter += 1
-
     plt.rcParams.update({'font.size': text_size})
 
     # legend = ax.legend(loc='upper ri')#, shadow=True, fontsize='x-large')
@@ -115,31 +113,26 @@ def visualize(result_directory_name):
     plt.savefig(f'{result_directory_name}/result.png')
     #plt.show()
 
-def visualize_scenario3(result_array, clustering_methods, result_directory_name):
+def visualize_scenario_3(result_array, clustering_methods, result_directory_name):
     # -----------------------------------
     # plot loss curve
     fig, ax = plt.subplots()
+    marker_step = 1
     
-    counter = 0
     for idx in range(len(result_array)):
         print(idx)
 
-        data = result_array[idx]
-        print(data)
-        clustering_method = clustering_methods[idx]
+        test_data = result_array[idx]
+
+        clustering_method = name_dict[clustering_methods[idx]]
         
-        markers_on = list(np.arange(0, data.shape[0], marker_step))
+        markers_on = list(np.arange(0, test_data.shape[0], marker_step))
 
-        ax.plot(np.arange(len(data))*20, data, line_style[2*counter], 
-                label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
-                markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-        ax.plot(np.arange(len(data))*20, data, line_style[2*counter+1], 
-                label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+        ax.plot(np.arange(len(test_data))*20, test_data, line_style[2*idx], 
+                label=f'{clustering_method}', linewidth =plot_linewidth, 
                 markevery=markers_on, markerfacecolor='none', markersize = marker_size)
 
-        counter += 1
-
-    plt.rcParams.update({'font.size': text_size})
+    plt.gca().invert_xaxis()
 
     # legend = ax.legend(loc='upper ri')#, shadow=True, fontsize='x-large')
     leg = plt.legend(loc=legened_location, prop={'size': legend_prop_size})
@@ -151,10 +144,11 @@ def visualize_scenario3(result_array, clustering_methods, result_directory_name)
     ax.set_yticks(grid_ticks)
     plt.ylabel('Accuracy (%)')
     plt.xlabel('Communication round')
-    plt.savefig(f'{result_directory_name}/result.png')
+    plt.savefig(f'../{result_directory_name}/result.png')
+    plt.show()
     plt.close()
 
-def extract_scenario3(file_list):
+def extract_scenario_3(file_list):
     output_train = []
     output_test = []
 
@@ -200,23 +194,22 @@ if __name__ == '__main__':
         visualize(folder)
 
     
-    clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1']#, 'ucfl_enc2']
+    clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1', 'ucfl_enc2']
     result_array = np.empty((0, 6))
     for i, string in enumerate(clustering_methods):
-        file_list = sorted( glob(f'{result_directory_name}scenario_3/CIFAR10/Scenario3_{i+1}*_{string}.csv') )
-        output_train, output_test = extract_scenario3(file_list)
+        file_list = sorted( glob(f'../{result_directory_name}scenario_3/CIFAR10/Scenario3_{i+1}*_{string}.csv') )
+        output_train, output_test = extract_scenario_3(file_list)
         result_array = np.vstack((result_array, output_test))
     
-    print(result_array)
-    visualize_scenario3(result_array, clustering_methods, f'{result_directory_name}scenario_3/CIFAR10')
+    visualize_scenario_3(result_array, clustering_methods, f'{result_directory_name}scenario_3/CIFAR10')
 
-    clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1']#, 'ucfl_enc2']
+    clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1', 'ucfl_enc2']
     result_array = np.empty((0, 6))
     for i, string in enumerate(clustering_methods):
-        file_list = sorted( glob(f'{result_directory_name}scenario_3/MNIST/Scenario3_{i+1}*_{string}.csv') )
+        file_list = sorted( glob(f'../{result_directory_name}scenario_3/MNIST/Scenario3_{i+1}*_{string}.csv') )
         output_train, output_test = extract_scenario3(file_list)
         result_array = np.vstack((result_array, output_test))
     
     print(result_array)
-    visualize_scenario3(result_array, clustering_methods, f'{result_directory_name}scenario_3/MNIST')
+    visualize_scenario_3(result_array, clustering_methods, f'{result_directory_name}scenario_3/MNIST')
     # ----------------------------------
