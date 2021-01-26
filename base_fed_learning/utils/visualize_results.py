@@ -109,7 +109,7 @@ def visualize(result_directory_name, include_train =True):
     plt.grid(color='k', linestyle=':', linewidth=1, axis='y')
     ax.set_yticks(grid_ticks)
     plt.ylabel('Accuracy (%)')
-    plt.xlabel('Epoch')
+    plt.xlabel('Communication round')
     plt.savefig(f'{result_directory_name}/result.png')
     #plt.show()
 
@@ -143,8 +143,8 @@ def visualize_scenario_3(result_array, clustering_methods, result_directory_name
     plt.grid(color='k', linestyle=':', linewidth=1, axis='y')
     ax.set_yticks(grid_ticks)
     plt.ylabel('Accuracy (%)')
-    plt.xlabel('Communication round')
-    plt.savefig(f'../{result_directory_name}/result.png')
+    plt.xlabel('Label overlap percentage')
+    plt.savefig(f'{result_directory_name}/result.png')
     plt.show()
     plt.close()
 
@@ -174,42 +174,31 @@ if __name__ == '__main__':
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
     # ----------------------------------
     plt.close('all')
-    result_directory_name = f'{args.results_root_dir}/main_fed/'
     
-    folder_list = sorted( glob(f'{result_directory_name}/scenario_1/*/') )
-    
-    for folder in folder_list:
-        visualize(folder)
-    
-
-    folder_list = sorted( glob(f'{result_directory_name}/scenario_2/*/') )
+    result_directory_name = f'./../{args.results_root_dir}/main_fed/new_weighted_model/'
+    folder_list = sorted( glob(f'{result_directory_name}/*/*/') )
     
     for folder in folder_list:
-        visualize(folder)
+        print(folder)
+        if 'scenario_3' not in folder:
+            visualize(folder, include_train=True)
+        else:
+            clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1', 'ucfl_enc2']
+            result_array = np.empty((0, 6))
+            for i, string in enumerate(clustering_methods):
+                file_list = sorted( glob(f'{result_directory_name}scenario_3/CIFAR10/Scenario3_{i+1}*_{string}.csv') )
+                output_train, output_test = extract_scenario_3(file_list)
+                result_array = np.vstack((result_array, output_test))
+            
+            visualize_scenario_3(result_array, clustering_methods, f'{result_directory_name}scenario_3/CIFAR10')
 
-    
-    folder_list = sorted( glob(f'{result_directory_name}/scenario_4/*/') )
-    
-    for folder in folder_list:
-        visualize(folder)
-
-    
-    clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1', 'ucfl_enc2']
-    result_array = np.empty((0, 6))
-    for i, string in enumerate(clustering_methods):
-        file_list = sorted( glob(f'../{result_directory_name}scenario_3/CIFAR10/Scenario3_{i+1}*_{string}.csv') )
-        output_train, output_test = extract_scenario_3(file_list)
-        result_array = np.vstack((result_array, output_test))
-    
-    visualize_scenario_3(result_array, clustering_methods, f'{result_directory_name}scenario_3/CIFAR10')
-
-    clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1', 'ucfl_enc2']
-    result_array = np.empty((0, 6))
-    for i, string in enumerate(clustering_methods):
-        file_list = sorted( glob(f'../{result_directory_name}scenario_3/MNIST/Scenario3_{i+1}*_{string}.csv') )
-        output_train, output_test = extract_scenario_3(file_list)
-        result_array = np.vstack((result_array, output_test))
-    
-    print(result_array)
-    visualize_scenario_3(result_array, clustering_methods, f'{result_directory_name}scenario_3/MNIST')
+            clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1', 'ucfl_enc2']
+            result_array = np.empty((0, 6))
+            for i, string in enumerate(clustering_methods):
+                file_list = sorted( glob(f'{result_directory_name}scenario_3/MNIST/Scenario3_{i+1}*_{string}.csv') )
+                output_train, output_test = extract_scenario_3(file_list)
+                result_array = np.vstack((result_array, output_test))
+                
+            print(result_array)
+            visualize_scenario_3(result_array, clustering_methods, f'{result_directory_name}scenario_3/MNIST')
     # ----------------------------------
