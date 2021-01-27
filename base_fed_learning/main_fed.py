@@ -342,7 +342,7 @@ def gen_cluster(args):
             cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
 
-    elif args.scenario == 2:
+    elif args.scenario in [1, 2]:
         cluster_length = args.num_users // args.nr_of_clusters
         # generate cluster settings    
         if args.flag_with_overlap:
@@ -353,7 +353,6 @@ def gen_cluster(args):
             cluster[2] = lst[4:7]
             cluster[3] = lst[6:9]
             cluster[4] = [lst[-2], lst[-1], lst[0]]
-
         else:
             cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
             cluster_array = np.random.choice(10, 10, replace=False)
