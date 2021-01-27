@@ -30,7 +30,7 @@ def mnist_noniid(dataset, num_users):
     :param num_users:
     :return:
     """
-    num_shards, num_imgs = 200, 300
+    num_shards, num_imgs = num_users, int(len(dataset)/num_users)
     idx_shard = [i for i in range(num_shards)]
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     idxs = np.arange(num_shards*num_imgs)
@@ -58,7 +58,7 @@ def mnist_noniid_cluster(dataset, num_users, cluster):
     :return:
     """
     cluster_size = cluster.shape[0]
-    num_shards, num_imgs = 200, 300
+    num_shards, num_imgs = num_users, int(len(dataset)/num_users)
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     idxs = np.arange(num_shards*num_imgs)
     labels = dataset.train_labels.numpy()[idxs]
@@ -80,8 +80,11 @@ def mnist_noniid_cluster(dataset, num_users, cluster):
         class_index_range = np.where(cluster[cluster_index] != -1)[0]
         for j in class_index_range:
             k = np.where(indices_array[ cluster[cluster_index][j] ] == -1)[0][0]
-            rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
-            dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][j] ][list(rand_set)]), axis=0)
+            # TODO: pick one of these methods: random vs shard based
+            #rand_set = np.random.choice(k-1, int(num_imgs/len(class_index_range)), replace=False)
+            index = (i % nr_in_clusters) * int(num_imgs/len(class_index_range))
+            rand_set = np.arange(index, index + int(num_imgs/len(class_index_range)))
+            dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][j] ][rand_set]), axis=0)
     
     return dict_users
 
@@ -199,10 +202,10 @@ def cifar_noniid_cluster(dataset, num_users, cluster):
         dic_users: dictionary of user data sample indices
     """
     cluster_size = cluster.shape[0]
-    num_shards, num_imgs = 200, 250
+    num_shards, num_imgs = num_users, int(len(dataset)/num_users)
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     idxs = np.arange(num_shards*num_imgs)
-    labels = np.array(dataset.targets)
+    labels = np.array(dataset.targets)[idxs]
 
     # sort labels
     idxs_labels = np.vstack((idxs, labels))
@@ -221,8 +224,11 @@ def cifar_noniid_cluster(dataset, num_users, cluster):
         class_index_range = np.where(cluster[cluster_index] != -1)[0]
         for j in class_index_range:
             k = np.where(indices_array[ cluster[cluster_index][j] ] == -1)[0][0]
-            rand_set = set(np.random.choice(k-1, num_imgs, replace=False))
-            dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][j] ][list(rand_set)]), axis=0)
+            # TODO: pick one of these methods: random vs shard based
+            #rand_set = np.random.choice(k-1, int(num_imgs/len(class_index_range)), replace=False)
+            index = (i % nr_in_clusters) * int(num_imgs/len(class_index_range))
+            rand_set = np.arange(index, index + int(num_imgs/len(class_index_range)))
+            dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][j] ][rand_set]), axis=0)
     
     return dict_users
 

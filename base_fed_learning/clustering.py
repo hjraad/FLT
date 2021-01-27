@@ -108,7 +108,7 @@ def min_matching_distance(center_0, center_1):
             for i in range(len(center_small)):
                 summation = summation + (np.linalg.norm(center_small[i] - center_big[p][i])**2)
 
-            dist = summation/len(center_small)
+            dist = np.sqrt(summation)/len(center_small)
             if dist < distance:
                 distance = dist
     
