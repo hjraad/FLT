@@ -33,12 +33,8 @@ def read_dir(data_dir):
 
     files = os.listdir(data_dir)
     files = [f for f in files if f.endswith('.json')]
-    counter = 0
     for f in files:
         print(f)
-        counter += 1
-        #if counter == 10:
-        #    break
         file_path = os.path.join(data_dir,f)
         with open(file_path, 'r') as inf:
             cdata = json.load(inf)

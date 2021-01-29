@@ -167,26 +167,20 @@ class FEMNIST(VisionDataset):
         else:
             self.users, groups, self.data = read_data(train_data_dir, test_data_dir, train_flag = False)
 
-
-
         counter = 0        
         for i in range(len(self.users)):
             lst = list(counter + np.arange(len(self.data[self.users[i]]['y'])))
             self.dict_users.update({i: set(lst)})
-            counter = lst[-1] + 1#+= len(self.data[self.users[i]]['y'])
-        print(len(self.dict_users))
-        self.dict_index = {}
-        sum = 0
-        for i in range(len(self.users)):
-            sum += len(self.data[self.users[i]]['y'])
-        print(sum)
+            counter = lst[-1] + 1
 
-        counter = 0
+
+        self.dict_index = {}# define a dictionary to keep the location of a sample and the corresponding
+        length_data = 0
         for i in range(len(self.users)):
             for j in range(len(self.data[self.users[i]]['y'])):
-                self.dict_index[counter] = [i, j]
-                counter += 1
-        self.length_data = counter
+                self.dict_index[length_data] = [i, j]
+                length_data += 1
+        self.length_data = length_data
         self.num_classes = 100
         self.n_classes = 100
 
@@ -198,21 +192,17 @@ class FEMNIST(VisionDataset):
         Returns:
             tuple: (image, target) where target is index of the target class.
         """
-        img0, target0 = self.data[index], int(self.targets[index])
         [i, j] = self.dict_index[index]
         img, target = self.data[self.users[i]]['x'][j], int(self.data[self.users[i]]['y'][j])
 
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
-        #img0 = Image.fromarray(img0.numpy(), mode='L')
         img = Image.fromarray(np.array(img).reshape(28,28), mode='L')
 
         if self.transform is not None:
-            #img0 = self.transform(img0)
             img = self.transform(img)
 
         if self.target_transform is not None:
-            #target0 = self.target_transform(target0)
             target = self.target_transform(target)
 
         return img, target
@@ -277,37 +267,65 @@ class FEMNIST(VisionDataset):
         return "Split: {}".format("Train" if self.train is True else "Test")
 
 def gen_data(iid, dataset_type, num_users, cluster):
-    # load dataset and split users
-    if dataset_type == 'mnist':
+    '''
+    By: Hadi Jamali-Rad
+    Data generation wrapper based on cluster structure 
+    Paramters:
+        iid: determines if iid sampling is employed or not
+        dataset_type: target dataset  
+        data_root_dir
+        transforms_dict: transforms for [train, test] data 
+        num_users
+        cluster: cluster 2D array
+        dataset_split: data split
+    Returns:
+        dataset_train
+        dataset_test
+        dict_train_users: user train data sample index dictionary 
+        dict_test_users: user test data sample index dictionary
+    '''
+    # load dataset 
+    
+    if dataset_type in ['mnist', 'MNIST']:
         # trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
         trans_mnist = transforms.Compose([transforms.ToTensor()])
         dataset_train = MNIST('../data/mnist/', train=True, download=True, transform=trans_mnist)
         dataset_test = MNIST('../data/mnist/', train=False, download=True, transform=trans_mnist)
         # sample users
         if iid:
-            dict_users = mnist_iid(dataset_train, num_users)
+            dict_train_users = mnist_iid(dataset_train, num_users)
+            dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
         else:
-            dict_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
+            dict_train_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
+            dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
+    #
+    elif dataset_type in ['emnist', 'EMNIST']:     
+        if not iid:
+            dict_train_users = emnist_noniid_cluster(dataset_train, num_users, cluster, 
+                                               random_shuffle=True)
+            dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
+    #       
+    elif dataset_type in ['cifar', 'CIFAR10']:
+        if iid:
+            dict_train_users = cifar_iid(dataset_train, num_users)
+            dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
+        else:
+            dict_train_users = cifar_noniid_cluster(dataset_train, num_users, cluster)
+            dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
+    #
     elif dataset_type == 'femnist':
         # trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
         trans_mnist = transforms.Compose([transforms.ToTensor()])
         dataset_train = FEMNIST('../data/femnist/', train=True, download=True, transform=trans_mnist)
         dataset_test = FEMNIST('../data/femnist/', train=False, download=True, transform=trans_mnist)
         # sample users
-        dict_users_train = dataset_train.dict_users
-        dict_users_test = dataset_test.dict_users
-    elif dataset_type == 'cifar':
-        trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        dataset_train = datasets.CIFAR10('../data/cifar', train=True, download=True, transform=trans_cifar)
-        dataset_test = datasets.CIFAR10('../data/cifar', train=False, download=True, transform=trans_cifar)
-        if iid:
-            dict_users = cifar_iid(dataset_train, num_users)
-        else:
-            exit('Error: only consider IID setting in CIFAR10')
+        dict_train_users = dataset_train.dict_users
+        dict_test_users = dataset_test.dict_users
+    #
     else:
         exit('Error: unrecognized dataset')
 
-    return dataset_train, dataset_test, dict_users_train, dict_users_test
+    return dataset_train, dataset_test, dict_train_users, dict_test_users
 
 def gen_model(dataset, dataset_train, num_users):
     img_size = dataset_train[0][0].shape
@@ -368,7 +386,18 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
 
     return clustering_matrix, est_multi_center_new
 
-def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix):
+def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, 
+                                                             cluster, cluster_length, dict_test_users, args, outputFile, outputFile_log):
+    print('iteration,training_average_loss,training_accuracy,test_accuracy,training_variance,test_variance', file = outputFile)
+    
+    print('0, ', end = '', file = outputFile_log)
+    evaluation_user_index_range = extract_evaluation_range(args)
+    for idx in evaluation_user_index_range:
+        print('{:.2f}, '.format(idx), end = '', file = outputFile_log)
+    for idx in evaluation_user_index_range:
+        print('{:.2f}, '.format(idx), end = '', file = outputFile_log)
+    print('', file = outputFile_log)
+
     # training
     loss_train = []
 
@@ -604,7 +633,7 @@ def main(args, config_file_name):
     outputFile_log = open(file_name, 'w')
 
     print(f'Processing configuration: {config_file_name}')   
-    
+
     args.iid=True
     
     # setting the clustering format
@@ -615,21 +644,27 @@ def main(args, config_file_name):
         # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
         cluster[i] = np.random.choice(10, 10, replace=False)
     
-    # ----------------------------------
-    # case 2: N clients with labeled from all the images --> iid
-    # ----------------------------------
-    #dataset_train0, dataset_test0, dict_users0 = gen_data(False, 'femnist', 100, [])
-        
-    dataset_train, dataset_test, dict_users_train, dict_users_test = gen_data(args.iid, 'femnist', args.num_users, cluster)
-    args.num_users = len(dict_users_train)#
-    #dd = FEMNIST()
-    #print(dataset_train[100])
+
+    if args.target_dataset in ['cifar', 'CIFAR10', 'CIFAR100', 'CIFAR110']:
+        transforms_dict = {    
+        'train': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
+        'test': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        }
+    else:  
+        transforms_dict = {
+            'train': transforms.Compose([transforms.ToTensor()]),
+            'test': transforms.Compose([transforms.ToTensor()])
+        }
+
+    dataset_train, dataset_test, dict_train_users, dict_test_users = gen_data(args.iid, 'femnist', args.num_users, cluster)
+    args.num_users = len(dict_train_users)
 
     # clustering the clients
     clustering_matrix = clustering_single(args.num_users)
 
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
-    loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users_train, args.num_users, clustering_matrix)
+    loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_train_users, args.num_users, clustering_matrix, 
+                                                             cluster, cluster_length, dict_test_users, args, outputFile, outputFile_log)
 
     # testing: average over all clients
     # testing: average over clients in a same cluster
@@ -641,11 +676,15 @@ def main(args, config_file_name):
         print("user under process: ", idx)
         #print(list(dict_users_train[idx]))
         net_glob_list[idx].eval()
-        acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, list(dict_users_train[idx]), args)
-        acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, list(dict_users_test[idx]), args)
+        acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, list(dict_train_users[idx]), args)
+        acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, list(dict_test_users[idx]), args)
     print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0,args.num_users-1,cluster_length)])))
     print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0,args.num_users-1,cluster_length)])))
-    return
+
+    outputFile_log.close()
+    outputFile.close()
+
+    return loss_train
 
 if __name__ == '__main__':
     # parse args
