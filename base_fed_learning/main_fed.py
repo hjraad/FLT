@@ -8,9 +8,12 @@ sys.path.append("./../")
 sys.path.append("./../../")
 sys.path.append("./")
 
+import os
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
+import json
+import argparse
 from torchvision import datasets, transforms
 import torch
 import torchvision
@@ -38,9 +41,44 @@ from PIL import Image
 # ----------------------------------
 # Reproducability
 # ----------------------------------
-torch.manual_seed(123)
-np.random.seed(321)
-umap_random_state=42
+def set_random_seed():
+    torch.manual_seed(123)
+    np.random.seed(321)
+    umap_random_state=42
+
+    return
+
+def cluster_testdata_dict(dataset, dataset_type, num_users, cluster):
+    """
+    By: Mohammad Abdizadeh
+    Sample clustered non-I.I.D client data from MNIST dataset
+    Parameters:
+        dataset: target dataset
+        dataset_type 
+        num_users
+        cluster: cluster 2D array
+    Returns:
+        dict_users: user data sample index dictionary
+    """
+    cluster_size = cluster.shape[0]
+    dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
+
+    if dataset_type in ['cifar', 'CIFAR10']:
+        labels = np.array(dataset.targets)
+    else:
+        labels = dataset.train_labels.numpy()
+
+    nr_in_clusters = num_users // cluster_size
+
+    for i in range(num_users):
+        cluster_index = (i//nr_in_clusters)
+        for k in range(len(labels)):
+            if labels[k] in cluster[cluster_index]:
+                dict_users[i] = np.concatenate((dict_users[i], np.array([k])), axis=0)
+    
+    return dict_users
+
+
 from torchvision.datasets.utils import download_url, download_and_extract_archive, extract_archive, \
     verify_str_arg
 from torchvision.datasets import MNIST, utils
@@ -275,9 +313,9 @@ def gen_model(dataset, dataset_train, num_users):
     img_size = dataset_train[0][0].shape
 
     # build model
-    if args.model == 'cnn' and dataset == 'cifar':
+    if args.model == 'cnn' and (dataset == 'cifar' or dataset == 'CIFAR10'):
         net_glob = CNNCifar(args=args).to(args.device)
-    elif args.model == 'cnn' and dataset == 'mnist':
+    elif args.model == 'cnn' and (dataset == 'mnist' or dataset == 'MNIST'):
         net_glob = CNNMnist(args=args).to(args.device)
     elif args.model == 'mlp':
         len_in = 1
@@ -291,10 +329,44 @@ def gen_model(dataset, dataset_train, num_users):
 
     # copy weights
     w_glob = net_glob.state_dict()
-    net_glob_list = [net_glob for i in range(num_users)]
-    w_glob_list = [w_glob for i in range(num_users)]
+    net_glob_list = [copy.deepcopy(net_glob) for i in range(num_users)]
+    w_glob_list = [copy.deepcopy(w_glob) for i in range(num_users)]
     
     return net_glob, w_glob, net_glob_list, w_glob_list
+
+def get_model_params_length(model):
+    lst = [list(model[k].cpu().numpy().flatten()) for  k in model.keys()]
+    flat_list = [item for sublist in lst for item in sublist]
+
+    return len(flat_list)
+
+def clustering_multi_center(num_users, w_locals, multi_center_initialization_flag, est_multi_center, args):
+    model_params_length = get_model_params_length(w_locals[0])
+    models_parameter_list = np.zeros((num_users, model_params_length))
+
+    for i in range(num_users):
+        model = w_locals[i]
+        lst = [list(model[k].cpu().numpy().flatten()) for  k in model.keys()]
+        flat_list = [item for sublist in lst for item in sublist]
+
+        models_parameter_list[i] = np.array(flat_list).reshape(1,model_params_length)
+
+    if multi_center_initialization_flag:                
+        kmeans = KMeans(n_clusters=args.nr_of_clusters, n_init=20).fit(models_parameter_list)
+
+    else:
+        kmeans = KMeans(n_clusters=args.nr_of_clusters, init=est_multi_center, n_init=1).fit(models_parameter_list)#TODO: remove the best
+    
+    ind_center = kmeans.fit_predict(models_parameter_list)
+
+    est_multi_center_new = kmeans.cluster_centers_  
+    clustering_matrix = np.zeros((num_users, num_users))
+
+    for ii in range(len(ind_center)):
+        ind_inter_cluster = np.where(ind_center == ind_center[ii])[0]
+        clustering_matrix[ii,ind_inter_cluster] = 1
+
+    return clustering_matrix, est_multi_center_new
 
 def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix):
     # training
@@ -318,35 +390,221 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
                 w_locals.append(copy.deepcopy(w))
             loss_locals.append(copy.deepcopy(loss))
         # update global weights
+
+
+
+
+
+
+        
+        #print(clustering_matrix)
         w_glob_list = FedAvg(w_locals, clustering_matrix)
 
         # copy weight to net_glob
         for idx in np.arange(num_users): #TODO: fix this
-            net_glob_list0 = copy.deepcopy(net_glob_list[0])
-            net_glob_list0.load_state_dict(w_glob_list[idx])
-            net_glob_list[idx] = net_glob_list0
+            net_glob_list[idx] = copy.deepcopy(net_glob_list[0])
+            net_glob_list[idx].load_state_dict(w_glob_list[idx])
 
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
         print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
         loss_train.append(loss_avg)
-    
     return loss_train, net_glob_list
 
-if __name__ == '__main__':
-    # parse args
-    args = args_parser()
-    args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-    args.num_classes = 100# TODO: fix this
+def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_user_index_range, dict_users, dict_test_users, args, outputFile, outputFile_log):
+    # evaluate the performance of the models on train and test datasets
+    acc_train_final = np.zeros(args.num_users)
+    loss_train_final = np.zeros(args.num_users)
+    acc_test_final = np.zeros(args.num_users)
+    loss_test_final = np.zeros(args.num_users)
+
+    sum_weight_training = 0
+    sum_weight_test = 0
+
     # ----------------------------------
-    plt.close('all')
+    # testing: average over all clients
+    for idx in evaluation_user_index_range:
+        print("user under process: ", idx)
+        acc_train_final[idx], loss_train_final[idx] = test_img_index(net_glob_list[idx], dataset_train, dict_users[idx], args)
+        acc_test_final[idx], loss_test_final[idx] = test_img_index(net_glob_list[idx], dataset_test, dict_test_users[idx], args)
+        
+        if args.weithed_evaluation == True:
+            sum_weight_training += len(dict_users[idx])
+            acc_train_final[idx] = acc_train_final[idx] * len(dict_users[idx])
+        
+            sum_weight_test += len(dict_test_users[idx])
+            acc_test_final[idx] = acc_test_final[idx] * len(dict_test_users[idx])
+            
+    if args.weithed_evaluation == True:
+        training_accuracy = np.sum(acc_train_final[evaluation_user_index_range]) / sum_weight_training
+        test_accuracy = np.sum(acc_test_final[evaluation_user_index_range]) / sum_weight_test
+
+        training_variance = np.var(acc_train_final[evaluation_user_index_range]) / sum_weight_training
+        test_variance = np.var(acc_test_final[evaluation_user_index_range]) / sum_weight_test
+    else:
+        training_accuracy = np.mean(acc_train_final[evaluation_user_index_range])
+        test_accuracy = np.mean(acc_test_final[evaluation_user_index_range])
+
+        training_variance = np.var(acc_train_final[evaluation_user_index_range])
+        test_variance = np.var(acc_test_final[evaluation_user_index_range])
+
+    print('Training accuracy: {:.2f}'.format(training_accuracy))
+    print('Testing accuracy: {:.2f}'.format(test_accuracy))
+
+    print('{:.2f}, '.format(training_accuracy), end = '', file = outputFile)
+    print('{:.2f}, '.format(test_accuracy), end = '', file = outputFile)
+    print('{:.2f}, '.format(training_variance), end = '', file = outputFile)
+    print('{:.2f}'.format(test_variance), file = outputFile)
+
+    for idx in evaluation_user_index_range:
+        print('{:.2f}, '.format(acc_train_final[idx]), end = '', file = outputFile_log)
+    for idx in evaluation_user_index_range:
+        print('{:.2f}, '.format(acc_test_final[idx]), end = '', file = outputFile_log)
+    print('', file = outputFile_log)
+
+    return
+
+def gen_cluster(args):
+    # setting the clustering format
+    if args.iid == True:
+        nr_of_clusters = 1
     
+        cluster_length = args.num_users // nr_of_clusters
+        cluster = np.zeros((nr_of_clusters,10), dtype='int64')
+        for i in range(nr_of_clusters):
+            # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
+            cluster[i] = np.random.choice(10, 10, replace=False)
+
+    elif args.scenario in [1, 2]:
+        cluster_length = args.num_users // args.nr_of_clusters
+        # generate cluster settings    
+        if args.flag_with_overlap:
+            cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
+            lst = np.random.choice(10, 10, replace=False) # what is this?
+            cluster[0] = lst[0:3]
+            cluster[1] = lst[2:5]
+            cluster[2] = lst[4:7]
+            cluster[3] = lst[6:9]
+            cluster[4] = [lst[-2], lst[-1], lst[0]]
+
+        else:
+            cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
+            cluster_array = np.random.choice(10, 10, replace=False)
+            for i in range(args.nr_of_clusters):
+                cluster[i] = cluster_array[i*2: i*2 + 2]
+
+    elif args.scenario == 3:
+        # scenario 3
+        args.nr_of_clusters = 2
+        cluster_length = args.num_users // args.nr_of_clusters
+        cluster = np.zeros((args.nr_of_clusters, 5), dtype='int64')
+        cluster_array = np.random.choice(10, 10, replace=False)
+        if args.cluster_overlap == 0:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[5:]
+        elif args.cluster_overlap == 20:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[4:9]
+        elif args.cluster_overlap == 40:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[3:8]
+        elif args.cluster_overlap == 60:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[2:7]
+        elif args.cluster_overlap == 80:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[1:6]
+        elif args.cluster_overlap == 100:
+            cluster[0] = cluster_array[0:5]
+            cluster[1] = cluster_array[0:5]
+
+    elif args.target_dataset == 'EMNIST':
+        nr_of_clusters = args.nr_of_clusters
+        cluster_length = args.num_users // nr_of_clusters
+        n_1 = 47 // (nr_of_clusters - 1)
+        n_2 = 47 % n_1
+        cluster = np.zeros((nr_of_clusters, n_1), dtype='int64')
+        # cluster_array = np.random.choice(47, 47, replace=False)
+        cluster_array = np.arange(47)
+        for i in range(nr_of_clusters - 1):
+            cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
+        cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
+
+    return cluster, cluster_length
+
+def extract_clustering(dict_users, dataset_train, cluster, args, iter):
+
+    if args.clustering_method == 'single':
+        clustering_matrix = clustering_single(args.num_users)
+        
+    elif args.clustering_method == 'local':
+        clustering_matrix = clustering_seperate(args.num_users)
+
+    elif args.clustering_method == 'perfect':
+        clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, cluster, args)
+
+        plt.figure()
+        plt.imshow(clustering_matrix)
+        plt.savefig(f'{args.results_root_dir}/clust_perfect_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.close()
+
+    elif args.clustering_method == 'umap':
+        clustering_matrix, _, _ = clustering_umap(args.num_users, dict_users, dataset_train, args)
+
+    elif args.clustering_method == 'encoder':
+        args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
+        ae_model_dict = encoder_model_capsul(args)
+
+        clustering_matrix, _, _, _ =\
+            clustering_encoder(dict_users, dataset_train, ae_model_dict, args)
+
+    elif args.clustering_method == 'umap_central':
+        args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
+        ae_model_dict = encoder_model_capsul(args)
+
+        clustering_matrix, _, _, _, _ =\
+            clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
+        plt.figure()
+        plt.imshow(clustering_matrix)
+        plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.close()
+    
+    return clustering_matrix
+
+def extract_evaluation_range(args):
+    if args.iid == True:
+        evaluation_index_step = 1
+        evaluation_index_max = 1
+    elif args.clustering_method == 'single' and args.multi_center == False:
+        evaluation_index_step = args.num_users // args.nr_of_clusters# clustering_length
+        evaluation_index_max = args.num_users
+    else:
+        evaluation_index_step = 1
+        evaluation_index_max = args.num_users
+
+    evaluation_index_range = np.arange(0, evaluation_index_max, evaluation_index_step)
+
+    return evaluation_index_range
+
+def main(args, config_file_name):
+    # set the random genertors' seed
+    set_random_seed()
+
+    # ----------------------------------
     # open the output file to write the results to
-    outputFile = open(f'{args.results_root_dir}/main_fed/results_{args.num_users}_{args.clustering_method}.txt', 'w')
+    folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}/{args.target_dataset}'
     
-    # ----------------------------------
-    # case 1: N clients with labeled from all the images --> iid
-    # ----------------------------------
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+
+    file_name = f'{folder_name}/a.csv'
+    outputFile = open(file_name, 'w')
+
+    file_name = f'{folder_name}/a_allmodels_log.csv'
+    outputFile_log = open(file_name, 'w')
+
+    print(f'Processing configuration: {config_file_name}')   
+    
     args.iid=True
     
     # setting the clustering format
@@ -370,7 +628,7 @@ if __name__ == '__main__':
     # clustering the clients
     clustering_matrix = clustering_single(args.num_users)
 
-    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.dataset, dataset_train, args.num_users)
+    net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
     loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users_train, args.num_users, clustering_matrix)
 
     # testing: average over all clients
@@ -387,4 +645,17 @@ if __name__ == '__main__':
         acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, list(dict_users_test[idx]), args)
     print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0,args.num_users-1,cluster_length)])))
     print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0,args.num_users-1,cluster_length)])))
+    return
 
+if __name__ == '__main__':
+    # parse args
+    args = args_parser()
+    args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
+
+    # ----------------------------------
+    plt.close('all')
+    entries = sorted(os.listdir(f'{args.config_root_dir}/'))
+
+    args.num_classes = 100# TODO: fix this
+    config_file_name = []
+    main(args, config_file_name)
