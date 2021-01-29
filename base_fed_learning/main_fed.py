@@ -17,13 +17,15 @@ import argparse
 from torchvision import datasets, transforms
 import torch
 import torchvision
-from base_fed_learning.utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid
+from base_fed_learning.utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid, cifar_noniid_cluster, emnist_noniid_cluster
 from base_fed_learning.utils.options import args_parser
+from utils.utils import extract_model_name
 from base_fed_learning.models.Update import LocalUpdate
 from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar
 from base_fed_learning.models.Fed import FedAvg
-from base_fed_learning.models.test import test_img, test_img_classes
-from clustering import clustering_single, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central
+from base_fed_learning.models.test import test_img, test_img_classes, test_img_index
+from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul
+from sklearn.cluster import KMeans
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 
@@ -432,9 +434,9 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
             plt.close()
         
         #print(clustering_matrix)
-        w_glob_list = FedAvg(w_locals, clustering_matrix)
+        w_glob_list = FedAvg(w_locals, clustering_matrix, dict_users)
 
-        # copy weight to net_glob
+        # copy weights to net_glob
         for idx in np.arange(num_users): #TODO: fix this
             net_glob_list[idx] = copy.deepcopy(net_glob_list[0])
             net_glob_list[idx].load_state_dict(w_glob_list[idx])
@@ -447,6 +449,27 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
             print(f'{iter}, ', end = '', file = outputFile_log)
 
         loss_train.append(loss_avg)
+
+        if args.change_dataset_flag == True:
+            if iter == (args.change_dataset_epoch-1):
+                args.flag_with_overlap = True
+                # setting the clustering format
+                cluster, cluster_length = gen_cluster(args)
+
+                dataset_train, dataset_test, dict_users, dict_test_users =\
+                    gen_data(args.iid, args.target_dataset, args.data_root_dir, 
+                             transforms_dict, args.num_users, cluster, dataset_split=args.dataset_split)
+
+                # clustering the clients
+                clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, iter)
+
+        if (iter % args.iter_to_iter_results) == 0 or (iter == args.epochs - 1):
+            print(f'iteration under process: {iter}')
+            #print(f'iteration under process: {iter}', file = outputFile)
+            # testing: average over all clients
+            #evaluation_index_range = extract_evaluation_range(args)
+            evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_user_index_range, dict_users, dict_test_users, args, outputFile, outputFile_log)
+
     return loss_train, net_glob_list, clustering_matrix
 
 def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_user_index_range, dict_users, dict_test_users, args, outputFile, outputFile_log):
@@ -613,6 +636,9 @@ def extract_evaluation_range(args):
     if args.iid == True:
         evaluation_index_step = 1
         evaluation_index_max = 1
+    elif args.target_dataset == 'FEMNIST' or args.target_dataset == 'EMNIST':# TODO: check with Hadi
+        evaluation_index_step = 1
+        evaluation_index_max = args.num_users
     elif args.clustering_method == 'single' and args.multi_center == False:
         evaluation_index_step = args.num_users // args.nr_of_clusters# clustering_length
         evaluation_index_max = args.num_users
@@ -643,7 +669,7 @@ def main(args, config_file_name):
 
     print(f'Processing configuration: {config_file_name}')   
 
-    args.iid=True
+    args.iid=False
     
     # setting the clustering format
     nr_of_clusters = 1
@@ -674,21 +700,6 @@ def main(args, config_file_name):
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
     loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, args.multi_center, dataset_test,  
                                                              cluster, cluster_length, dict_test_users, args, outputFile, outputFile_log)
-
-    # testing: average over all clients
-    # testing: average over clients in a same cluster
-    acc_train_final = np.zeros(args.num_users)
-    loss_train_final = np.zeros(args.num_users)
-    acc_test_final = np.zeros(args.num_users)
-    loss_test_final = np.zeros(args.num_users)
-    for idx in np.arange(0,args.num_users-1):#TODO: no need to loop over all the users!
-        print("user under process: ", idx)
-        #print(list(dict_users_train[idx]))
-        net_glob_list[idx].eval()
-        acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, list(dict_users[idx]), args)
-        acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, list(dict_test_users[idx]), args)
-    print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0,args.num_users-1,cluster_length)])))
-    print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0,args.num_users-1,cluster_length)])))
 
     outputFile_log.close()
     outputFile.close()

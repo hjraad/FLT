@@ -6,17 +6,18 @@ import copy
 import torch
 from torch import nn
 
-
-def FedAvg(w, clustering_matrix):
+def FedAvg(w, clustering_matrix, dict_users):
     w_avg = copy.deepcopy(w)
     for idx in range(len(w)):
-        for k in w_avg[0].keys():
-            w_avg[idx][k] = 0
-            counter = 0
+        for k in w_avg[idx].keys():
+            w_avg[idx][k] = 0*w_avg[idx][k]
+
+            sum_len = 0
             for i in range(0, len(w)):
                 if clustering_matrix[idx][i] == 1:
-                    w_avg[idx][k] += w[i][k]
-                    counter = counter + 1
-            w_avg[idx][k] = torch.div(w_avg[idx][k], counter)
+                    w_avg[idx][k] += w[i][k]*len(dict_users[i])
+                    sum_len += len(dict_users[i])
+
+            w_avg[idx][k] = torch.div(w_avg[idx][k], sum_len)
     
     return w_avg
