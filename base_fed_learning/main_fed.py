@@ -386,7 +386,7 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
 
     return clustering_matrix, est_multi_center_new
 
-def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, 
+def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, multi_center_flag, dataset_test, 
                                                              cluster, cluster_length, dict_test_users, args, outputFile, outputFile_log):
     print('iteration,training_average_loss,training_accuracy,test_accuracy,training_variance,test_variance', file = outputFile)
     
@@ -400,6 +400,9 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
     # training
     loss_train = []
+    if multi_center_flag:
+        multi_center_initialization_flag = True
+        est_multi_center = []
 
     if args.all_clients: 
         print("Aggregation over all clients")
@@ -419,12 +422,14 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
                 w_locals.append(copy.deepcopy(w))
             loss_locals.append(copy.deepcopy(loss))
         # update global weights
+        if multi_center_flag:
+            clustering_matrix, est_multi_center = clustering_multi_center(num_users, w_locals, multi_center_initialization_flag, est_multi_center, args)
+            multi_center_initialization_flag = False
 
-
-
-
-
-
+            plt.figure()
+            plt.imshow(clustering_matrix)
+            plt.savefig(f'{args.results_root_dir}/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+            plt.close()
         
         #print(clustering_matrix)
         w_glob_list = FedAvg(w_locals, clustering_matrix)
@@ -436,9 +441,13 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
-        print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
+        print(f'Round {iter}, Average loss {loss_avg}')
+        if (iter % args.iter_to_iter_results) == 0 or (iter == args.epochs - 1):
+            print(f'{iter}, {loss_avg}, ', end = '', file = outputFile)
+            print(f'{iter}, ', end = '', file = outputFile_log)
+
         loss_train.append(loss_avg)
-    return loss_train, net_glob_list
+    return loss_train, net_glob_list, clustering_matrix
 
 def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cluster_length, evaluation_user_index_range, dict_users, dict_test_users, args, outputFile, outputFile_log):
     # evaluate the performance of the models on train and test datasets
@@ -656,14 +665,14 @@ def main(args, config_file_name):
             'test': transforms.Compose([transforms.ToTensor()])
         }
 
-    dataset_train, dataset_test, dict_train_users, dict_test_users = gen_data(args.iid, 'femnist', args.num_users, cluster)
-    args.num_users = len(dict_train_users)
+    dataset_train, dataset_test, dict_users, dict_test_users = gen_data(args.iid, 'femnist', args.num_users, cluster)
+    args.num_users = len(dict_users)
 
     # clustering the clients
     clustering_matrix = clustering_single(args.num_users)
 
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
-    loss_train, net_glob_list = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_train_users, args.num_users, clustering_matrix, 
+    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, args.multi_center, dataset_test,  
                                                              cluster, cluster_length, dict_test_users, args, outputFile, outputFile_log)
 
     # testing: average over all clients
@@ -676,7 +685,7 @@ def main(args, config_file_name):
         print("user under process: ", idx)
         #print(list(dict_users_train[idx]))
         net_glob_list[idx].eval()
-        acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, list(dict_train_users[idx]), args)
+        acc_train_final[idx], loss_train_final[idx] = test_img_classes(net_glob_list[idx], dataset_train, list(dict_users[idx]), args)
         acc_test_final[idx], loss_test_final[idx] = test_img_classes(net_glob_list[idx], dataset_test, list(dict_test_users[idx]), args)
     print('Training accuracy: {:.2f}'.format(np.average(acc_train_final[np.arange(0,args.num_users-1,cluster_length)])))
     print('Testing accuracy: {:.2f}'.format(np.average(acc_test_final[np.arange(0,args.num_users-1,cluster_length)])))
