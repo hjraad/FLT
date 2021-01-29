@@ -28,17 +28,7 @@ from clustering import clustering_single, clustering_seperate, clustering_perfec
 from sklearn.cluster import KMeans
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
-
-import os
-import argparse
-
-from utils.args import parse_args
-from utils.model_utils import read_data
-from torch.utils.data import Dataset
-from torchvision.datasets.vision import VisionDataset
-from torchvision.datasets.mnist import MNIST
-import warnings
-from PIL import Image
+from manifold_approximation.utils.load_datasets import load_dataset
 
 # ----------------------------------
 # Reproducability
@@ -80,195 +70,7 @@ def cluster_testdata_dict(dataset, dataset_type, num_users, cluster):
     
     return dict_users
 
-
-from torchvision.datasets.utils import download_url, download_and_extract_archive, extract_archive, \
-    verify_str_arg
-from torchvision.datasets import MNIST, utils
-from PIL import Image
-import os.path
-import torch
-from torchvision.datasets.mnist import read_image_file, read_label_file
-class FEMNIST(VisionDataset):
-    """
-    This dataset is derived from the Leaf repository
-    (https://github.com/TalwalkarLab/leaf) pre-processing of the Extended MNIST
-    dataset, grouping examples by writer. Details about Leaf were published in
-    "LEAF: A Benchmark for Federated Settings" https://arxiv.org/abs/1812.01097.
-
-    Args:
-        root (string): Root directory of dataset where ``MNIST/processed/training.pt``
-            and  ``FEMNIST/processed/test.pt`` exist.
-        train (bool, optional): If True, creates dataset from ``training.pt``,
-            otherwise from ``test.pt``.
-        download (bool, optional): If true, downloads the dataset from the internet and
-            puts it in root directory. If dataset is already downloaded, it is not
-            downloaded again.
-        transform (callable, optional): A function/transform that  takes in an PIL image
-            and returns a transformed version. E.g, ``transforms.RandomCrop``
-        target_transform (callable, optional): A function/transform that takes in the
-            target and transforms it.
-    """
-
-    resources = [
-        ('https://raw.githubusercontent.com/tao-shen/FEMNIST_pytorch/master/femnist.tar.gz',
-         '59c65cec646fc57fe92d27d83afdf0ed')
-    ]
-
-    training_file = 'training.pt'
-    test_file = 'test.pt'
-    classes =  ['0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9',
-                    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 
-                    'M', 'N', 'O', 'P', 'Q','R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',  'Z',
-                    'a', 'b', 'd', 'e', 'f', 'g', 'h', 'n', 'q', 'r', 't']
-
-    @property
-    def train_labels(self):
-        warnings.warn("train_labels has been renamed targets")
-        return self.targets
-
-    @property
-    def test_labels(self):
-        warnings.warn("test_labels has been renamed targets")
-        return self.targets
-
-    @property
-    def train_data(self):
-        warnings.warn("train_data has been renamed data")
-        return self.data
-
-    @property
-    def test_data(self):
-        warnings.warn("test_data has been renamed data")
-        return self.data
-
-    def __init__(self, root, train=True, transform=None, target_transform=None,
-                 download=False):
-        super(FEMNIST, self).__init__(root, transform=transform,
-                                    target_transform=target_transform)
-        self.train = train  # training set or test set
-
-        if download:
-            self.download()
-
-        if not self._check_exists():
-            raise RuntimeError('Dataset not found.' +
-                               ' You can use download=True to download it')
-
-        if self.train:
-            data_file = self.training_file
-        else:
-            data_file = self.test_file
-        self.data, self.targets, _ = torch.load(os.path.join(self.processed_folder, data_file))
-
-        train_data_dir = os.path.join('..', 'data', 'femnist', 'FEMNIST', 'train')
-        test_data_dir = os.path.join('..', 'data', 'femnist', 'FEMNIST', 'test')  
-        self.dict_users = {}
-
-        if self.train == True:
-            self.users, groups, self.data = read_data(train_data_dir, test_data_dir, train_flag = True)
-        else:
-            self.users, groups, self.data = read_data(train_data_dir, test_data_dir, train_flag = False)
-
-        counter = 0        
-        for i in range(len(self.users)):
-            lst = list(counter + np.arange(len(self.data[self.users[i]]['y'])))
-            self.dict_users.update({i: set(lst)})
-            counter = lst[-1] + 1
-
-
-        self.dict_index = {}# define a dictionary to keep the location of a sample and the corresponding
-        length_data = 0
-        for i in range(len(self.users)):
-            for j in range(len(self.data[self.users[i]]['y'])):
-                self.dict_index[length_data] = [i, j]
-                length_data += 1
-        self.length_data = length_data
-        self.num_classes = 100
-        self.n_classes = 100
-
-    def __getitem__(self, index):
-        """
-        Args:
-            index (int): Index
-
-        Returns:
-            tuple: (image, target) where target is index of the target class.
-        """
-        [i, j] = self.dict_index[index]
-        img, target = self.data[self.users[i]]['x'][j], int(self.data[self.users[i]]['y'][j])
-
-        # doing this so that it is consistent with all other datasets
-        # to return a PIL Image
-        img = Image.fromarray(np.array(img).reshape(28,28), mode='L')
-
-        if self.transform is not None:
-            img = self.transform(img)
-
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-
-        return img, target
-
-    def __len__(self):
-        return self.length_data
-
-    @property
-    def raw_folder(self):
-        return os.path.join(self.root, self.__class__.__name__, 'raw')
-
-    @property
-    def processed_folder(self):
-        return os.path.join(self.root, self.__class__.__name__, 'processed')
-
-    @property
-    def class_to_idx(self):
-        return {_class: i for i, _class in enumerate(self.classes)}
-
-    def _check_exists(self):
-        return (os.path.exists(os.path.join(self.processed_folder,
-                                            self.training_file)) and
-                os.path.exists(os.path.join(self.processed_folder,
-                                            self.test_file)))
-
-    def download(self):
-        """Download the MNIST data if it doesn't exist in processed_folder already."""
-
-        if self._check_exists():
-            return
-
-        os.makedirs(self.raw_folder, exist_ok=True)
-        os.makedirs(self.processed_folder, exist_ok=True)
-
-        # download files
-        for url, md5 in self.resources:
-            filename = url.rpartition('/')[2]
-            download_and_extract_archive(url, download_root=self.raw_folder, filename=filename, md5=md5)
-
-        # process and save as torch files
-        print('Processing...')
-        """
-        training_set = (
-            read_image_file(os.path.join(self.raw_folder, 'train-images-idx3-ubyte')),
-            read_label_file(os.path.join(self.raw_folder, 'train-labels-idx1-ubyte'))
-        )
-        test_set = (
-            read_image_file(os.path.join(self.raw_folder, 't10k-images-idx3-ubyte')),
-            read_label_file(os.path.join(self.raw_folder, 't10k-labels-idx1-ubyte'))
-        )
-        with open(os.path.join(self.processed_folder, self.training_file), 'wb') as f:
-            torch.save(training_set, f)
-        with open(os.path.join(self.processed_folder, self.test_file), 'wb') as f:
-            torch.save(test_set, f)
-        """
-        os.replace(os.path.join(self.raw_folder, 'training.pt'), os.path.join(self.processed_folder, 'training.pt'))
-        os.replace(os.path.join(self.raw_folder, 'test.pt'), os.path.join(self.processed_folder, 'test.pt'))
-
-        print('Done!')
-
-    def extra_repr(self):
-        return "Split: {}".format("Train" if self.train is True else "Test")
-
-def gen_data(iid, dataset_type, num_users, cluster):
+def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, cluster, dataset_split=''):
     '''
     By: Hadi Jamali-Rad
     Data generation wrapper based on cluster structure 
@@ -287,12 +89,13 @@ def gen_data(iid, dataset_type, num_users, cluster):
         dict_test_users: user test data sample index dictionary
     '''
     # load dataset 
+    _, image_datasets, dataset_sizes, class_names =\
+            load_dataset(dataset_type, data_root_dir, transforms_dict, batch_size=8, shuffle_flag=False, dataset_split=dataset_split)
+    
+    dataset_train = image_datasets['train']
+    dataset_test = image_datasets['test']
     
     if dataset_type in ['mnist', 'MNIST']:
-        # trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-        trans_mnist = transforms.Compose([transforms.ToTensor()])
-        dataset_train = MNIST('../data/mnist/', train=True, download=True, transform=trans_mnist)
-        dataset_test = MNIST('../data/mnist/', train=False, download=True, transform=trans_mnist)
         # sample users
         if iid:
             dict_train_users = mnist_iid(dataset_train, num_users)
@@ -315,12 +118,7 @@ def gen_data(iid, dataset_type, num_users, cluster):
             dict_train_users = cifar_noniid_cluster(dataset_train, num_users, cluster)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
     #
-    elif dataset_type == 'femnist':
-        # trans_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-        trans_mnist = transforms.Compose([transforms.ToTensor()])
-        dataset_train = FEMNIST('../data/femnist/', train=True, download=True, transform=trans_mnist)
-        dataset_test = FEMNIST('../data/femnist/', train=False, download=True, transform=trans_mnist)
-        # sample users
+    elif dataset_type in ['femnist', 'FEMNIST']:
         dict_train_users = dataset_train.dict_users
         dict_test_users = dataset_test.dict_users
     #
@@ -388,8 +186,8 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
 
     return clustering_matrix, est_multi_center_new
 
-def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, multi_center_flag, dataset_test, 
-                                                             cluster, cluster_length, dict_test_users, args, outputFile, outputFile_log):
+def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, clustering_matrix, 
+              multi_center_flag, dataset_test, transforms_dict, cluster, cluster_length, dict_test_users, args, outputFile, outputFile_log):
     print('iteration,training_average_loss,training_accuracy,test_accuracy,training_variance,test_variance', file = outputFile)
     
     print('0, ', end = '', file = outputFile_log)
@@ -536,7 +334,19 @@ def gen_cluster(args):
             # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
             cluster[i] = np.random.choice(10, 10, replace=False)
 
-    elif args.scenario in [1, 2]:
+    elif args.target_dataset == 'EMNIST':
+        nr_of_clusters = args.nr_of_clusters
+        cluster_length = args.num_users // nr_of_clusters
+        n_1 = 47 // (nr_of_clusters - 1)
+        n_2 = 47 % n_1
+        cluster = np.zeros((nr_of_clusters, n_1), dtype='int64')
+        # cluster_array = np.random.choice(47, 47, replace=False)
+        cluster_array = np.arange(47)
+        for i in range(nr_of_clusters - 1):
+            cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
+        cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
+
+    elif args.scenario == 2:
         cluster_length = args.num_users // args.nr_of_clusters
         # generate cluster settings    
         if args.flag_with_overlap:
@@ -579,17 +389,9 @@ def gen_cluster(args):
             cluster[0] = cluster_array[0:5]
             cluster[1] = cluster_array[0:5]
 
-    elif args.target_dataset == 'EMNIST':
-        nr_of_clusters = args.nr_of_clusters
-        cluster_length = args.num_users // nr_of_clusters
-        n_1 = 47 // (nr_of_clusters - 1)
-        n_2 = 47 % n_1
-        cluster = np.zeros((nr_of_clusters, n_1), dtype='int64')
-        # cluster_array = np.random.choice(47, 47, replace=False)
-        cluster_array = np.arange(47)
-        for i in range(nr_of_clusters - 1):
-            cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
-        cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
+    elif args.target_dataset == 'FEMNIST':
+        cluster_length = args.num_users
+        cluster = []
 
     return cluster, cluster_length
 
@@ -661,24 +463,16 @@ def main(args, config_file_name):
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
 
-    file_name = f'{folder_name}/a.csv'
+    file_name = f'{folder_name}/{config_file_name.split(".")[0]}.csv'
     outputFile = open(file_name, 'w')
 
-    file_name = f'{folder_name}/a_allmodels_log.csv'
+    file_name = f'{folder_name}/{config_file_name.split(".")[0]}_allmodels_log.csv'
     outputFile_log = open(file_name, 'w')
 
     print(f'Processing configuration: {config_file_name}')   
 
-    args.iid=False
-    
     # setting the clustering format
-    nr_of_clusters = 1
-    cluster_length = args.num_users // nr_of_clusters
-    cluster = np.zeros((nr_of_clusters,10), dtype='int64')
-    for i in range(nr_of_clusters):
-        # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
-        cluster[i] = np.random.choice(10, 10, replace=False)
-    
+    cluster, cluster_length = gen_cluster(args)
 
     if args.target_dataset in ['cifar', 'CIFAR10', 'CIFAR100', 'CIFAR110']:
         transforms_dict = {    
@@ -691,14 +485,15 @@ def main(args, config_file_name):
             'test': transforms.Compose([transforms.ToTensor()])
         }
 
-    dataset_train, dataset_test, dict_users, dict_test_users = gen_data(args.iid, 'femnist', args.num_users, cluster)
-    args.num_users = len(dict_users)
+    dataset_train, dataset_test, dict_users, dict_test_users = gen_data(args.iid, args.target_dataset, args.data_root_dir, 
+                                                       transforms_dict, args.num_users, cluster, dataset_split=args.dataset_split)
 
     # clustering the clients
-    clustering_matrix = clustering_single(args.num_users)
+    clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, 0)
 
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
-    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, clustering_matrix, args.multi_center, dataset_test,  
+    loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, 
+                                                             clustering_matrix, args.multi_center, dataset_test, transforms_dict, 
                                                              cluster, cluster_length, dict_test_users, args, outputFile, outputFile_log)
 
     outputFile_log.close()
@@ -714,7 +509,21 @@ if __name__ == '__main__':
     # ----------------------------------
     plt.close('all')
     entries = sorted(os.listdir(f'{args.config_root_dir}/'))
+    for entry in entries:
+        if not entry.endswith(".json"):
+            continue
+        with open(f'{args.config_root_dir}/{entry}') as f:
+            args = args_parser()
+            args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
+            config_file_name = entry
+            print(f'working on the cofig file: {args.config_root_dir}/{entry}')
+            parser = argparse.ArgumentParser()
+            argparse_dict = vars(args)
+            argparse_dict.update(json.load(f))
 
-    args.num_classes = 100# TODO: fix this
-    config_file_name = []
-    main(args, config_file_name)
+            t_args = argparse.Namespace()
+            t_args.__dict__.update(argparse_dict)
+            #args = parser.parse_args(namespace=t_args)
+
+        main(t_args, config_file_name)
+  
