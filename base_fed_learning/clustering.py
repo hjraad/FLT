@@ -268,11 +268,6 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
     # idxs_users = np.random.shuffle(np.arange(num_users))
     idxs_users = np.random.choice(args.num_users, args.num_users, replace=False)
     
-    max_num_center = 2
-    for cluster_index in range(cluster.shape[0]):
-        class_index_range = np.where(cluster[cluster_index] != -1)[0]
-        max_num_center = max(max_num_center, len(class_index_range))
-    
     #centers = np.zeros((num_users, max_num_center, 128)) # AE latent size going to be hyperparamter
     centers = np.empty((0, args.latent_dim), dtype=int)
     center_dict = {}
@@ -300,11 +295,14 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
         # ----------------------------------
         # use Kmeans to cluster the data into 2 clusters
         #embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
-        cluster_size = cluster.shape[0]
-        nr_in_clusters = args.num_users // cluster_size
-        cluster_index = (user_id//nr_in_clusters)
-        class_index_range = np. where(cluster[cluster_index] != -1)[0]
-        num_center = len(class_index_range)
+        if args.target_dataset == 'FEMNIST':
+            num_center = args.nr_of_clusters
+        else:
+            cluster_size = cluster.shape[0]
+            nr_in_clusters = args.num_users // cluster_size
+            cluster_index = (user_id//nr_in_clusters)
+            class_index_range = np. where(cluster[cluster_index] != -1)[0]
+            num_center = len(class_index_range)
 
         kmeans = KMeans(n_clusters=num_center, random_state=43).fit(embedding)
         centers = np.vstack((centers, kmeans.cluster_centers_))

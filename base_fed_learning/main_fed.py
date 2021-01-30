@@ -133,7 +133,7 @@ def gen_model(dataset, dataset_train, num_users):
     # build model
     if args.model == 'cnn' and (dataset == 'cifar' or dataset == 'CIFAR10'):
         net_glob = CNNCifar(args=args).to(args.device)
-    elif args.model == 'cnn' and (dataset == 'mnist' or dataset == 'MNIST'):
+    elif args.model == 'cnn' and (dataset in ['mnist', 'MNIST', 'FEMNIST']):
         net_glob = CNNMnist(args=args).to(args.device)
     elif args.model == 'mlp':
         len_in = 1
@@ -283,7 +283,7 @@ def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cl
     # ----------------------------------
     # testing: average over all clients
     for idx in evaluation_user_index_range:
-        print("user under process: ", idx)
+        #print("user under process: ", idx)
         acc_train_final[idx], loss_train_final[idx] = test_img_index(net_glob_list[idx], dataset_train, dict_users[idx], args)
         acc_test_final[idx], loss_test_final[idx] = test_img_index(net_glob_list[idx], dataset_test, dict_test_users[idx], args)
         
@@ -391,7 +391,7 @@ def gen_cluster(args):
 
     elif args.target_dataset == 'FEMNIST':
         cluster_length = args.num_users
-        cluster = []
+        cluster = list(np.arange(args.num_classes))
 
     return cluster, cluster_length
 
@@ -438,7 +438,7 @@ def extract_evaluation_range(args):
     if args.iid == True:
         evaluation_index_step = 1
         evaluation_index_max = 1
-    elif args.target_dataset == 'FEMNIST' or args.target_dataset == 'EMNIST':# TODO: check with Hadi
+    elif args.target_dataset in ['FEMNIST', 'EMNIST']:
         evaluation_index_step = 1
         evaluation_index_max = args.num_users
     elif args.clustering_method == 'single' and args.multi_center == False:
@@ -488,6 +488,10 @@ def main(args, config_file_name):
     dataset_train, dataset_test, dict_users, dict_test_users = gen_data(args.iid, args.target_dataset, args.data_root_dir, 
                                                        transforms_dict, args.num_users, cluster, dataset_split=args.dataset_split)
 
+    
+    #args.num_users = len(dict_users)
+    #args.num_users = 10
+    print(f'number of users: {args.num_users }')
     # clustering the clients
     clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, 0)
 
