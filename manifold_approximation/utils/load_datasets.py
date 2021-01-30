@@ -120,9 +120,9 @@ class FEMNIST(VisionDataset):
         # TODO: automate this
         if True:# 47 classess
             for i in range(len(self.users)):
-                for j in range(len(self.data0[self.users[i]]['y'])):
-                    ll = self.data0[self.users[i]]['y'][j]
-                    self.data0[self.users[i]]['y'][j] = class_names_map[ll]
+                for j in range(len(self.data[self.users[i]]['y'])):
+                    ll = self.data[self.users[i]]['y'][j]
+                    self.data[self.users[i]]['y'][j] = class_names_map[ll]
 
         counter = 0        
         for i in range(len(self.users)):
