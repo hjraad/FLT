@@ -10,6 +10,8 @@ from torchvision.datasets.vision import VisionDataset
 from utils.model_utils import read_data
 import os
 from PIL import Image
+from torchvision.datasets.utils import download_url, download_and_extract_archive, extract_archive, \
+    verify_str_arg
 # from emnist import list_datasets, extract_training_samples, extract_test_samples
 
 class MySubset(Dataset):
