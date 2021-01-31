@@ -283,7 +283,8 @@ def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cl
     # ----------------------------------
     # testing: average over all clients
     for idx in evaluation_user_index_range:
-        #print("user under process: ", idx)
+        if idx % (len(evaluation_user_index_range) // 10) == 0:  
+            print("user under process: ", idx)
         acc_train_final[idx], loss_train_final[idx] = test_img_index(net_glob_list[idx], dataset_train, dict_users[idx], args)
         acc_test_final[idx], loss_test_final[idx] = test_img_index(net_glob_list[idx], dataset_test, dict_test_users[idx], args)
         
