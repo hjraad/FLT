@@ -21,7 +21,7 @@ from base_fed_learning.utils.sampling import mnist_iid, mnist_noniid, mnist_noni
 from base_fed_learning.utils.options import args_parser
 from utils.utils import extract_model_name
 from base_fed_learning.models.Update import LocalUpdate
-from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar
+from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar, CNNLeaf
 from base_fed_learning.models.Fed import FedAvg
 from base_fed_learning.models.test import test_img, test_img_classes, test_img_index
 from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul
@@ -140,6 +140,8 @@ def gen_model(dataset, dataset_train, num_users):
         for x in img_size:
             len_in *= x
         net_glob = MLP(dim_in=len_in, dim_hidden=200, dim_out=args.num_classes).to(args.device)
+    elif args.model == 'cnn_leaf':
+        net_glob = CNNLeaf(args=args).to(args.device)
     else:
         exit('Error: unrecognized model')
     print(net_glob)
