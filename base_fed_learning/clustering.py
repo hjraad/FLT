@@ -40,6 +40,9 @@ from manifold_approximation.utils.load_datasets import load_dataset
 
 from sympy.utilities.iterables import multiset_permutations
 
+from sklearn.decomposition import PCA
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
+
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -263,15 +266,56 @@ def clustering_encoder(dict_users, dataset_train, ae_model_dict, args):
 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
+
+def clustering_pca_kmeans(dict_users, cluster, dataset_train, args):
+    idxs_users = np.random.choice(args.num_users, args.num_users, replace=False)
+    
+    centers = np.empty((0, args.latent_dim), dtype=int)
+    center_dict = {}
+    embedding_matrix = np.zeros((len(dict_users[0])*args.num_users, args.latent_dim))
+    
+    for user_id in tqdm(idxs_users, desc='Clustering in progress ...'):
+        local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
+        
+        user_dataset_train = local.ldr_train.dataset
+        
+        user_data_np = np.squeeze(np.array([item[0].view(1, -1).numpy() for item in user_dataset_train]))
+        
+        pca = PCA(n_components=args.latent_dim)
+        embedding = pca.fit_transform(user_data_np)
+        
+        kmeans = KMeans(n_clusters=5, random_state=43).fit(embedding)
+        centers = np.vstack((centers, kmeans.cluster_centers_))
+        
+        center_dict[user_id] = kmeans.cluster_centers_
+    
+    clustering_matrix_soft = np.zeros((args.num_users, args.num_users))
+    clustering_matrix = np.zeros((args.num_users, args.num_users))
+
+    c_dict = center_dict
+
+    for idx0 in idxs_users:
+        c0 = c_dict[idx0]
+        for idx1 in idxs_users:
+            c0 = c_dict[idx0]
+            c1 = c_dict[idx1]
+        
+            distance = min_matching_distance(c0, c1)
+            
+            clustering_matrix_soft[idx0][idx1] = distance
+        
+            if distance < 1:
+                clustering_matrix[idx0][idx1] = 1
+            else:
+                clustering_matrix[idx0][idx1] = 0
+                
+    return clustering_matrix, clustering_matrix_soft, centers, c_dict
+
+
 def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args):
 
     # idxs_users = np.random.shuffle(np.arange(num_users))
     idxs_users = np.random.choice(args.num_users, args.num_users, replace=False)
-    
-    max_num_center = 2
-    for cluster_index in range(cluster.shape[0]):
-        class_index_range = np.where(cluster[cluster_index] != -1)[0]
-        max_num_center = max(max_num_center, len(class_index_range))
     
     #centers = np.zeros((num_users, max_num_center, 128)) # AE latent size going to be hyperparamter
     centers = np.empty((0, args.latent_dim), dtype=int)
@@ -398,7 +442,7 @@ if __name__ == '__main__':
     args.nr_epochs_sequential_training = 5
     
     # ----------------------------------       
-    args.clustering_method = 'umap_central'    # umap, encoder, sequential_encoder, umap_central
+    args.clustering_method = 'pca_kmeans'    # umap, encoder, sequential_encoder, umap_central, pca_kmeans
     
     # ----------------------------------
     # generate clustered data
@@ -418,6 +462,10 @@ if __name__ == '__main__':
     elif args.clustering_method == 'umap_central':
         clustering_matrix0, clustering_matrix0_soft, centers, embedding_matrix, c_dict =\
             clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
+            
+    elif args.clustering_method == 'pca_kmeans':
+        clustering_matrix0, clustering_matrix0_soft, centers, c_dict =\
+            clustering_pca_kmeans(dict_users, cluster, dataset_train, args)
     
     # ----------------------------------    
     # plot results
@@ -447,8 +495,7 @@ if __name__ == '__main__':
     # plot embedding results in 3D
     centers_embeding = np.reshape(centers, (args.num_users*2, args.latent_dim))
 
-    from sklearn.decomposition import PCA
-    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
+    
     # PCA decomposition
     pca = PCA(n_components=3)
     principalComponents = pca.fit_transform(centers_embeding)
