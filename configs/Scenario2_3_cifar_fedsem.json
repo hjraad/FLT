@@ -12,5 +12,6 @@
 "num_channels"        : 3,
 "gpu"                 : 0,
 "flag_with_overlap"   : 1,
-"iter_to_iter_results": 1
+"iter_to_iter_results": 1,
+"target_dataset"      : "CIFAR10"
 }
