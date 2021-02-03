@@ -24,7 +24,7 @@ from base_fed_learning.models.Update import LocalUpdate
 from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar
 from base_fed_learning.models.Fed import FedAvg
 from base_fed_learning.models.test import test_img, test_img_classes, test_img_index
-from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul
+from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, clustering_pca_kmeans, encoder_model_capsul
 from sklearn.cluster import KMeans
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
@@ -418,6 +418,17 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
 
         clustering_matrix, _, _, _, _ =\
             clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
+        plt.figure()
+        plt.imshow(clustering_matrix)
+        plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.close()
+
+    elif args.clustering_method == 'kmeans':
+        args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
+        ae_model_dict = encoder_model_capsul(args)
+
+        clustering_matrix, _, _, _ =\
+            clustering_pca_kmeans(dict_users, cluster, dataset_train, args)
         plt.figure()
         plt.imshow(clustering_matrix)
         plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
