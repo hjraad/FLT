@@ -431,7 +431,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
             clustering_pca_kmeans(dict_users, cluster, dataset_train, args)
         plt.figure()
         plt.imshow(clustering_matrix)
-        plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.savefig(f'{args.results_root_dir}/clust_pca_kmeans_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
     
     return clustering_matrix
