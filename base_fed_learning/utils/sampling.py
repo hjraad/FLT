@@ -120,6 +120,7 @@ def emnist_noniid_cluster(dataset, num_users, cluster,
         reshaped_idx_labels = np.concatenate((reshaped_idx_labels, idxs_labels[:,np.where(idxs_labels[1,:] == class_id)[0]]), axis=1)
     reshaped_idx_labels = reshaped_idx_labels.astype('int')
     
+    # 124-127: Assign 
     if nr_classes % nr_clusters > 0: # uneven clusters
         (nr_classes_a, nr_classes_b) = nr_classes // (nr_clusters- 1), nr_classes % (nr_clusters - 1)
     else:
@@ -133,7 +134,7 @@ def emnist_noniid_cluster(dataset, num_users, cluster,
             border_indices.append(int(len_a*(ind_cluster + 1)))  
     border_indices.append(nr_samples) 
     
-    if random_shuffle == True:
+    if random_shuffle == True: # users from that seq. randomly pick from different labels
         reshaped_idx_labels = np.transpose(reshaped_idx_labels)
         for ind in range(len(border_indices) - 1):
             np.random.shuffle(reshaped_idx_labels[border_indices[ind]:border_indices[ind + 1], :])
@@ -143,7 +144,7 @@ def emnist_noniid_cluster(dataset, num_users, cluster,
     nr_clients_per_cluster = nr_clients // nr_clusters
     
     KK = int(len_a)
-    FF = np.floor(len_a/2/nr_clients_per_cluster)
+    FF = np.floor(len_a/2/nr_clients_per_cluster) # starting point for the first user, it doesn't overflow
     yy = np.arange(1, nr_clients_per_cluster + 1)
     x = scipy.optimize.fsolve(func, x0=0, args=(yy[:, None], CC, KK, FF))
     li_a = [int(np.floor(FF + np.exp(CC*x*(i**2)))) for i in yy]
@@ -168,7 +169,7 @@ def emnist_noniid_cluster(dataset, num_users, cluster,
     final_arr = np.concatenate((arr_a, arr_b))
     
     prev_ind = 0
-    for ii in range(nr_clients):
+    for ii in range(nr_clients): # creating the output dict of users: user -> [idx]
         dict_users[ii] = reshaped_idx_labels[0, prev_ind: prev_ind + final_arr[ii]]
         prev_ind += final_arr[ii]
         

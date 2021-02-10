@@ -30,6 +30,7 @@ from sklearn.cluster import KMeans
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.utils.load_datasets import load_dataset
 
+from torchsummary import summary
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -145,6 +146,7 @@ def gen_model(dataset, dataset_train, num_users):
     else:
         exit('Error: unrecognized model')
     print(net_glob)
+    summary(net_glob)
     net_glob.train()
 
     # copy weights
