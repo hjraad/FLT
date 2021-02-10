@@ -1,8 +1,3 @@
-'''
-    Visualizes the accuracy results for different methods
-    By: Mohammad Abdizadeh & Hadi Jamali-Rad
-    e-mails:{moh.abdizadeh, h.jamali.rad}@gmail.com
-'''
 import matplotlib
 # matplotlib.use('Agg')
 import sys

@@ -1,8 +1,6 @@
 
 '''
 Train Umap based on the daset of choice
-@Author(s): Mohammad Abdizadeh & Hadi Jamali-Rad
-@email(s): {moh.abdizadeh. h.jamali.rad}@gmail.com
 See also => #https://umap-learn.readthedocs.io/en/latest/transform.html
 '''
 

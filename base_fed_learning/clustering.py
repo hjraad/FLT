@@ -1,9 +1,3 @@
-"""
-Created on Mon Nov 23 19:44:39 2020
-
-@author: Mohammad Abdizadeh & Hadi Jamali-Rad
-@email(s):{moh.abdizadeh, h.jamali.rad}@gmail.com
-"""
 import sys
 sys.path.append("./../")
 sys.path.append("./../../")
@@ -189,9 +183,7 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
     for idx in tqdm(idxs_users, desc='Clustering progress'):
         images_matrix = np.empty((0, channel_dim*input_dim*input_dim))
         local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
-        for batch_idx, (images, labels) in enumerate(local.ldr_train):#TODO: concatenate the matrices
-            # if batch_idx == 3:# TODO: abalation test
-            #     break
+        for batch_idx, (images, labels) in enumerate(local.ldr_train):
             ne = images.numpy().flatten().T.reshape((len(labels), channel_dim*input_dim*input_dim))
             images_matrix = np.vstack((images_matrix, ne))
         embedding1 = reducer.transform(images_matrix)

@@ -43,7 +43,6 @@ def set_random_seed():
 
 def cluster_testdata_dict(dataset, dataset_type, num_users, cluster):
     """
-    By: Mohammad Abdizadeh
     Sample clustered non-I.I.D client data from MNIST dataset
     Parameters:
         dataset: target dataset
@@ -73,7 +72,6 @@ def cluster_testdata_dict(dataset, dataset_type, num_users, cluster):
 
 def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, cluster, dataset_split=''):
     '''
-    By: Hadi Jamali-Rad
     Data generation wrapper based on cluster structure 
     Paramters:
         iid: determines if iid sampling is employed or not
@@ -177,7 +175,7 @@ def clustering_multi_center(num_users, w_locals, multi_center_initialization_fla
         kmeans = KMeans(n_clusters=args.nr_of_clusters, n_init=20).fit(models_parameter_list)
 
     else:
-        kmeans = KMeans(n_clusters=args.nr_of_clusters, init=est_multi_center, n_init=1).fit(models_parameter_list)#TODO: remove the best
+        kmeans = KMeans(n_clusters=args.nr_of_clusters, init=est_multi_center, n_init=1).fit(models_parameter_list)
     
     ind_center = kmeans.fit_predict(models_parameter_list)
 
@@ -239,7 +237,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         w_glob_list = FedAvg(w_locals, clustering_matrix, dict_users)
 
         # copy weights to net_glob
-        for idx in np.arange(num_users): #TODO: fix this
+        for idx in np.arange(num_users):
             net_glob_list[idx] = copy.deepcopy(net_glob_list[0])
             net_glob_list[idx].load_state_dict(w_glob_list[idx])
 
@@ -336,7 +334,6 @@ def gen_cluster(args):
         cluster_length = args.num_users // nr_of_clusters
         cluster = np.zeros((nr_of_clusters,10), dtype='int64')
         for i in range(nr_of_clusters):
-            # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
             cluster[i] = np.random.choice(10, 10, replace=False)
 
     elif args.target_dataset == 'EMNIST':

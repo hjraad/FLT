@@ -1,7 +1,5 @@
 '''
 Encoder Class (AE plus manifold approximation)
-@Author: Hadi Jamali-Rad
-@e-mail: h.jamali.rad@gmail.com
 '''
 
 from __future__ import print_function, division

@@ -57,7 +57,7 @@ def test_img_classes(net_g, datatest, classes, args):
         if args.gpu != -1:
             data, target = data.cuda(), target.cuda()
             
-        if target.cpu().numpy()[0] in classes:# TODO fix for cpu, .cpu()
+        if target.cpu().numpy()[0] in classes:
             log_probs = net_g(data)
             # sum up batch loss
             test_loss += F.cross_entropy(log_probs, target, reduction='sum').item()

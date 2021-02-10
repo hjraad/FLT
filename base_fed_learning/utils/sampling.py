@@ -51,7 +51,6 @@ def mnist_noniid(dataset, num_users):
 
 def mnist_noniid_cluster(dataset, num_users, cluster):
     """
-    Author: Mohammad Abdizadeh
     Sample clustered non-I.I.D client data from MNIST dataset
     :param dataset:
     :param num_users:
@@ -92,7 +91,7 @@ def emnist_noniid_cluster(dataset, num_users, cluster,
                           random_shuffle=False, 
                           sequential_sampling=False):
     '''
-    Author: Hadi Jamali-Rad 
+    
     Sampling method for non-IID federated-type power-law based EMNIST dataset. 
     Parameters: 
         dataset: dataset (torchvision)
@@ -191,7 +190,6 @@ def cifar_iid(dataset, num_users):
 
 def cifar_noniid_cluster(dataset, num_users, cluster):
     """
-    Author: Hadi Jamali-Rad and Mohammad Abdizadeh
     Sample clustered non-I.I.D client data from CIFAR10 dataset
     Parameters:
         dataset

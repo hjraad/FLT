@@ -1,7 +1,5 @@
 '''
 Model training procedure
-Author: Hadi Jamali-Rad
-email: h.jamalirad@gmail.com
 '''
 import torch
 import time
