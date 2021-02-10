@@ -1,58 +1,44 @@
-# Federated Learning
+# Server-Client Simulations
 
-This is partly the reproduction of the paper of [Communication-Efficient Learning of Deep Networks from Decentralized Data](https://arxiv.org/abs/1602.05629)   
-Only experiments on MNIST and CIFAR10 (both IID and non-IID) is produced by far.
+## FEMNIST Classifier Instructions
+- Ensure that the ```data/femnist/data/train``` and ```data/femnist/data/test``` directories contain data
+- Run ```python3 main.py -dataset femnist -model cnn```
+- For more simulation options and details, see 'Additional Notes' section
 
-Note: The scripts will be slow without the implementation of parallel computing. 
+## Sentiment140 Classifier Instructions
+- Ensure that the ```data/sent140/data/train``` and ```data/sent140/data/test``` directories contain data
+- If you already have a .txt file containing word embeddings (i.e. 'glove.6B.300d.txt') in the sent140 directory, run ```sent140/get_embs.py -f fp```, where fp is the file path to the .txt file, to generate a .json file for the classifier to load. Otherwise, run ```./sent140/get_embs.sh```, which downloads the embeddings and creates the .json file.
+- Run ```python3 main.py -dataset sent140 -model stacked_lstm```
+- For more simulation options and details, see 'Additional Notes' section
 
-## Requirements
-python>=3.6  
-pytorch>=0.4
+## Shakespeare Classifier Instructions
+- Ensure that the ```data/shakespeare/data/train``` and ```data/shakespeare/data/test``` directories contain data
+- Run ```python3 main.py -dataset shakespeare -model stacked_lstm```
+- For more simulation options and details, see 'Additional Notes' section
 
-## Run
-
-The MLP and CNN models are produced by:
-> python [main_nn.py](main_nn.py)
-
-Federated learning with MLP and CNN is produced by:
-> python [main_fed.py](main_fed.py)
-
-See the arguments in [options.py](utils/options.py). 
-
-For example:
-> python main_fed.py --dataset mnist --iid --num_channels 1 --model cnn --epochs 50 --gpu 0  
-
-`--all_clients` for averaging over all client models
-
-NB: for CIFAR-10, `num_channels` must be 3.
-
-## Results
-### MNIST
-Results are shown in Table 1 and Table 2, with the parameters C=0.1, B=10, E=5.
-
-Table 1. results of 10 epochs training with the learning rate of 0.01
-
-| Model     | Acc. of IID | Acc. of Non-IID|
-| -----     | -----       | ----           |
-| FedAVG-MLP|  94.57%     | 70.44%         |
-| FedAVG-CNN|  96.59%     | 77.72%         |
-
-Table 2. results of 50 epochs training with the learning rate of 0.01
-
-| Model     | Acc. of IID | Acc. of Non-IID|
-| -----     | -----       | ----           |
-| FedAVG-MLP| 97.21%      | 93.03%         |
-| FedAVG-CNN| 98.60%      | 93.81%         |
-
-
-## Ackonwledgements
-Acknowledgements give to [youkaichao](https://github.com/youkaichao).
-
-## References
-McMahan, Brendan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In Artificial Intelligence and Statistics (AISTATS), 2017.
-
-Shaoxiong Ji, Shirui Pan, Guodong Long, Xue Li, Jing Jiang, and Zi Huang. Learning private neural language modeling with attentive aggregation. In the 2019 International Joint Conference on Neural Networks (IJCNN), 2019. [[Paper](https://arxiv.org/abs/1812.07108)] [[Code](https://github.com/shaoxiongji/fed-att)]
-
-Jing Jiang, Shaoxiong Ji, and Guodong Long. Decentralized knowledge acquisition for mobile internet applications. World Wide Web, 2020. [[Paper](https://link.springer.com/article/10.1007/s11280-019-00775-w)]
-
-
+## Additional Notes
+- In order to run these reference implementations, the ```-t sample``` tag must have been used when running the ```./preprocess.sh``` script for the respective dataset
+- The total number of clients simulated equals the total number of users in the respective dataset's training data
+- For optimal model performance, generate data using arguments similar to those listed in the 'large-sized dataset' option in the respective dataset README file.
+- ```main.py``` supports these additional tags:
+    - ```--model```: name of model; options are listed the respective dataset folder, for example ```cnn``` for femnist; defaults to first model in the respective dataset folder
+    - ```--num_rounds```: number of rounds to simulate
+    - ```--eval_every```: evaluate every ___ rounds
+    - ```--clients_per_round```: number of clients trained per round
+    - ```--batch_size```: batch size when clients train on data
+    - ```--num_epochs```: number of epochs when clients train on data
+    - ```-t```: simulation time: small, medium, or large; greater time corresponds to higher accuracy; for large runs, generate data using arguments similar to those listed in the 'large-sized dataset' option in the respective dataset README file for optimal model performance; default: large
+    - ```-lr```: learning rate for local optimizers. 
+- After running a classifier, open ```metrics.ipynb``` to view systems and statistical metrics from the last run.
+- Metrics generated by models are stored in ```metrics.json```, which contains the following 'key: value' pairs:
+    - dataset: name of the dataset
+    - num_rounds: number of rounds simulated
+    - eval_every: integer *x* such that model evaluated every *x* rounds
+    - accuracies: length-num_rounds list of (ids, groups, num_samples, accs), where 
+        - ids is a list of client id strings corresponding to the clients tested in the respective round, 
+        - groups is a list containing the group names of each of those clients (list of Nones if clients don't have an associated group), 
+        - num_samples is a list containing the number of test samples for each of those clients, and
+        - accs is a list containing accuracy from each client's evaluation
+    - client_computations: dictionary with client ids as keys and length-num_rounds lists as values; the elements in the lists are ints representing the number of FLOPs computed by the respective client in the corresponding round
+    - bytes_written: dictionary with client ids as keys and length-num_rounds lists as values; the elements in the lists are ints representing the number of bytes written to the server by the resepctive client in the corresponding round
+    - bytes_read: dictionary with client ids as keys and length-num_rounds lists as values; the elements in the lists are ints representing the number of bytes read from the server by the resepctive client in the corresponding round

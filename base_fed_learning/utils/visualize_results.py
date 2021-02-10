@@ -35,8 +35,10 @@ name_dict = {
     'fedavg': 'FedAvg',
     'local': 'Local',
     'fedsem': 'FedSEM',
-    'ucfl_enc1': 'Ours (Enc1)',
-    'ucfl_enc2': 'Ours (Enc2)'
+    'ucfl_enc1': 'FLT (Enc1)',
+    # 'ucfl_enc2': 'FLT (Enc2)',
+    'ucfl_enc2': 'FLT',
+    'ifca': 'IFCA'
 }
 
 line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
@@ -77,16 +79,39 @@ def visualize(result_directory_name, include_train =True):
             print("Error reading file")
             continue
 
-        markers_on = list(np.arange(0, df.shape[0], marker_step))
+        if clustering_method == 'IFCA':
+            ax2 = ax.twiny()
+            ax2.set_xlim(-220,1111)
+            x_tick = list(range(0,1001,200))
+            x_tick[0]=20
+            ax2.set_xticks(x_tick)
+            ax2.spines['top'].set_color('red')
+            ax2.xaxis.label.set_color('red')
+            ax2.tick_params(axis='x', colors='red')
+            ax.plot(20, df['training_accuracy'][0], line_style[2*idx + 1], 
+                                linewidth =plot_linewidth, 
+                                markerfacecolor='black', markersize = marker_size)
+            # ax.text(25, df['test_accuracy'][0]*0.85,'Pretrained with FedAvg for 500 rounds',color='r',fontsize=text_size)
+            ax.annotate('Pretrained with FedAvg for 500 rounds', 
+                (22, df['test_accuracy'][0]*0.97), xytext=(27, df['test_accuracy'][0]*0.82), 
+                arrowprops=dict(facecolor='red', shrink=0.05))
 
+            plot_range = range(20,(len(df['test_accuracy'])+10)*2,2)
+        else:
+            plot_range = range(0,len(df['test_accuracy'])*5,5)
+            ax.set_xlim(-5,131)
+            ax.set_xticks(np.arange(0,131,10))
+        markers_on = list(np.arange(0, df.shape[0], marker_step))
         if include_train:
             ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
                     label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
                     markevery=markers_on, markerfacecolor='none', markersize = marker_size)
 
-        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
-                label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+        ax.plot(plot_range, df['test_accuracy'], line_style[2*idx], 
+                label=f'{clustering_method}', linewidth =plot_linewidth,
+                # label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
                 markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+        
         
     # plt.rcParams.update({'font.size': text_size})
     
@@ -99,17 +124,17 @@ def visualize(result_directory_name, include_train =True):
     plt.rcParams.update({'font.size': text_size})
 
     # legend = ax.legend(loc='upper ri')#, shadow=True, fontsize='x-large')
-    leg = plt.legend(loc=legened_location, prop={'size': legend_prop_size})
+    leg = ax.legend(loc=legened_location, prop={'size': legend_prop_size})
     # get the individual lines inside legend and set line width
     for line in leg.get_lines():
         line.set_linewidth(legend_linewidth)
     # get label texts inside legend and set font size
     # for text in leg.get_texts():
     #     text.set_fontsize(legend_text_size)
-    plt.grid(color='k', linestyle=':', linewidth=1, axis='y')
+    ax.grid(color='k', linestyle=':', linewidth=1, axis='y')
     ax.set_yticks(grid_ticks)
-    plt.ylabel('Accuracy (%)')
-    plt.xlabel('Communication round')
+    ax.set_ylabel('Accuracy (%)')
+    ax.set_xlabel('Communication round')
     plt.savefig(f'{result_directory_name}/result.png')
     #plt.show()
 
@@ -175,13 +200,13 @@ if __name__ == '__main__':
     # ----------------------------------
     plt.close('all')
     
-    result_directory_name = f'./../{args.results_root_dir}/main_fed/new_weighted_model/'
-    folder_list = sorted( glob(f'{result_directory_name}/*/*/') )
+    result_directory_name = f'./../{args.results_root_dir}/main_fed/scenario_5/'
+    folder_list = sorted( glob(f'{result_directory_name}/*/') )
     
     for folder in folder_list:
         print(folder)
         if 'scenario_3' not in folder:
-            visualize(folder, include_train=True)
+            visualize(folder, include_train=False)
         else:
             clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1', 'ucfl_enc2']
             result_array = np.empty((0, 6))

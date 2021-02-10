@@ -21,7 +21,7 @@ from base_fed_learning.utils.sampling import mnist_iid, mnist_noniid, mnist_noni
 from base_fed_learning.utils.options import args_parser
 from utils.utils import extract_model_name
 from base_fed_learning.models.Update import LocalUpdate
-from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar
+from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar, CNNLeaf
 from base_fed_learning.models.Fed import FedAvg
 from base_fed_learning.models.test import test_img, test_img_classes, test_img_index
 from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul
@@ -30,6 +30,7 @@ from sklearn.cluster import KMeans
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.utils.load_datasets import load_dataset
 
+from torchsummary import summary
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -118,6 +119,10 @@ def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, clust
             dict_train_users = cifar_noniid_cluster(dataset_train, num_users, cluster)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
     #
+    elif dataset_type in ['femnist', 'FEMNIST']:
+        dict_train_users = dataset_train.dict_users
+        dict_test_users = dataset_test.dict_users
+    #
     else:
         exit('Error: unrecognized dataset')
 
@@ -129,16 +134,19 @@ def gen_model(dataset, dataset_train, num_users):
     # build model
     if args.model == 'cnn' and (dataset == 'cifar' or dataset == 'CIFAR10'):
         net_glob = CNNCifar(args=args).to(args.device)
-    elif args.model == 'cnn' and (dataset == 'mnist' or dataset == 'MNIST'):
+    elif args.model == 'cnn' and (dataset in ['mnist', 'MNIST', 'FEMNIST']):
         net_glob = CNNMnist(args=args).to(args.device)
     elif args.model == 'mlp':
         len_in = 1
         for x in img_size:
             len_in *= x
         net_glob = MLP(dim_in=len_in, dim_hidden=200, dim_out=args.num_classes).to(args.device)
+    elif args.model == 'cnn_leaf':
+        net_glob = CNNLeaf(args=args).to(args.device)
     else:
         exit('Error: unrecognized model')
     print(net_glob)
+    summary(net_glob)
     net_glob.train()
 
     # copy weights
@@ -279,7 +287,8 @@ def evaluate_performance(net_glob_list, dataset_train, dataset_test, cluster, cl
     # ----------------------------------
     # testing: average over all clients
     for idx in evaluation_user_index_range:
-        print("user under process: ", idx)
+        if idx % (len(evaluation_user_index_range) // 10) == 0:  
+            print("user under process: ", idx)
         acc_train_final[idx], loss_train_final[idx] = test_img_index(net_glob_list[idx], dataset_train, dict_users[idx], args)
         acc_test_final[idx], loss_test_final[idx] = test_img_index(net_glob_list[idx], dataset_test, dict_test_users[idx], args)
         
@@ -385,6 +394,10 @@ def gen_cluster(args):
             cluster[0] = cluster_array[0:5]
             cluster[1] = cluster_array[0:5]
 
+    elif args.target_dataset == 'FEMNIST':
+        cluster_length = args.num_users
+        cluster = list(np.arange(args.num_classes))
+
     return cluster, cluster_length
 
 def extract_clustering(dict_users, dataset_train, cluster, args, iter):
@@ -430,6 +443,9 @@ def extract_evaluation_range(args):
     if args.iid == True:
         evaluation_index_step = 1
         evaluation_index_max = 1
+    elif args.target_dataset in ['FEMNIST', 'EMNIST']:
+        evaluation_index_step = 1
+        evaluation_index_max = args.num_users
     elif args.clustering_method == 'single' and args.multi_center == False:
         evaluation_index_step = args.num_users // args.nr_of_clusters# clustering_length
         evaluation_index_max = args.num_users
@@ -477,6 +493,10 @@ def main(args, config_file_name):
     dataset_train, dataset_test, dict_users, dict_test_users = gen_data(args.iid, args.target_dataset, args.data_root_dir, 
                                                        transforms_dict, args.num_users, cluster, dataset_split=args.dataset_split)
 
+    
+    #args.num_users = len(dict_users)
+    #args.num_users = 10
+    print(f'number of users: {args.num_users }')
     # clustering the clients
     clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, 0)
 

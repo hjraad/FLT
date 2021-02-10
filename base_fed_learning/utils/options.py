@@ -4,8 +4,8 @@ def args_parser():
     parser = argparse.ArgumentParser()
     # federated arguments
     parser.add_argument('--scenario', type=int, default=1, help="simulation scenario")    
-    parser.add_argument('--epochs', type=int, default=5, help="rounds of training")
-    parser.add_argument('--num_users', type=int, default=20, help="number of users: K")
+    parser.add_argument('--epochs', type=int, default=50, help="rounds of training")
+    parser.add_argument('--num_users', type=int, default=40, help="number of users: K")
     parser.add_argument('--frac', type=float, default=0.2, help="the fraction of clients: C")
     parser.add_argument('--local_ep', type=int, default=1, help="the number of local epochs: E")
     parser.add_argument('--local_bs', type=int, default=10, help="local batch size: B")
@@ -25,7 +25,7 @@ def args_parser():
                         help="Whether use max pooling rather than strided convolutions")
 
     # other arguments
-    parser.add_argument('--target_dataset', type=str, default='MNIST', help="name of dataset")
+    parser.add_argument('--target_dataset', type=str, default='FEMNIST', help="name of dataset")
     parser.add_argument('--pre_trained_dataset', default='EMNIST', help='data on which the initial model has been pretrained, e.g. EMNIST, FMNIST')
     parser.add_argument('--dataset_split', type=str, default='balanced', help="type of split for EMNIST")
     parser.add_argument('--iid', action='store_true', help='whether i.i.d or not')
