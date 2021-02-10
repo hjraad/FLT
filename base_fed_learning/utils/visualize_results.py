@@ -36,20 +36,31 @@ name_dict = {
     'local': 'Local',
     'fedsem': 'FedSEM',
     'ucfl_enc1': 'FLT (Enc1)',
-    # 'ucfl_enc2': 'FLT (Enc2)',
-    'ucfl_enc2': 'FLT',
+    # 'ucfl_enc1': 'FLT (ours)',
+    'ucfl_enc2': 'FLT (Enc2)',
+    # 'ucfl_enc2': 'FLT (ours)',  
     'ifca': 'IFCA'
 }
+# line_style = ['k^-', 'k^--','rs-', 'rs--', 'go-', 'go--', 'bd-', 'bd--', 'mv-', 'mv--']
 
-line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
-
+line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bd-', 'bd--', 'go-', 'go--', 'mv-', 'mv--']
+line_colors = ['black','red','green','blue','magenta']
+# mark_every = [3,5,10,4]
 def visualize(result_directory_name, include_train =True):
     # -----------------------------------
     entries = sorted( glob(f'{result_directory_name}/Scenario*.csv') )
 
     # plot loss curve
+    # fig, ax = plt.subplots(figsize=(14,12))
     fig, ax = plt.subplots()
-    
+    plt.rc('font', size=text_size)          # controls default text sizes
+    plt.rc('axes', titlesize=text_size)     # fontsize of the axes title
+    plt.rc('axes', labelsize=text_size)    # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=text_size)    # fontsize of the tick labels
+    plt.rc('ytick', labelsize=text_size)    # fontsize of the tick labels
+
+    plt.rcParams.update({'font.size': text_size})
+
         
     for (idx, entry) in enumerate(entries):
         print(idx)
@@ -81,50 +92,59 @@ def visualize(result_directory_name, include_train =True):
 
         if clustering_method == 'IFCA':
             ax2 = ax.twiny()
-            ax2.set_xlim(-220,1111)
+            ax2.set_xlim(-160,1061)
             x_tick = list(range(0,1001,200))
             x_tick[0]=20
             ax2.set_xticks(x_tick)
-            ax2.spines['top'].set_color('red')
-            ax2.xaxis.label.set_color('red')
-            ax2.tick_params(axis='x', colors='red')
-            ax.plot(20, df['training_accuracy'][0], line_style[2*idx + 1], 
-                                linewidth =plot_linewidth, 
-                                markerfacecolor='black', markersize = marker_size)
-            # ax.text(25, df['test_accuracy'][0]*0.85,'Pretrained with FedAvg for 500 rounds',color='r',fontsize=text_size)
-            ax.annotate('Pretrained with FedAvg for 500 rounds', 
-                (22, df['test_accuracy'][0]*0.97), xytext=(27, df['test_accuracy'][0]*0.82), 
-                arrowprops=dict(facecolor='red', shrink=0.05))
+            ax2.spines['top'].set_color('green')
+            ax2.spines['top'].set_linewidth(1.5)  
+            ax2.spines['top'].set_linestyle((0,(6,6)))
+            ax2.xaxis.label.set_color('green')
+            ax2.tick_params(axis='x', colors='green')
+            ax.plot(20, df['training_accuracy'][0], 'go--', 
+                                linewidth = plot_linewidth, color='green',
+                                markerfacecolor ='black', markersize = marker_size)
+            ax.text(35, df['test_accuracy'][0]*0.85,'Pretrained with FedAvg',color='green',fontsize=text_size)
+            ax.text(35, df['test_accuracy'][0]*0.75,'weight sharing',color='green',fontsize=text_size)
+            ax.text(35, df['test_accuracy'][0]*0.65,'for 500 rounds (for IFCA)',color='green',fontsize=text_size)
+            ax.annotate('', xy=(22, df['test_accuracy'][0]*0.98),  xycoords='data',
+                    xytext=(34, df['test_accuracy'][0]*0.87), textcoords='data',
+                    arrowprops=dict(edgecolor='green', facecolor='green', shrink=0.1),
+                    horizontalalignment='right', verticalalignment='top',
+            )
+            # ax.annotate('Pretrained with FedAvg for 500 rounds', 
+            #     (22, df['test_accuracy'][0]*0.97), xytext=(27, df['test_accuracy'][0]*0.82), 
+            #     arrowprops=dict(facecolor='red', shrink=0.05))
 
-            plot_range = range(20,(len(df['test_accuracy'])+10)*2,2)
+            plot_range = range(20,(len(df['test_accuracy'])+6)*3,3)
         else:
-            plot_range = range(0,len(df['test_accuracy'])*5,5)
-            ax.set_xlim(-5,131)
-            ax.set_xticks(np.arange(0,131,10))
-        markers_on = list(np.arange(0, df.shape[0], marker_step))
-        if include_train:
-            ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
-                    label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
-                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+            freq = 1 # 5
+            plot_range = range(0,len(df['test_accuracy'])*freq,freq)
+            # ax.set_xlim(-5,161)
+            # ax.set_xticks(np.arange(0,161,10))
+            markers_on = list(np.arange(0, df.shape[0], marker_step))
+   
+        if clustering_method=='IFCA':
+            line_stl='go--'
+        else:
+            line_stl=line_style[2*idx]
 
-        ax.plot(plot_range, df['test_accuracy'], line_style[2*idx], 
+        if include_train:
+                ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
+                        label=f'{clustering_method}: (train)', linewidth =plot_linewidth,
+                        markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+             
+        ax.plot(plot_range, df['test_accuracy'], line_stl, 
                 label=f'{clustering_method}', linewidth =plot_linewidth,
                 # label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
                 markevery=markers_on, markerfacecolor='none', markersize = marker_size)
         
-        
     # plt.rcParams.update({'font.size': text_size})
-    
-    plt.rc('font', size=text_size)          # controls default text sizes
-    plt.rc('axes', titlesize=text_size)     # fontsize of the axes title
-    plt.rc('axes', labelsize=text_size)    # fontsize of the x and y labels
-    plt.rc('xtick', labelsize=text_size)    # fontsize of the tick labels
-    plt.rc('ytick', labelsize=text_size)    # fontsize of the tick labels
-
-    plt.rcParams.update({'font.size': text_size})
-
+    # ax.spines['top'].set_color('white')
+    ax.tick_params(axis = 'both', which = 'major', labelsize = text_size)
+    ax.tick_params(axis = 'both', which = 'minor', labelsize = text_size)
     # legend = ax.legend(loc='upper ri')#, shadow=True, fontsize='x-large')
-    leg = ax.legend(loc=legened_location, prop={'size': legend_prop_size})
+    leg = ax.legend(loc=legened_location, prop={'size': legend_prop_size}, fontsize=text_size)
     # get the individual lines inside legend and set line width
     for line in leg.get_lines():
         line.set_linewidth(legend_linewidth)
@@ -133,8 +153,8 @@ def visualize(result_directory_name, include_train =True):
     #     text.set_fontsize(legend_text_size)
     ax.grid(color='k', linestyle=':', linewidth=1, axis='y')
     ax.set_yticks(grid_ticks)
-    ax.set_ylabel('Accuracy (%)')
-    ax.set_xlabel('Communication round')
+    ax.set_ylabel('Accuracy (%)', fontsize=text_size)
+    ax.set_xlabel('Communication round', fontsize=text_size)
     plt.savefig(f'{result_directory_name}/result.png')
     #plt.show()
 
@@ -169,6 +189,7 @@ def visualize_scenario_3(result_array, clustering_methods, result_directory_name
     ax.set_yticks(grid_ticks)
     plt.ylabel('Accuracy (%)')
     plt.xlabel('Label overlap percentage')
+    plt.tight_layout()
     plt.savefig(f'{result_directory_name}/result.png')
     plt.show()
     plt.close()
@@ -200,7 +221,7 @@ if __name__ == '__main__':
     # ----------------------------------
     plt.close('all')
     
-    result_directory_name = f'./../{args.results_root_dir}/main_fed/scenario_5/'
+    result_directory_name = f'./../{args.results_root_dir}/main_fed/scenario_4/'
     folder_list = sorted( glob(f'{result_directory_name}/*/') )
     
     for folder in folder_list:
