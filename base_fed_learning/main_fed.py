@@ -24,7 +24,7 @@ from base_fed_learning.models.Update import LocalUpdate
 from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar, CNNLeaf
 from base_fed_learning.models.Fed import FedAvg
 from base_fed_learning.models.test import test_img, test_img_classes, test_img_index
-from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul
+from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, clustering_pca_kmeans, encoder_model_capsul
 from sklearn.cluster import KMeans
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
@@ -348,7 +348,7 @@ def gen_cluster(args):
             cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
 
-    elif args.scenario == 2:
+    elif args.scenario in [1, 2]:
         cluster_length = args.num_users // args.nr_of_clusters
         # generate cluster settings    
         if args.flag_with_overlap:
@@ -359,7 +359,6 @@ def gen_cluster(args):
             cluster[2] = lst[4:7]
             cluster[3] = lst[6:9]
             cluster[4] = [lst[-2], lst[-1], lst[0]]
-
         else:
             cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
             cluster_array = np.random.choice(10, 10, replace=False)
@@ -432,6 +431,17 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
         plt.figure()
         plt.imshow(clustering_matrix)
         plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.close()
+
+    elif args.clustering_method == 'kmeans':
+        args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
+        ae_model_dict = encoder_model_capsul(args)
+
+        clustering_matrix, _, _, _ =\
+            clustering_pca_kmeans(dict_users, cluster, dataset_train, args)
+        plt.figure()
+        plt.imshow(clustering_matrix)
+        plt.savefig(f'{args.results_root_dir}/clust_pca_kmeans_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
     
     return clustering_matrix
