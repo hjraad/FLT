@@ -1,8 +1,6 @@
 '''
 Base code forked from https://github.com/shaoxiongji/federated-learning
 '''
-import matplotlib
-# matplotlib.use('Agg')
 import sys
 sys.path.append("./../")
 sys.path.append("./../../")
@@ -14,20 +12,18 @@ import copy
 import numpy as np
 import json
 import argparse
-from torchvision import datasets, transforms
+from torchvision import transforms
 import torch
-import torchvision
-from base_fed_learning.utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster, cifar_iid, cifar_noniid_cluster, emnist_noniid_cluster
+from base_fed_learning.utils.sampling import mnist_iid, mnist_noniid_cluster, cifar_iid, cifar_noniid_cluster, emnist_noniid_cluster
 from base_fed_learning.utils.options import args_parser
 from utils.utils import extract_model_name
 from base_fed_learning.models.Update import LocalUpdate
 from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar, CNNLeaf
 from base_fed_learning.models.Fed import FedAvg
-from base_fed_learning.models.test import test_img, test_img_classes, test_img_index
+from base_fed_learning.models.test import test_img_index
 from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, clustering_pca_kmeans, encoder_model_capsul
 from sklearn.cluster import KMeans
 
-from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.utils.load_datasets import load_dataset
 
 from torchsummary import summary
@@ -88,7 +84,7 @@ def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, clust
         dict_test_users: user test data sample index dictionary
     '''
     # load dataset 
-    _, image_datasets, dataset_sizes, class_names =\
+    _, image_datasets, _, _ =\
             load_dataset(dataset_type, data_root_dir, transforms_dict, batch_size=8, shuffle_flag=False, dataset_split=dataset_split)
     
     dataset_train = image_datasets['train']
@@ -533,7 +529,7 @@ if __name__ == '__main__':
             args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
             config_file_name = entry
             print(f'working on the cofig file: {args.config_root_dir}/{entry}')
-            parser = argparse.ArgumentParser()
+            # parser = argparse.ArgumentParser()
             argparse_dict = vars(args)
             argparse_dict.update(json.load(f))
 

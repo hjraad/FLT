@@ -4,28 +4,24 @@ sys.path.append("./../../")
 sys.path.append("./")
 
 import matplotlib.pyplot as plt
-import copy
 import numpy as np
-from torchvision import datasets, transforms
+from torchvision import transforms
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from utils.sampling import mnist_iid, mnist_noniid, mnist_noniid_cluster
+from utils.sampling import mnist_iid, mnist_noniid_cluster
 from utils.sampling import cifar_iid, cifar_noniid_cluster, emnist_noniid_cluster
 from utils.options import args_parser
 from utils.utils import extract_model_name
 from models.Update import LocalUpdate
 import pickle
 from sklearn.cluster import KMeans
-import itertools
-import copy
 import umap
 
 from tqdm import tqdm
 
-from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.models.convAE_cifar import ConvAutoencoderCIFAR
 from manifold_approximation.models.convAE_cifar_residual import ConvAutoencoderCIFARResidual
 from manifold_approximation.encoder import Encoder
