@@ -1,6 +1,3 @@
-'''
-Base code forked from https://github.com/shaoxiongji/federated-learning
-'''
 import sys
 sys.path.append("./../")
 sys.path.append("./../../")
