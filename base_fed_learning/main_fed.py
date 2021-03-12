@@ -24,6 +24,7 @@ from base_fed_learning.models.Update import LocalUpdate
 from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar, CNNLeaf
 from base_fed_learning.models.Fed import FedAvg
 from base_fed_learning.models.test import test_img, test_img_classes, test_img_index
+from base_fed_learning.utils.utils import ModelContainer
 from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul
 from sklearn.cluster import KMeans
 
@@ -141,7 +142,7 @@ def gen_model(dataset, dataset_train, num_users):
             len_in *= x
         net_glob = MLP(dim_in=len_in, dim_hidden=200, dim_out=args.num_classes).to(args.device)
     elif args.model == 'cnn_leaf':
-        net_glob = CNNLeaf(args=args).to(args.device)
+        net_glob = CNNLeaf(args=args)
     else:
         exit('Error: unrecognized model')
     print(net_glob)
@@ -149,9 +150,11 @@ def gen_model(dataset, dataset_train, num_users):
 
     # copy weights
     w_glob = net_glob.state_dict()
-    net_glob_list = [copy.deepcopy(net_glob) for i in range(num_users)]
-    w_glob_list = [copy.deepcopy(w_glob) for i in range(num_users)]
-    
+    net_glob_list = ModelContainer([copy.deepcopy(net_glob) for i in range(num_users)])
+    net_glob_list.set_device(args.device)
+    w_glob_list = ModelContainer([copy.deepcopy(w_glob) for i in range(num_users)])
+    w_glob_list.set_device(args.device)
+
     return net_glob, w_glob, net_glob_list, w_glob_list
 
 def get_model_params_length(model):
@@ -160,12 +163,12 @@ def get_model_params_length(model):
 
     return len(flat_list)
 
-def clustering_multi_center(num_users, w_locals, multi_center_initialization_flag, est_multi_center, args):
-    model_params_length = get_model_params_length(w_locals[0])
+def clustering_multi_center(num_users, net_local_list, multi_center_initialization_flag, est_multi_center, args):
+    model_params_length = get_model_params_length(net_local_list[0].state_dict())
     models_parameter_list = np.zeros((num_users, model_params_length))
 
     for i in range(num_users):
-        model = w_locals[i]
+        model = net_local_list[i].state_dict()
         lst = [list(model[k].cpu().numpy().flatten()) for  k in model.keys()]
         flat_list = [item for sublist in lst for item in sublist]
 
@@ -208,24 +211,25 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
     if args.all_clients: 
         print("Aggregation over all clients")
-        w_locals = w_glob_list
+        net_local_list = net_glob_list
     for iter in range(args.epochs):
         loss_locals = []
         if not args.all_clients:
-            w_locals = []
+            net_local_list = ModelContainer([])
+            net_local_list.set_device(args.device)
         m = max(int(args.frac * num_users), 1)
         idxs_users = np.random.choice(range(num_users), m, replace=False)
         for idx in idxs_users:
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
-            w, loss = local.train(net=copy.deepcopy(net_glob_list[idx]).to(args.device))
+            net, loss = local.train(net=copy.deepcopy(net_glob_list[idx]))
             if args.all_clients:
-                w_locals[idx] = copy.deepcopy(w)
+                net_local_list[idx] = copy.deepcopy(net)
             else:
-                w_locals.append(copy.deepcopy(w))
+                net_local_list.append(copy.deepcopy(w))
             loss_locals.append(copy.deepcopy(loss))
         # update global weights
         if multi_center_flag:
-            clustering_matrix, est_multi_center = clustering_multi_center(num_users, w_locals, multi_center_initialization_flag, est_multi_center, args)
+            clustering_matrix, est_multi_center = clustering_multi_center(num_users, net_local_list, multi_center_initialization_flag, est_multi_center, args)
             multi_center_initialization_flag = False
 
             plt.figure()
@@ -234,12 +238,12 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
             plt.close()
         
         #print(clustering_matrix)
-        w_glob_list = FedAvg(w_locals, clustering_matrix, dict_users)
+        net_local_list = FedAvg(net_local_list, clustering_matrix, dict_users)
 
         # copy weights to net_glob
         for idx in np.arange(num_users): #TODO: fix this
-            net_glob_list[idx] = copy.deepcopy(net_glob_list[0])
-            net_glob_list[idx].load_state_dict(w_glob_list[idx])
+            # net_glob_list[idx] = copy.deepcopy(net_glob_list[0])
+            net_glob_list[idx] = copy.deepcopy(net_local_list[idx])
 
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
@@ -511,7 +515,7 @@ def main(args, config_file_name):
 if __name__ == '__main__':
     # parse args
     args = args_parser()
-    args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
+    # args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
 
     # ----------------------------------
     plt.close('all')
