@@ -6,7 +6,7 @@ import copy
 import torch
 from torch import nn
 from collections import OrderedDict
-
+import tqdm
 
 def FedAvg(net_local_list, clustering_matrix, dict_users):
     # w_avg = [] # copy.deepcopy(w)
@@ -15,7 +15,7 @@ def FedAvg(net_local_list, clustering_matrix, dict_users):
     #     for k in net_local_list[idx].state_dict().keys():
     #         w_avg[idx][k]=0
             
-    for idx in range(len(net_local_list)):
+    for idx in tqdm.tqdm(range(len(net_local_list))):
         one_w_avg = OrderedDict()
         w_local = net_local_list[idx].state_dict()
         for k in w_local.keys():
@@ -29,7 +29,7 @@ def FedAvg(net_local_list, clustering_matrix, dict_users):
                 if clustering_matrix[idx][i] == 1:
                     ith = net_local_list[i]
                     one_w_avg[k] += ith.state_dict()[k]*len(dict_users[i])
-                    net_local_list[i] = ith
+                    # net_local_list[i] = ith
                     sum_len += len(dict_users[i])
 
             one_w_avg[k] = torch.div(one_w_avg[k], sum_len)
