@@ -78,7 +78,7 @@ def encoder_model_capsul(args):
     exp_lr_scheduler = lr_scheduler.StepLR(ae_optimizer, step_size=10, gamma=0.5)
 
     # Load the model ckpt
-    checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt')
+    checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt',  map_location=torch.device(args.device))
     ae_model.load_state_dict(checkpoint['model_state_dict']) 
     
     ae_model_dict = {
