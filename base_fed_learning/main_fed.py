@@ -9,6 +9,7 @@ sys.path.append("./../../")
 sys.path.append("./")
 
 import os
+import time
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
@@ -149,13 +150,14 @@ def gen_model(dataset, dataset_train, num_users):
     net_glob.train()
 
     # copy weights
-    w_glob = net_glob.state_dict()
-    net_glob_list = np.array([copy.deepcopy(net_glob) for i in range(num_users)])
+    # w_glob = net_glob.state_dict()
+    # net_glob_list = ModelContainer([copy.deepcopy(net_glob) for i in range(num_users)])
     # net_glob_list.set_device(args.device)
-    w_glob_list = None # ModelContainer([copy.deepcopy(w_glob) for i in range(num_users)])
+    net_glob_list = [copy.deepcopy(net_glob) for i in range(num_users)]
+    # w_glob_list = ModelContainer([copy.deepcopy(w_glob) for i in range(num_users)])
     # w_glob_list.set_device(args.device)
 
-    return net_glob, w_glob, net_glob_list, w_glob_list
+    return net_glob, None, net_glob_list, None
 
 def get_model_params_length(model):
     lst = [list(model[k].cpu().numpy().flatten()) for  k in model.keys()]
@@ -224,8 +226,10 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         m = max(int(args.frac * num_users), 1)
         idxs_users = np.random.choice(range(num_users), m, replace=False)
         for idx in idxs_users:
+            print(f"Local update started for {len(idxs_users)} users")
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
             net, loss = local.train(net=copy.deepcopy(net_glob_list[idx]))
+            print(f"Local update finished for {len(idxs_users)} users")
             if args.all_clients:
                 net_local_list[idx] = copy.deepcopy(net)
             else:
