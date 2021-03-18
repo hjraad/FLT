@@ -25,7 +25,7 @@ from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar, CNNLeaf
 from base_fed_learning.models.Fed import FedAvg
 from base_fed_learning.models.test import test_img, test_img_classes, test_img_index
 from base_fed_learning.utils.utils import ModelContainer
-from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul
+from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul, partition_clusters, filter_cluster_partition
 from sklearn.cluster import KMeans
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
@@ -150,10 +150,10 @@ def gen_model(dataset, dataset_train, num_users):
 
     # copy weights
     w_glob = net_glob.state_dict()
-    net_glob_list = ModelContainer([copy.deepcopy(net_glob) for i in range(num_users)])
-    net_glob_list.set_device(args.device)
-    w_glob_list = ModelContainer([copy.deepcopy(w_glob) for i in range(num_users)])
-    w_glob_list.set_device(args.device)
+    net_glob_list = np.array([copy.deepcopy(net_glob) for i in range(num_users)])
+    # net_glob_list.set_device(args.device)
+    w_glob_list = None # ModelContainer([copy.deepcopy(w_glob) for i in range(num_users)])
+    # w_glob_list.set_device(args.device)
 
     return net_glob, w_glob, net_glob_list, w_glob_list
 
@@ -209,14 +209,18 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         multi_center_initialization_flag = True
         est_multi_center = []
 
+    if args.partion_clusters_flag:
+        # clustering_matrix = np.ones_like(clustering_matrix)
+        cluster_user_dict = partition_clusters(clustering_matrix, args)
+
     if args.all_clients: 
         print("Aggregation over all clients")
         net_local_list = net_glob_list
     for iter in range(args.epochs):
         loss_locals = []
         if not args.all_clients:
-            net_local_list = ModelContainer([])
-            net_local_list.set_device(args.device)
+            net_local_list = np.array([]) #ModelContainer([])
+            # net_local_list.set_device(args.device)
         m = max(int(args.frac * num_users), 1)
         idxs_users = np.random.choice(range(num_users), m, replace=False)
         for idx in idxs_users:
@@ -225,7 +229,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
             if args.all_clients:
                 net_local_list[idx] = copy.deepcopy(net)
             else:
-                net_local_list.append(copy.deepcopy(w))
+                net_local_list.append(copy.deepcopy(net))
             loss_locals.append(copy.deepcopy(loss))
         # update global weights
         if multi_center_flag:
@@ -237,13 +241,23 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
             plt.savefig(f'{args.results_root_dir}/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
             plt.close()
         
+        ##############
+        # Experimental
+        # We extract centers from the clustering matrix 
+        # we still update on each client locally
+        # but only do FedAvg  per cluster
+        if args.partion_clusters_flag:
+            cluster_partitions = filter_cluster_partition(cluster_user_dict, net_local_list)
+        else:
+            cluster_partitions = {1 : (net_local_list, clustering_matrix, np.arange(0,num_users,1))}
         #print(clustering_matrix)
-        net_local_list = FedAvg(net_local_list, clustering_matrix, dict_users)
+        for cluster_idx, (net_cluster_list, filtered_clustering_matrix, cluster_users) in cluster_partitions.items():
+            print(f'FedAvg over cluster {cluster_idx} with {len(net_cluster_list)} users')
+            net_cluster_list = FedAvg(net_cluster_list, filtered_clustering_matrix, dict_users)
 
-        # copy weights to net_glob
-        for idx in np.arange(num_users): #TODO: fix this
-            # net_glob_list[idx] = copy.deepcopy(net_glob_list[0])
-            net_glob_list[idx] = copy.deepcopy(net_local_list[idx])
+            # copy weights to net_glob
+            for local_idx, global_idx in enumerate(cluster_users):
+                net_glob_list[global_idx] = copy.deepcopy(net_cluster_list[local_idx])
 
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
@@ -431,9 +445,14 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
     elif args.clustering_method == 'umap_central':
         args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
         ae_model_dict = encoder_model_capsul(args)
-
-        clustering_matrix, _, _, _, _ =\
-            clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
+        save_path=os.path.join(args.results_root_dir,f'clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.npy')
+        if os.path.exists(save_path):
+            clustering_matrix = np.load(save_path)  
+        else:
+            clustering_matrix, _, _, _, _ =\
+                clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
+            np.save(save_path,clustering_matrix)
+        
         plt.figure()
         plt.imshow(clustering_matrix)
         plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')

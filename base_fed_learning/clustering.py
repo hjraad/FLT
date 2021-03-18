@@ -28,8 +28,11 @@ from sklearn.cluster import KMeans
 import itertools
 import copy
 import umap
+from collections import defaultdict
 
 from tqdm import tqdm
+import scipy
+import scipy.cluster.hierarchy as sch
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.models.convAE_cifar import ConvAutoencoderCIFAR
@@ -39,7 +42,7 @@ from manifold_approximation.sequential_encoder import Sequential_Encoder
 from manifold_approximation.utils.load_datasets import load_dataset
 
 from sympy.utilities.iterables import multiset_permutations
-
+from torchsummary import summary
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -69,6 +72,8 @@ def encoder_model_capsul(args):
         ae_model = ConvAutoencoder().to(args.device)
         # loss
         criterion = nn.BCELoss()
+    print(ae_model)
+    summary(ae_model)
     
 
     # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -319,7 +324,7 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
     for idx in idxs_users:
         c_dict[idx] = umap_reducer.transform(center_dict[idx])
 
-    for idx0 in idxs_users:
+    for idx0 in tqdm(idxs_users):
         c0 = c_dict[idx0]
         for idx1 in idxs_users:
             c0 = c_dict[idx0]
@@ -335,6 +340,71 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
                 clustering_matrix[idx0][idx1] = 0
                 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix, c_dict
+
+def filter_cluster_partition(cluster_user_dict, net_local_list):
+    cluster_dict = defaultdict(tuple)
+
+    for i, cluster_members in cluster_user_dict.items():
+        cluster_dict[i] = (net_local_list[cluster_members], 
+                            np.ones((len(cluster_members), len(cluster_members))),
+                            cluster_members)
+    return cluster_dict
+
+def partition_clusters(clustering_matrix, args, nr_clusters=3, method='complete', metric='euclidean'):
+    # clustering
+    fig = plt.figure(figsize=(8,8))
+    ax1 = fig.add_axes([0.09,0.1,0.2,0.6])
+    Y = sch.linkage(clustering_matrix, method=method,metric=metric)
+    Z = sch.dendrogram(Y, orientation='left')
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+    # calculate cluster membership
+    cluster_memberships = sch.fcluster(Y, t=nr_clusters, criterion='maxclust') # ith element in this array is the cluster for i
+    idx = np.array(Z['leaves']) # idx ordered in cluster
+    
+    ax2 = fig.add_axes([0.3,0.71,0.6,0.2])
+    Z2 = sch.dendrogram(Y)
+    ax2.set_xticks([])
+    ax2.set_yticks([])
+    # Plot distance matrix.
+    axmatrix = fig.add_axes([0.3,0.1,0.6,0.6])
+
+    clustering_matrix = clustering_matrix[idx,:]
+    clustering_matrix = clustering_matrix[:,idx]
+    im = axmatrix.matshow(clustering_matrix, aspect='auto', origin='lower', cmap=plt.cm.YlGnBu)
+    axmatrix.set_xticks([])
+    axmatrix.set_yticks([])
+
+    # Plot colorbar.
+    axcolor = fig.add_axes([0.91,0.1,0.02,0.6])
+    plt.colorbar(im, cax=axcolor)
+    fig.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{nr_clusters}_reconstructed.png')
+
+    # Plot filtered
+    canvas = np.zeros_like(clustering_matrix)
+    for i in range(1,nr_clusters+1):
+        mask = np.ones_like(clustering_matrix)
+        mask[cluster_memberships[idx]!=i,:] = 0
+        mask[:,cluster_memberships[idx]!=i] = 0
+        canvas+=clustering_matrix*mask
+    fig = plt.figure()
+    plt.imshow(canvas)
+    fig.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{nr_clusters}_filtered.png')
+
+    d_error = np.sum(clustering_matrix-canvas)
+    print(f'Decompostion error: {d_error}, {d_error/np.sum(clustering_matrix)}')
+
+    cluster_user_dict = { i : idx[cluster_memberships==i] for i in range(1,nr_clusters+1)}
+
+    # Test
+    collected = []
+    for i, cluster_members_a in cluster_user_dict.items():
+        for j, cluster_members_b in cluster_user_dict.items():
+            assert np.all(cluster_members_a != cluster_members_b) or set(cluster_members_a).intersection(set(cluster_members_b)) != {}, f'clusters {i} and {j} are not disjunct'
+        collected.extend(cluster_members_a)
+    assert np.all(np.arange(0,len(clustering_matrix),1) == np.sort(np.array(collected)))
+
+    return cluster_user_dict
 
 if __name__ == '__main__':
     # parse args
