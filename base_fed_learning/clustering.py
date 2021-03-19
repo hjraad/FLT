@@ -42,7 +42,7 @@ from manifold_approximation.sequential_encoder import Sequential_Encoder
 from manifold_approximation.utils.load_datasets import load_dataset
 
 from sympy.utilities.iterables import multiset_permutations
-from torchsummary import summary
+# from torchsummary import summary
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -73,7 +73,7 @@ def encoder_model_capsul(args):
         # loss
         criterion = nn.BCELoss()
     print(ae_model)
-    summary(ae_model)
+    # summary(ae_model)
     
 
     # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)

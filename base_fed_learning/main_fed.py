@@ -143,7 +143,7 @@ def gen_model(dataset, dataset_train, num_users):
             len_in *= x
         net_glob = MLP(dim_in=len_in, dim_hidden=200, dim_out=args.num_classes).to(args.device)
     elif args.model == 'cnn_leaf':
-        net_glob = CNNLeaf(args=args)
+        net_glob = CNNLeaf(args=args).to(args.device)
     else:
         exit('Error: unrecognized model')
     print(net_glob)
@@ -550,16 +550,17 @@ if __name__ == '__main__':
             continue
         with open(f'{args.config_root_dir}/{entry}') as f:
             args = args_parser()
-            args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
             config_file_name = entry
             print(f'working on the cofig file: {args.config_root_dir}/{entry}')
             parser = argparse.ArgumentParser()
             argparse_dict = vars(args)
             argparse_dict.update(json.load(f))
 
-            t_args = argparse.Namespace()
-            t_args.__dict__.update(argparse_dict)
+            args = argparse.Namespace()
+            args.__dict__.update(argparse_dict)
             #args = parser.parse_args(namespace=t_args)
+            args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
+            
 
-        main(t_args, config_file_name)
+        main(args, config_file_name)
   
