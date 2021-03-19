@@ -32,6 +32,7 @@ from sklearn.cluster import KMeans
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.utils.load_datasets import load_dataset
 
+import tqdm
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -226,7 +227,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         m = max(int(args.frac * num_users), 1)
         idxs_users = np.random.choice(range(num_users), m, replace=False)
         print(f"Local update started for {len(idxs_users)} users")
-        for idx in idxs_users:
+        for idx in tqdm.tqdm(idxs_users):
             
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
             net, loss = local.train(net=copy.deepcopy(net_glob_list[idx]))
@@ -490,7 +491,7 @@ def main(args, config_file_name):
 
     # ----------------------------------
     # open the output file to write the results to
-    folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}/{args.target_dataset}'
+    folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}/{args.target_dataset}/{args.nr_of_partition_clusters}/{}'
     
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
