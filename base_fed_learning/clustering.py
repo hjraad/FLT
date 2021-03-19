@@ -400,7 +400,7 @@ def partition_clusters(clustering_matrix, args, nr_clusters=3, method='complete'
     collected = []
     for i, cluster_members_a in cluster_user_dict.items():
         for j, cluster_members_b in cluster_user_dict.items():
-            assert np.all(cluster_members_a != cluster_members_b) or set(cluster_members_a).intersection(set(cluster_members_b)) != {}, f'clusters {i} and {j} are not disjunct'
+            assert np.all(cluster_members_a != cluster_members_b) or set(cluster_members_a).intersection(set(cluster_members_b)) != {}, f'clusters {i} and {j} are not disjoint'
         collected.extend(cluster_members_a)
     assert np.all(np.arange(0,len(clustering_matrix),1) == np.sort(np.array(collected)))
 
