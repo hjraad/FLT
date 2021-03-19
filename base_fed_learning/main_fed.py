@@ -212,9 +212,9 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         multi_center_initialization_flag = True
         est_multi_center = []
 
-    if args.partion_clusters_flag:
+    if args.partition_clusters_flag:
         # clustering_matrix = np.ones_like(clustering_matrix)
-        cluster_user_dict = partition_clusters(clustering_matrix, args, nr_clusters=args.nr_of_partition_cluster)
+        cluster_user_dict = partition_clusters(clustering_matrix, args, nr_clusters=args.nr_of_partition_clusters)
 
     if args.all_clients: 
         print("Aggregation over all clients")
@@ -253,7 +253,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         # We extract centers from the clustering matrix 
         # we still update on each client locally
         # but only do FedAvg  per cluster
-        if args.partion_clusters_flag:
+        if args.partition_clusters_flag:
             cluster_partitions = filter_cluster_partition(cluster_user_dict, net_local_list)
         else:
             cluster_partitions = {1 : (net_local_list, clustering_matrix, np.arange(0,num_users,1))}
