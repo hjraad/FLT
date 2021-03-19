@@ -177,10 +177,10 @@ def clustering_multi_center(num_users, net_local_list, multi_center_initializati
         models_parameter_list[i] = np.array(flat_list).reshape(1,model_params_length)
 
     if multi_center_initialization_flag:                
-        kmeans = KMeans(n_clusters=args.nr_of_clusters, n_init=20).fit(models_parameter_list)
+        kmeans = KMeans(n_clusters=args.nr_of_embedding_clusters, n_init=20).fit(models_parameter_list)
 
     else:
-        kmeans = KMeans(n_clusters=args.nr_of_clusters, init=est_multi_center, n_init=1).fit(models_parameter_list)#TODO: remove the best
+        kmeans = KMeans(n_clusters=args.nr_of_embedding_clusters, init=est_multi_center, n_init=1).fit(models_parameter_list)#TODO: remove the best
     
     ind_center = kmeans.fit_predict(models_parameter_list)
 
@@ -213,7 +213,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
     if args.partion_clusters_flag:
         # clustering_matrix = np.ones_like(clustering_matrix)
-        cluster_user_dict = partition_clusters(clustering_matrix, args)
+        cluster_user_dict = partition_clusters(clustering_matrix, args, nr_clusters=args.nr_of_partition_cluster)
 
     if args.all_clients: 
         print("Aggregation over all clients")
@@ -244,7 +244,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
             plt.figure()
             plt.imshow(clustering_matrix)
-            plt.savefig(f'{args.results_root_dir}/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+            plt.savefig(f'{args.results_root_dir}/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
             plt.close()
         
         ##############
@@ -362,7 +362,7 @@ def gen_cluster(args):
             cluster[i] = np.random.choice(10, 10, replace=False)
 
     elif args.target_dataset == 'EMNIST':
-        nr_of_clusters = args.nr_of_clusters
+        nr_of_clusters = args.nr_of_embedding_clusters
         cluster_length = args.num_users // nr_of_clusters
         n_1 = 47 // (nr_of_clusters - 1)
         n_2 = 47 % n_1
@@ -374,10 +374,10 @@ def gen_cluster(args):
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
 
     elif args.scenario == 2:
-        cluster_length = args.num_users // args.nr_of_clusters
+        cluster_length = args.num_users // args.nr_of_embedding_clusters
         # generate cluster settings    
         if args.flag_with_overlap:
-            cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
+            cluster = np.zeros((args.nr_of_embedding_clusters, 3), dtype='int64')
             lst = np.random.choice(10, 10, replace=False) # what is this?
             cluster[0] = lst[0:3]
             cluster[1] = lst[2:5]
@@ -386,16 +386,16 @@ def gen_cluster(args):
             cluster[4] = [lst[-2], lst[-1], lst[0]]
 
         else:
-            cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
+            cluster = np.zeros((args.nr_of_embedding_clusters, 2), dtype='int64')
             cluster_array = np.random.choice(10, 10, replace=False)
-            for i in range(args.nr_of_clusters):
+            for i in range(args.nr_of_embedding_clusters):
                 cluster[i] = cluster_array[i*2: i*2 + 2]
 
     elif args.scenario == 3:
         # scenario 3
-        args.nr_of_clusters = 2
-        cluster_length = args.num_users // args.nr_of_clusters
-        cluster = np.zeros((args.nr_of_clusters, 5), dtype='int64')
+        args.nr_of_embedding_clusters = 2
+        cluster_length = args.num_users // args.nr_of_embedding_clusters
+        cluster = np.zeros((args.nr_of_embedding_clusters, 5), dtype='int64')
         cluster_array = np.random.choice(10, 10, replace=False)
         if args.cluster_overlap == 0:
             cluster[0] = cluster_array[0:5]
@@ -435,7 +435,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
 
         plt.figure()
         plt.imshow(clustering_matrix)
-        plt.savefig(f'{args.results_root_dir}/clust_perfect_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.savefig(f'{args.results_root_dir}/clust_perfect_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
 
     elif args.clustering_method == 'umap':
@@ -451,7 +451,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
     elif args.clustering_method == 'umap_central':
         args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
         ae_model_dict = encoder_model_capsul(args)
-        save_path=os.path.join(args.results_root_dir,f'clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.npy')
+        save_path=os.path.join(args.results_root_dir,f'clust_umapcentral_nr_users-{args.num_users}_nr_embedding_clusters_{args.nr_of_embedding_clusters}.npy')
         if os.path.exists(save_path):
             clustering_matrix = np.load(save_path)  
         else:
@@ -461,7 +461,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
         
         plt.figure()
         plt.imshow(clustering_matrix)
-        plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}.png')
         plt.close()
     
     return clustering_matrix
@@ -474,7 +474,7 @@ def extract_evaluation_range(args):
         evaluation_index_step = 1
         evaluation_index_max = args.num_users
     elif args.clustering_method == 'single' and args.multi_center == False:
-        evaluation_index_step = args.num_users // args.nr_of_clusters# clustering_length
+        evaluation_index_step = args.num_users // args.nr_of_embedding_clusters# clustering_length
         evaluation_index_max = args.num_users
     else:
         evaluation_index_step = 1
@@ -540,8 +540,7 @@ def main(args, config_file_name):
 if __name__ == '__main__':
     # parse args
     args = args_parser()
-    # args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-
+    
     # ----------------------------------
     plt.close('all')
     entries = sorted(os.listdir(f'{args.config_root_dir}/'))

@@ -37,7 +37,6 @@ from manifold_approximation.models.convAE_128D import ConvAutoencoder
 
 from tqdm import tqdm
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Sequential_Encoder():
     '''
@@ -47,7 +46,7 @@ class Sequential_Encoder():
     '''
     def __init__(self, ae_model, ae_opt, criterion, scheduler, nr_epochs, ae_model_name, model_root_dir, log_root_dir,
                                     manifold_dim, image_dataset, client_name, pre_trained_dataset, batch_size=64,  
-                                    dataset_name='', train_umap=False, use_AE=True):
+                                    dataset_name='', train_umap=False, use_AE=True, device='cpu'):
         self.ae_model = ae_model
         self.ae_opt = ae_opt
         self.criterion = criterion
@@ -64,6 +63,7 @@ class Sequential_Encoder():
         self.dataset_name = dataset_name
         self.train_umap = train_umap
         self.use_AE = use_AE
+        self.device = device
     
     #TODO: make it static method
     def autoencoder(self):
@@ -86,7 +86,7 @@ class Sequential_Encoder():
         else:
             _, model_l = train_model(self.ae_model, self.new_model_name, dataloaders, dataset_sizes, phases, 
                                         self.criterion, self.ae_opt, self.lr_scheduler, num_epochs=self.nr_epochs, 
-                                        model_save_dir=self.model_root_dir, log_save_dir=self.log_root_dir, save_flag=False)
+                                        model_save_dir=self.model_root_dir, log_save_dir=self.log_root_dir, save_flag=False, device=self.device)
             model = model_l
         
         # extract the AE embedding of test data
@@ -96,7 +96,7 @@ class Sequential_Encoder():
             labels_list = []
             with torch.no_grad():
                 for _, (image, label) in enumerate(tqdm(self.image_dataset, desc=f'Extracting AE embedding of client_{self.client_name}')):
-                        image = image.to(device)
+                        image = image.to(self.device)
                         labels_list.append(label) 
                         _, embedding = model(image.unsqueeze(0))
                         embedding_list.append(embedding.cpu().detach().numpy())
@@ -151,6 +151,7 @@ class Sequential_Encoder():
     
 # unit test
 if __name__ == '__main__':
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     #
     batch_size = 1
     manifold_dim = 2
