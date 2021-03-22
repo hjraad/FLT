@@ -387,7 +387,7 @@ def partition_clusters(clustering_matrix, args, nr_clusters=5, method='complete'
         mask[:,cluster_memberships[idx]!=i] = 0
         canvas+=clustering_matrix*mask
     fig = plt.figure()
-    plt.imshow(canvas)
+    plt.imshow(canvas,origin='lower')
     fig.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_method_{method}_filtered.png')
 
     d_error = np.sum(clustering_matrix-canvas)
