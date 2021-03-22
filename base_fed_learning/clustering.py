@@ -377,7 +377,7 @@ def partition_clusters(clustering_matrix, args, nr_clusters=5, method='complete'
     # Plot colorbar.
     axcolor = fig.add_axes([0.91,0.1,0.02,0.6])
     plt.colorbar(im, cax=axcolor)
-    fig.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_reconstructed.png')
+    fig.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_method_{method}_reconstructed.png')
 
     # Plot filtered
     canvas = np.zeros_like(clustering_matrix)
@@ -388,11 +388,11 @@ def partition_clusters(clustering_matrix, args, nr_clusters=5, method='complete'
         canvas+=clustering_matrix*mask
     fig = plt.figure()
     plt.imshow(canvas)
-    fig.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_filtered.png')
+    fig.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_method_{method}_filtered.png')
 
     d_error = np.sum(clustering_matrix-canvas)
     print(f'Decompostion error: {d_error}, {d_error/np.sum(clustering_matrix)}')
-
+    exit()
     cluster_user_dict = { i : idx[cluster_memberships==i] for i in range(1,nr_clusters+1)}
 
     # Test
