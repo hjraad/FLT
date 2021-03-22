@@ -214,7 +214,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
     if args.partition_clusters_flag:
         # clustering_matrix = np.ones_like(clustering_matrix)
-        cluster_user_dict = partition_clusters(clustering_matrix, args, nr_clusters=args.nr_of_partition_clusters)
+        cluster_user_dict = partition_clusters(clustering_matrix, args, nr_clusters=args.nr_of_partition_clusters, method=args.partition_method)
 
     if args.all_clients: 
         print("Aggregation over all clients")
