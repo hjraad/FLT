@@ -491,7 +491,7 @@ def main(args, config_file_name):
 
     # ----------------------------------
     # open the output file to write the results to
-    folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}/{args.target_dataset}/{args.nr_of_partition_clusters}/{}'
+    folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}/{args.target_dataset}/{args.nr_of_partition_clusters}/{args.partition_method}'
     
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
