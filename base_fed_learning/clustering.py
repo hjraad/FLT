@@ -33,6 +33,7 @@ from collections import defaultdict
 from tqdm import tqdm
 import scipy
 import scipy.cluster.hierarchy as sch
+from sklearn.decomposition import PCA
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.models.convAE_cifar import ConvAutoencoderCIFAR
@@ -268,6 +269,51 @@ def clustering_encoder(dict_users, dataset_train, ae_model_dict, args):
 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
+def clustering_pca_kmeans(dict_users, cluster, dataset_train, args):
+    idxs_users = np.random.choice(args.num_users, args.num_users, replace=False)
+    
+    centers = np.empty((0, args.latent_dim), dtype=int)
+    center_dict = {}
+    embedding_matrix = np.zeros((len(dict_users[0])*args.num_users, args.latent_dim))
+    
+    for user_id in tqdm(idxs_users, desc='Clustering in progress ...'):
+        local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
+        
+        user_dataset_train = local.ldr_train.dataset
+        
+        user_data_np = np.squeeze(np.array([item[0].view(1, -1).numpy() for item in user_dataset_train]))
+        if args.latent_dim > len(user_dataset_train):
+            user_data_np = np.repeat(user_data_np, np.ceil(args.latent_dim/len(user_dataset_train)),axis=0) 
+        pca = PCA(n_components=args.latent_dim)
+        embedding = pca.fit_transform(user_data_np)
+        
+        kmeans = KMeans(n_clusters=5, random_state=43).fit(embedding)
+        centers = np.vstack((centers, kmeans.cluster_centers_))
+        
+        center_dict[user_id] = kmeans.cluster_centers_
+    
+    clustering_matrix_soft = np.zeros((args.num_users, args.num_users))
+    clustering_matrix = np.zeros((args.num_users, args.num_users))
+
+    c_dict = center_dict
+
+    for idx0 in tqdm(idxs_users, desc='Creating clustering matrix'):
+        c0 = c_dict[idx0]
+        for idx1 in idxs_users:
+            c0 = c_dict[idx0]
+            c1 = c_dict[idx1]
+        
+            distance = min_matching_distance(c0, c1)
+            
+            clustering_matrix_soft[idx0][idx1] = distance
+        
+            if distance < 3:
+                clustering_matrix[idx0][idx1] = 1
+            else:
+                clustering_matrix[idx0][idx1] = 0
+                
+    return clustering_matrix, clustering_matrix_soft, centers, c_dict
+
 def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args):
 
     # idxs_users = np.random.shuffle(np.arange(num_users))
@@ -392,7 +438,7 @@ def partition_clusters(clustering_matrix, args, nr_clusters=5, method='complete'
 
     d_error = np.sum(clustering_matrix-canvas)
     print(f'Decompostion error: {d_error}, {d_error/np.sum(clustering_matrix)}')
-    exit()
+    # exit()
     cluster_user_dict = { i : idx[cluster_memberships==i] for i in range(1,nr_clusters+1)}
 
     # Test
