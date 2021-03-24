@@ -307,7 +307,7 @@ def clustering_pca_kmeans(dict_users, cluster, dataset_train, args):
             
             clustering_matrix_soft[idx0][idx1] = distance
         
-            if distance < 3:
+            if distance < 1.2:
                 clustering_matrix[idx0][idx1] = 1
             else:
                 clustering_matrix[idx0][idx1] = 0
