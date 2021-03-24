@@ -461,8 +461,8 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
             np.save(save_path,clustering_matrix)
         
         plt.figure()
-        plt.imshow(clustering_matrix)
-        plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}.png')
+        plt.imshow(clustering_matrix,origin='lower')
+        plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}.png',ppi=300,)
         plt.close()
 
     elif args.clustering_method == 'kmeans':
@@ -475,7 +475,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
             np.save(save_path,clustering_matrix)
         
         plt.figure()
-        plt.imshow(clustering_matrix)
+        plt.imshow(clustering_matrix,origin='lower')
         plt.savefig(f'{args.results_root_dir}/clust_pca_kmeans_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
         
@@ -541,7 +541,9 @@ def main(args, config_file_name):
     print(f'number of users: {args.num_users }')
     # clustering the clients
     clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, 0)
-
+    fig = plt.figure(figsize=(8,8))
+    plt.imshow(clustering_matrix,origin='lower')
+    plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}.png',ppi=300)
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
     loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, 
                                                              clustering_matrix, args.multi_center, dataset_test, transforms_dict, 

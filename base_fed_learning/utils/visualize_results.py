@@ -24,7 +24,7 @@ from glob import glob
 # plotting settings
 plot_linewidth = 1.5
 text_size = 12
-marker_step = 5
+marker_step = 10
 marker_size = 7
 legend_linewidth = 1.5
 legened_location = 4
@@ -35,16 +35,35 @@ name_dict = {
     'fedavg': 'FedAvg',
     'local': 'Local',
     'fedsem': 'FedSEM',
-    'ucfl_enc1': 'Ours (Enc1)',
-    'ucfl_enc2': 'Ours (Enc2)'
+    'ucfl_enc1': 'FLT (ours)',
+    'ucfl_enc2': 'FLT (full)',
+    'ucfl_enc2-3average' : '3 average',
+    'ucfl_enc2-3weighted' : '3 weighted',
+    'ucfl_enc2-3ward' : 'FLT (3 clusters)',
+    'ucfl_enc2-7average' : '7 average',
+    'ucfl_enc2-7weighted' : '7 weighted',
+    'ucfl_enc2-7ward' : 'FLT (7 clusters)',
+    'ucfl_enc2-5average' : '5 average',
+    'ucfl_enc2-5ward' : 'FLT (5 clusters)',
+    'ucfl_enc2-5weighted' : '5 weighted',
+    'ucfl_enc2-3complete' : '3 complete',
+    'ucfl_enc2-5complete' : '5 complete',
+    'ucfl_enc2-7complete' : '7 complete', 
 }
 
-line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
+# line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
+line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bd-', 'bd--', 'go-', 'go--', 'mv-', 'mv--', 'k^--', 'rs--', 'bd--', 'go--', 'mv--']
 
 def visualize(result_directory_name, include_train =True):
     # -----------------------------------
     entries = sorted( glob(f'{result_directory_name}/Scenario*.csv') )
+    plt.rc('font', size=text_size)          # controls default text sizes
+    plt.rc('axes', titlesize=text_size)     # fontsize of the axes title
+    plt.rc('axes', labelsize=text_size)    # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=text_size)    # fontsize of the tick labels
+    plt.rc('ytick', labelsize=text_size)    # fontsize of the tick labels
 
+    plt.rcParams.update({'font.size': text_size})
     # plot loss curve
     fig, ax = plt.subplots()
     
@@ -58,7 +77,7 @@ def visualize(result_directory_name, include_train =True):
             continue
 
         # skipping all models_log files
-        if filename_decoded[-1] == 'allmodels_log.csv':
+        if filename_decoded[-2] == 'allmodels':
             print("skiping log file")
             continue
         
@@ -83,20 +102,18 @@ def visualize(result_directory_name, include_train =True):
             ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
                     label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
                     markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-
-        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
-                label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+        if clustering_method == 'FLT (full)':
+            ax.plot(range(1,len(df['test_accuracy'])*5,5), df['test_accuracy'], line_style[2*idx], 
+                label=f'{clustering_method}', linewidth =plot_linewidth, 
+                markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+        else:
+            ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
+                label=f'{clustering_method}', linewidth =plot_linewidth, 
                 markevery=markers_on, markerfacecolor='none', markersize = marker_size)
         
     # plt.rcParams.update({'font.size': text_size})
     
-    plt.rc('font', size=text_size)          # controls default text sizes
-    plt.rc('axes', titlesize=text_size)     # fontsize of the axes title
-    plt.rc('axes', labelsize=text_size)    # fontsize of the x and y labels
-    plt.rc('xtick', labelsize=text_size)    # fontsize of the tick labels
-    plt.rc('ytick', labelsize=text_size)    # fontsize of the tick labels
 
-    plt.rcParams.update({'font.size': text_size})
 
     # legend = ax.legend(loc='upper ri')#, shadow=True, fontsize='x-large')
     leg = plt.legend(loc=legened_location, prop={'size': legend_prop_size})
@@ -108,8 +125,8 @@ def visualize(result_directory_name, include_train =True):
     #     text.set_fontsize(legend_text_size)
     plt.grid(color='k', linestyle=':', linewidth=1, axis='y')
     ax.set_yticks(grid_ticks)
-    plt.ylabel('Accuracy (%)')
-    plt.xlabel('Communication round')
+    plt.ylabel('Accuracy (%)',fontsize=text_size)
+    plt.xlabel('Communication round',fontsize=text_size)
     plt.savefig(f'{result_directory_name}/result.png')
     #plt.show()
 
@@ -175,13 +192,13 @@ if __name__ == '__main__':
     # ----------------------------------
     plt.close('all')
     
-    result_directory_name = f'./../{args.results_root_dir}/main_fed/new_weighted_model/'
-    folder_list = sorted( glob(f'{result_directory_name}/*/*/') )
+    result_directory_name = f'./../{args.results_root_dir}/main_fed/'
+    folder_list = sorted( glob(f'{result_directory_name}/*/') )
     
     for folder in folder_list:
         print(folder)
         if 'scenario_3' not in folder:
-            visualize(folder, include_train=True)
+            visualize(folder, include_train=False)
         else:
             clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1', 'ucfl_enc2']
             result_array = np.empty((0, 6))
