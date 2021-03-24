@@ -50,8 +50,8 @@ def args_parser():
     parser.add_argument('--nr_of_embedding_clusters', default=5, help='number of clusters')
     parser.add_argument('--flag_with_overlap', default=False, help='clustering with overlapped labels')
     parser.add_argument('--partition_clusters_flag',default=False, help='Wether to perform hierarchical clustering on the top of clustering_matrix')
-    parser.add_argument('--nr_of_partition_clusters',default=5, help='Target clusters for hierarchical clustering')
-    parser.add_argument('--partition_method',default='average',help='Hierarchical clustering method')
+    parser.add_argument('--nr_of_partition_clusters',default=1, help='Target clusters for hierarchical clustering')
+    parser.add_argument('--partition_method',default='none',help='Hierarchical clustering method')
     # AE model
     parser.add_argument('--ae_model_name', default='model-1607623811-epoch40-latent128', help='Autoencoder model name')
     parser.add_argument('--latent_dim', default=128, help='latent dimension')

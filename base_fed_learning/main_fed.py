@@ -26,7 +26,7 @@ from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar, CNNLeaf
 from base_fed_learning.models.Fed import FedAvg
 from base_fed_learning.models.test import test_img, test_img_classes, test_img_index
 from base_fed_learning.utils.utils import ModelContainer
-from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul, partition_clusters, filter_cluster_partition
+from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul, partition_clusters, filter_cluster_partition, clustering_pca_kmeans
 from sklearn.cluster import KMeans
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
@@ -464,7 +464,21 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
         plt.imshow(clustering_matrix,origin='lower')
         plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}.png',ppi=300,)
         plt.close()
-    
+
+    elif args.clustering_method == 'kmeans':
+        save_path=os.path.join(args.results_root_dir,f'clust_pca_kmeans_nr_users-{args.num_users}_nr_embedding_clusters_{args.nr_of_embedding_clusters}.npy')
+        if os.path.exists(save_path):
+            clustering_matrix = np.load(save_path)  
+        else:
+            clustering_matrix, _, _, _ =\
+                clustering_pca_kmeans(dict_users, cluster, dataset_train, args)
+            np.save(save_path,clustering_matrix)
+        
+        plt.figure()
+        plt.imshow(clustering_matrix)
+        plt.savefig(f'{args.results_root_dir}/clust_pca_kmeans_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.close()
+        
     return clustering_matrix
 
 def extract_evaluation_range(args):
