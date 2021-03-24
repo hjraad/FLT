@@ -24,7 +24,7 @@ from glob import glob
 # plotting settings
 plot_linewidth = 1.5
 text_size = 12
-marker_step = 5
+marker_step = 100
 marker_size = 7
 legend_linewidth = 1.5
 legened_location = 4
@@ -41,11 +41,11 @@ name_dict = {
     # 'ucfl_enc2': 'FLT (ours)',  
     'ifca': 'IFCA'
 }
-# line_style = ['k^-', 'k^--','rs-', 'rs--', 'go-', 'go--', 'bd-', 'bd--', 'mv-', 'mv--']
+line_style = ['k^-', 'k^--','rs-', 'rs--', 'go-', 'go--', 'bd-', 'bd--', 'mv-', 'mv--']
 
-line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bd-', 'bd--', 'go-', 'go--', 'mv-', 'mv--']
+# line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bd-', 'bd--', 'go-', 'go--', 'mv-', 'mv--']
 line_colors = ['black','red','green','blue','magenta']
-# mark_every = [3,5,10,4]
+mark_every = [120,140,5,130]
 def visualize(result_directory_name, include_train =True):
     # -----------------------------------
     entries = sorted( glob(f'{result_directory_name}/Scenario*.csv') )
@@ -91,24 +91,24 @@ def visualize(result_directory_name, include_train =True):
             continue
 
         if clustering_method == 'IFCA':
-            ax2 = ax.twiny()
-            ax2.set_xlim(-160,1061)
-            x_tick = list(range(0,1001,200))
-            x_tick[0]=20
-            ax2.set_xticks(x_tick)
-            ax2.spines['top'].set_color('green')
-            ax2.spines['top'].set_linewidth(1.5)  
-            ax2.spines['top'].set_linestyle((0,(6,6)))
-            ax2.xaxis.label.set_color('green')
-            ax2.tick_params(axis='x', colors='green')
-            ax.plot(20, df['training_accuracy'][0], 'go--', 
+            # ax2 = ax.twiny()
+            # ax2.set_xlim(-160,1061)
+            # x_tick = list(range(0,1001,200))
+            # x_tick[0]=20
+            # ax2.set_xticks(x_tick)
+            # ax2.spines['top'].set_color('green')
+            # ax2.spines['top'].set_linewidth(1.5)  
+            # ax2.spines['top'].set_linestyle((0,(6,6)))
+            # ax2.xaxis.label.set_color('green')
+            # ax2.tick_params(axis='x', colors='green')
+            ax.plot(20, df['test_accuracy'][0], 'go-', 
                                 linewidth = plot_linewidth, color='green',
                                 markerfacecolor ='black', markersize = marker_size)
-            ax.text(35, df['test_accuracy'][0]*0.85,'Pretrained with FedAvg',color='green',fontsize=text_size)
-            ax.text(35, df['test_accuracy'][0]*0.75,'weight sharing',color='green',fontsize=text_size)
-            ax.text(35, df['test_accuracy'][0]*0.65,'for 500 rounds (for IFCA)',color='green',fontsize=text_size)
-            ax.annotate('', xy=(22, df['test_accuracy'][0]*0.98),  xycoords='data',
-                    xytext=(34, df['test_accuracy'][0]*0.87), textcoords='data',
+            ax.text(145, df['test_accuracy'][0]*1.45,'Pretrained with FedAvg',color='green',fontsize=text_size)
+            ax.text(145, df['test_accuracy'][0]*1.25,'weight sharing',color='green',fontsize=text_size)
+            ax.text(145, df['test_accuracy'][0]*1.05,'for 500 rounds (for IFCA)',color='green',fontsize=text_size)
+            ax.annotate('', xy=(23, df['test_accuracy'][0]*0.98),  xycoords='data',
+                    xytext=(145, df['test_accuracy'][0]*1.05), textcoords='data',
                     arrowprops=dict(edgecolor='green', facecolor='green', shrink=0.1),
                     horizontalalignment='right', verticalalignment='top',
             )
@@ -116,7 +116,7 @@ def visualize(result_directory_name, include_train =True):
             #     (22, df['test_accuracy'][0]*0.97), xytext=(27, df['test_accuracy'][0]*0.82), 
             #     arrowprops=dict(facecolor='red', shrink=0.05))
 
-            plot_range = range(20,(len(df['test_accuracy'])+6)*3,3)
+            plot_range = range(20,(len(df['test_accuracy'])+1)*20,20)
         else:
             freq = 1 # 5
             plot_range = range(0,len(df['test_accuracy'])*freq,freq)
@@ -125,7 +125,7 @@ def visualize(result_directory_name, include_train =True):
             markers_on = list(np.arange(0, df.shape[0], marker_step))
    
         if clustering_method=='IFCA':
-            line_stl='go--'
+            line_stl='go-'
         else:
             line_stl=line_style[2*idx]
 
@@ -137,7 +137,7 @@ def visualize(result_directory_name, include_train =True):
         ax.plot(plot_range, df['test_accuracy'], line_stl, 
                 label=f'{clustering_method}', linewidth =plot_linewidth,
                 # label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
-                markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+                markevery=mark_every[idx], markerfacecolor='none', markersize = marker_size)
         
     # plt.rcParams.update({'font.size': text_size})
     # ax.spines['top'].set_color('white')
@@ -221,8 +221,8 @@ if __name__ == '__main__':
     # ----------------------------------
     plt.close('all')
     
-    result_directory_name = f'./../{args.results_root_dir}/main_fed/scenario_4/'
-    folder_list = sorted( glob(f'{result_directory_name}/*/') )
+    result_directory_name = f'./../{args.results_root_dir}/main_fed/scenario_5_mlp/'
+    folder_list = sorted( glob(f'{result_directory_name}/') )
     
     for folder in folder_list:
         print(folder)
