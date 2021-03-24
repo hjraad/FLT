@@ -475,7 +475,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
             np.save(save_path,clustering_matrix)
         
         plt.figure()
-        plt.imshow(clustering_matrix)
+        plt.imshow(clustering_matrix,origin='lower')
         plt.savefig(f'{args.results_root_dir}/clust_pca_kmeans_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
         
