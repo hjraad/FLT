@@ -24,7 +24,7 @@ from glob import glob
 # plotting settings
 plot_linewidth = 1.5
 text_size = 12
-marker_step = 10
+marker_step = [120,140,110,130,150] #[16,13,18,14,5]
 marker_size = 7
 legend_linewidth = 1.5
 legened_location = 4
@@ -36,15 +36,16 @@ name_dict = {
     'local': 'Local',
     'fedsem': 'FedSEM',
     'ucfl_enc1': 'FLT (ours)',
-    'ucfl_enc2': 'FLT (full)',
+    'ucfl_enc2': 'FLT',
     'ucfl_enc2-3average' : '3 average',
     'ucfl_enc2-3weighted' : '3 weighted',
-    'ucfl_enc2-3ward' : 'FLT (3 clusters)',
+    'ucfl_enc2-2ward' : 'FLT (C=2)',
+    'ucfl_enc2-3ward' : 'FLT (C=3)',
     'ucfl_enc2-7average' : '7 average',
     'ucfl_enc2-7weighted' : '7 weighted',
-    'ucfl_enc2-7ward' : 'FLT (7 clusters)',
+    'ucfl_enc2-7ward' : 'FLT (C=7)',
     'ucfl_enc2-5average' : '5 average',
-    'ucfl_enc2-5ward' : 'FLT (5 clusters)',
+    'ucfl_enc2-5ward' : 'FLT (C=5)',
     'ucfl_enc2-5weighted' : '5 weighted',
     'ucfl_enc2-3complete' : '3 complete',
     'ucfl_enc2-5complete' : '5 complete',
@@ -52,7 +53,7 @@ name_dict = {
 }
 
 # line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
-line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bd-', 'bd--', 'go-', 'go--', 'mv-', 'mv--', 'k^--', 'rs--', 'bd--', 'go--', 'mv--']
+line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'go-', 'go--', 'mv-', 'mv--', 'bd-', 'bd--','k^--', 'rs--', 'bd--', 'go--', 'mv--']
 
 def visualize(result_directory_name, include_train =True):
     # -----------------------------------
@@ -96,20 +97,35 @@ def visualize(result_directory_name, include_train =True):
             print("Error reading file")
             continue
 
-        markers_on = list(np.arange(0, df.shape[0], marker_step))
+        markers_on = list(np.arange(0, df.shape[0], marker_step[idx]))
 
         if include_train:
+            # if clustering_method == 'FLT (full)':
+            #     ax.plot(range(1,len(df['training_accuracy'])*5,5), df['training_accuracy'], line_style[2*idx + 1], 
+            #         label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
+            #         markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+            # else:
             ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
-                    label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
-                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-        if clustering_method == 'FLT (full)':
-            ax.plot(range(1,len(df['test_accuracy'])*5,5), df['test_accuracy'], line_style[2*idx], 
-                label=f'{clustering_method}', linewidth =plot_linewidth, 
+                label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
                 markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-        else:
+
+            # if clustering_method == 'FLT (full)':
+            #     ax.plot(range(1,len(df['test_accuracy'])*5,5), df['test_accuracy'], line_style[2*idx], 
+            #         label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+            #         markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+            # else:
             ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
-                label=f'{clustering_method}', linewidth =plot_linewidth, 
+                label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
                 markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+        
+        # if clustering_method == 'FLT (full)':
+        #     ax.plot(range(1,len(df['test_accuracy'])*5,5), df['test_accuracy'], line_style[2*idx], 
+        #         label=f'{clustering_method}', linewidth =plot_linewidth, 
+        #         markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+        # else:
+        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
+            label=f'{clustering_method}', linewidth =plot_linewidth, 
+            markevery=markers_on, markerfacecolor='none', markersize = marker_size)
         
     # plt.rcParams.update({'font.size': text_size})
     
@@ -193,7 +209,7 @@ if __name__ == '__main__':
     plt.close('all')
     
     result_directory_name = f'./../{args.results_root_dir}/main_fed/'
-    folder_list = sorted( glob(f'{result_directory_name}/*/') )
+    folder_list = sorted( glob(f'{result_directory_name}/*/*/') )
     
     for folder in folder_list:
         print(folder)
