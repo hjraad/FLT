@@ -435,7 +435,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
         clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, cluster, args)
 
         plt.figure()
-        plt.imshow(clustering_matrix)
+        plt.matshow(clustering_matrix)
         plt.savefig(f'{args.results_root_dir}/clust_perfect_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
 
@@ -461,7 +461,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
             np.save(save_path,clustering_matrix)
         
         plt.figure()
-        plt.imshow(clustering_matrix,origin='lower')
+        plt.matshow(clustering_matrix,origin='lower')
         plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}.png',ppi=300,)
         plt.close()
 
@@ -475,7 +475,7 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
             np.save(save_path,clustering_matrix)
         
         plt.figure()
-        plt.imshow(clustering_matrix,origin='lower')
+        plt.matshow(clustering_matrix,origin='lower')
         plt.savefig(f'{args.results_root_dir}/clust_pca_kmeans_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
         
