@@ -453,12 +453,14 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
         args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
         ae_model_dict = encoder_model_capsul(args)
         save_path=os.path.join(args.results_root_dir,f'clust_umapcentral_nr_users-{args.num_users}_nr_embedding_clusters_{args.nr_of_embedding_clusters}.npy')
+        save_path_soft=os.path.join(args.results_root_dir,f'clust_umapcentral_nr_users-{args.num_users}_nr_embedding_clusters_{args.nr_of_embedding_clusters}_soft.npy')
         if os.path.exists(save_path):
             clustering_matrix = np.load(save_path)  
         else:
-            clustering_matrix, _, _, _, _ =\
+            clustering_matrix, clustering_matrix_soft, _, _, _ =\
                 clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
             np.save(save_path,clustering_matrix)
+            np.save(save_path_soft,clustering_matrix_soft)
         
         plt.figure()
         plt.matshow(clustering_matrix,origin='lower')
@@ -467,12 +469,14 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
 
     elif args.clustering_method == 'kmeans':
         save_path=os.path.join(args.results_root_dir,f'clust_pca_kmeans_nr_users-{args.num_users}_nr_embedding_clusters_{args.nr_of_embedding_clusters}.npy')
+        save_path_soft=os.path.join(args.results_root_dir,f'clust_pca_kmeans_nr_users-{args.num_users}_nr_embedding_clusters_{args.nr_of_embedding_clusters}_soft.npy')
         if os.path.exists(save_path):
             clustering_matrix = np.load(save_path)  
         else:
-            clustering_matrix, _, _, _ =\
+            clustering_matrix, clustering_matrix_soft, _, _ =\
                 clustering_pca_kmeans(dict_users, cluster, dataset_train, args)
             np.save(save_path,clustering_matrix)
+            np.save(save_path_soft,clustering_matrix_soft)
         
         plt.figure()
         plt.matshow(clustering_matrix,origin='lower')
