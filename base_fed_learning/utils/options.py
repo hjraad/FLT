@@ -31,7 +31,7 @@ def args_parser():
     parser.add_argument('--iid', action='store_true', help='whether i.i.d or not')
     parser.add_argument('--num_classes', type=int, default=10, help="number of classes")
     parser.add_argument('--num_channels', type=int, default=3, help="number of channels of imges")
-    parser.add_argument('--gpu', type=int, default=0, help="GPU ID, -1 for CPU")
+    parser.add_argument('--gpu', type=int, default=-1, help="GPU ID, -1 for CPU")
     parser.add_argument('--stopping_rounds', type=int, default=10, help='rounds of early stopping')
     parser.add_argument('--verbose', action='store_true', help='verbose print')
     parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
@@ -47,9 +47,11 @@ def args_parser():
 
     # clustering options
     parser.add_argument('--clustering_method', default='umap_central', help='clustering method: single, local, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central')
-    parser.add_argument('--nr_of_clusters', default=5, help='number of clusters')
+    parser.add_argument('--nr_of_embedding_clusters', default=5, help='number of clusters')
     parser.add_argument('--flag_with_overlap', default=False, help='clustering with overlapped labels')
-
+    parser.add_argument('--partition_clusters_flag',default=False, help='Wether to perform hierarchical clustering on the top of clustering_matrix')
+    parser.add_argument('--nr_of_partition_clusters',default=1, help='Target clusters for hierarchical clustering')
+    parser.add_argument('--partition_method',default='none',help='Hierarchical clustering method')
     # AE model
     parser.add_argument('--ae_model_name', default='model-1607623811-epoch40-latent128', help='Autoencoder model name')
     parser.add_argument('--latent_dim', default=128, help='latent dimension')

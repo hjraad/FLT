@@ -75,8 +75,13 @@ def mnist_noniid_cluster(dataset, num_users, cluster):
 
     nr_in_clusters = num_users // cluster_size
 
-    for i in range(num_users):
-        cluster_index = (i//nr_in_clusters)
+    users = np.arange(0,num_users,1)
+    # np.random.shuffle(users)
+    # print(users)
+    # for i in range(cluster_size):
+        # print(sorted(users[i*nr_in_clusters:(i+1)*nr_in_clusters]))
+    for i, user in enumerate(users):
+        cluster_index = min((i//nr_in_clusters), cluster_size-1)
         class_index_range = np.where(cluster[cluster_index] != -1)[0]
         for j in class_index_range:
             k = np.where(indices_array[ cluster[cluster_index][j] ] == -1)[0][0]
@@ -84,7 +89,7 @@ def mnist_noniid_cluster(dataset, num_users, cluster):
             #rand_set = np.random.choice(k-1, int(num_imgs/len(class_index_range)), replace=False)
             index = (i % nr_in_clusters) * int(num_imgs/len(class_index_range))
             rand_set = np.arange(index, index + int(num_imgs/len(class_index_range)))
-            dict_users[i] = np.concatenate((dict_users[i], indices_array[ cluster[cluster_index][j] ][rand_set]), axis=0)
+            dict_users[user] = np.concatenate((dict_users[user], indices_array[ cluster[cluster_index][j] ][rand_set]), axis=0)
     
     return dict_users
 

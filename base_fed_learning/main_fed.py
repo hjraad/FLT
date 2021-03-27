@@ -9,6 +9,7 @@ sys.path.append("./../../")
 sys.path.append("./")
 
 import os
+import time
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
@@ -24,13 +25,14 @@ from base_fed_learning.models.Update import LocalUpdate
 from base_fed_learning.models.Nets import MLP, CNNMnist, CNNCifar, CNNLeaf
 from base_fed_learning.models.Fed import FedAvg
 from base_fed_learning.models.test import test_img, test_img_classes, test_img_index
-from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul
+from base_fed_learning.utils.utils import ModelContainer
+from clustering import clustering_single, clustering_seperate, clustering_perfect, clustering_umap, clustering_encoder, clustering_umap_central, encoder_model_capsul, partition_clusters, filter_cluster_partition, clustering_pca_kmeans
 from sklearn.cluster import KMeans
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.utils.load_datasets import load_dataset
 
-from torchsummary import summary
+import tqdm
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -150,11 +152,14 @@ def gen_model(dataset, dataset_train, num_users):
     net_glob.train()
 
     # copy weights
-    w_glob = net_glob.state_dict()
-    net_glob_list = [copy.deepcopy(net_glob) for i in range(num_users)]
-    w_glob_list = [copy.deepcopy(w_glob) for i in range(num_users)]
-    
-    return net_glob, w_glob, net_glob_list, w_glob_list
+    # w_glob = net_glob.state_dict()
+    # net_glob_list = ModelContainer([copy.deepcopy(net_glob) for i in range(num_users)])
+    # net_glob_list.set_device(args.device)
+    net_glob_list = np.array([copy.deepcopy(net_glob) for i in range(num_users)])
+    # w_glob_list = ModelContainer([copy.deepcopy(w_glob) for i in range(num_users)])
+    # w_glob_list.set_device(args.device)
+
+    return net_glob, None, net_glob_list, None
 
 def get_model_params_length(model):
     lst = [list(model[k].cpu().numpy().flatten()) for  k in model.keys()]
@@ -162,22 +167,22 @@ def get_model_params_length(model):
 
     return len(flat_list)
 
-def clustering_multi_center(num_users, w_locals, multi_center_initialization_flag, est_multi_center, args):
-    model_params_length = get_model_params_length(w_locals[0])
+def clustering_multi_center(num_users, net_local_list, multi_center_initialization_flag, est_multi_center, args):
+    model_params_length = get_model_params_length(net_local_list[0].state_dict())
     models_parameter_list = np.zeros((num_users, model_params_length))
 
     for i in range(num_users):
-        model = w_locals[i]
+        model = net_local_list[i].state_dict()
         lst = [list(model[k].cpu().numpy().flatten()) for  k in model.keys()]
         flat_list = [item for sublist in lst for item in sublist]
 
         models_parameter_list[i] = np.array(flat_list).reshape(1,model_params_length)
 
     if multi_center_initialization_flag:                
-        kmeans = KMeans(n_clusters=args.nr_of_clusters, n_init=20).fit(models_parameter_list)
+        kmeans = KMeans(n_clusters=args.nr_of_embedding_clusters, n_init=20).fit(models_parameter_list)
 
     else:
-        kmeans = KMeans(n_clusters=args.nr_of_clusters, init=est_multi_center, n_init=1).fit(models_parameter_list)#TODO: remove the best
+        kmeans = KMeans(n_clusters=args.nr_of_embedding_clusters, init=est_multi_center, n_init=1).fit(models_parameter_list)#TODO: remove the best
     
     ind_center = kmeans.fit_predict(models_parameter_list)
 
@@ -208,40 +213,59 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         multi_center_initialization_flag = True
         est_multi_center = []
 
+    if args.partition_clusters_flag:
+        # clustering_matrix = np.ones_like(clustering_matrix)
+        cluster_user_dict = partition_clusters(clustering_matrix, args, nr_clusters=args.nr_of_partition_clusters, method=args.partition_method)
+
     if args.all_clients: 
         print("Aggregation over all clients")
-        w_locals = w_glob_list
+        net_local_list = net_glob_list
     for iter in range(args.epochs):
         loss_locals = []
         if not args.all_clients:
-            w_locals = []
+            net_local_list = np.array([]) #ModelContainer([])
+            # net_local_list.set_device(args.device)
         m = max(int(args.frac * num_users), 1)
         idxs_users = np.random.choice(range(num_users), m, replace=False)
-        for idx in idxs_users:
+        print(f"Local update started for {len(idxs_users)} users")
+        for idx in tqdm.tqdm(idxs_users):
+            
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
-            w, loss = local.train(net=copy.deepcopy(net_glob_list[idx]).to(args.device))
+            net, loss = local.train(net=copy.deepcopy(net_glob_list[idx]))
+
             if args.all_clients:
-                w_locals[idx] = copy.deepcopy(w)
+                net_local_list[idx] = copy.deepcopy(net)
             else:
-                w_locals.append(copy.deepcopy(w))
+                net_local_list.append(copy.deepcopy(net))
             loss_locals.append(copy.deepcopy(loss))
+        print(f"Local update finished for {len(idxs_users)} users")
         # update global weights
         if multi_center_flag:
-            clustering_matrix, est_multi_center = clustering_multi_center(num_users, w_locals, multi_center_initialization_flag, est_multi_center, args)
+            clustering_matrix, est_multi_center = clustering_multi_center(num_users, net_local_list, multi_center_initialization_flag, est_multi_center, args)
             multi_center_initialization_flag = False
 
             plt.figure()
             plt.imshow(clustering_matrix)
-            plt.savefig(f'{args.results_root_dir}/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+            plt.savefig(f'{args.results_root_dir}/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
             plt.close()
         
+        ##############
+        # Experimental
+        # We extract centers from the clustering matrix 
+        # we still update on each client locally
+        # but only do FedAvg  per cluster
+        if args.partition_clusters_flag:
+            cluster_partitions = filter_cluster_partition(cluster_user_dict, net_local_list)
+        else:
+            cluster_partitions = {1 : (net_local_list, clustering_matrix, np.arange(0,num_users,1))}
         #print(clustering_matrix)
-        w_glob_list = FedAvg(w_locals, clustering_matrix, dict_users)
+        for cluster_idx, (net_cluster_list, filtered_clustering_matrix, cluster_users) in cluster_partitions.items():
+            print(f'FedAvg over cluster {cluster_idx} with {len(net_cluster_list)} users')
+            net_cluster_list = FedAvg(net_cluster_list, filtered_clustering_matrix, dict_users)
 
-        # copy weights to net_glob
-        for idx in np.arange(num_users): #TODO: fix this
-            net_glob_list[idx] = copy.deepcopy(net_glob_list[0])
-            net_glob_list[idx].load_state_dict(w_glob_list[idx])
+            # copy weights to net_glob
+            for local_idx, global_idx in enumerate(cluster_users):
+                net_glob_list[global_idx] = copy.deepcopy(net_cluster_list[local_idx])
 
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
@@ -340,7 +364,7 @@ def gen_cluster(args):
             cluster[i] = np.random.choice(10, 10, replace=False)
 
     elif args.target_dataset == 'EMNIST':
-        nr_of_clusters = args.nr_of_clusters
+        nr_of_clusters = args.nr_of_embedding_clusters
         cluster_length = args.num_users // nr_of_clusters
         n_1 = 47 // (nr_of_clusters - 1)
         n_2 = 47 % n_1
@@ -352,10 +376,10 @@ def gen_cluster(args):
         cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
 
     elif args.scenario == 2:
-        cluster_length = args.num_users // args.nr_of_clusters
+        cluster_length = args.num_users // args.nr_of_embedding_clusters
         # generate cluster settings    
         if args.flag_with_overlap:
-            cluster = np.zeros((args.nr_of_clusters, 3), dtype='int64')
+            cluster = np.zeros((args.nr_of_embedding_clusters, 3), dtype='int64')
             lst = np.random.choice(10, 10, replace=False) # what is this?
             cluster[0] = lst[0:3]
             cluster[1] = lst[2:5]
@@ -364,16 +388,16 @@ def gen_cluster(args):
             cluster[4] = [lst[-2], lst[-1], lst[0]]
 
         else:
-            cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
+            cluster = np.zeros((args.nr_of_embedding_clusters, 2), dtype='int64')
             cluster_array = np.random.choice(10, 10, replace=False)
-            for i in range(args.nr_of_clusters):
+            for i in range(args.nr_of_embedding_clusters):
                 cluster[i] = cluster_array[i*2: i*2 + 2]
 
     elif args.scenario == 3:
         # scenario 3
-        args.nr_of_clusters = 2
-        cluster_length = args.num_users // args.nr_of_clusters
-        cluster = np.zeros((args.nr_of_clusters, 5), dtype='int64')
+        args.nr_of_embedding_clusters = 2
+        cluster_length = args.num_users // args.nr_of_embedding_clusters
+        cluster = np.zeros((args.nr_of_embedding_clusters, 5), dtype='int64')
         cluster_array = np.random.choice(10, 10, replace=False)
         if args.cluster_overlap == 0:
             cluster[0] = cluster_array[0:5]
@@ -412,8 +436,8 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
         clustering_matrix = clustering_perfect(args.num_users, dict_users, dataset_train, cluster, args)
 
         plt.figure()
-        plt.imshow(clustering_matrix)
-        plt.savefig(f'{args.results_root_dir}/clust_perfect_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.matshow(clustering_matrix)
+        plt.savefig(f'{args.results_root_dir}/clust_perfect_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
         plt.close()
 
     elif args.clustering_method == 'umap':
@@ -429,14 +453,37 @@ def extract_clustering(dict_users, dataset_train, cluster, args, iter):
     elif args.clustering_method == 'umap_central':
         args.ae_model_name = extract_model_name(args.model_root_dir, args.pre_trained_dataset)
         ae_model_dict = encoder_model_capsul(args)
-
-        clustering_matrix, _, _, _, _ =\
-            clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
+        save_path=os.path.join(args.results_root_dir,f'clust_umapcentral_nr_users-{args.num_users}_nr_embedding_clusters_{args.nr_of_embedding_clusters}.npy')
+        save_path_soft=os.path.join(args.results_root_dir,f'clust_umapcentral_nr_users-{args.num_users}_nr_embedding_clusters_{args.nr_of_embedding_clusters}_soft.npy')
+        if os.path.exists(save_path):
+            clustering_matrix = np.load(save_path)  
+        else:
+            clustering_matrix, clustering_matrix_soft, _, _, _ =\
+                clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args)
+            np.save(save_path,clustering_matrix)
+            np.save(save_path_soft,clustering_matrix_soft)
+        
         plt.figure()
-        plt.imshow(clustering_matrix)
-        plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.matshow(clustering_matrix,origin='lower')
+        plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}.png',ppi=300,)
         plt.close()
-    
+
+    elif args.clustering_method == 'kmeans':
+        save_path=os.path.join(args.results_root_dir,f'clust_pca_kmeans_nr_users-{args.num_users}_nr_embedding_clusters_{args.nr_of_embedding_clusters}.npy')
+        save_path_soft=os.path.join(args.results_root_dir,f'clust_pca_kmeans_nr_users-{args.num_users}_nr_embedding_clusters_{args.nr_of_embedding_clusters}_soft.npy')
+        if os.path.exists(save_path):
+            clustering_matrix = np.load(save_path)  
+        else:
+            clustering_matrix, clustering_matrix_soft, _, _ =\
+                clustering_pca_kmeans(dict_users, cluster, dataset_train, args)
+            np.save(save_path,clustering_matrix)
+            np.save(save_path_soft,clustering_matrix_soft)
+        
+        plt.figure()
+        plt.matshow(clustering_matrix,origin='lower')
+        plt.savefig(f'{args.results_root_dir}/clust_pca_kmeans_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
+        plt.close()
+        
     return clustering_matrix
 
 def extract_evaluation_range(args):
@@ -447,7 +494,7 @@ def extract_evaluation_range(args):
         evaluation_index_step = 1
         evaluation_index_max = args.num_users
     elif args.clustering_method == 'single' and args.multi_center == False:
-        evaluation_index_step = args.num_users // args.nr_of_clusters# clustering_length
+        evaluation_index_step = args.num_users // args.nr_of_embedding_clusters# clustering_length
         evaluation_index_max = args.num_users
     else:
         evaluation_index_step = 1
@@ -463,7 +510,7 @@ def main(args, config_file_name):
 
     # ----------------------------------
     # open the output file to write the results to
-    folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}/{args.target_dataset}'
+    folder_name = f'{args.results_root_dir}/main_fed/scenario_{args.scenario}/{args.target_dataset}/{args.nr_of_partition_clusters}/{args.partition_method}'
     
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
@@ -499,7 +546,9 @@ def main(args, config_file_name):
     print(f'number of users: {args.num_users }')
     # clustering the clients
     clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, 0)
-
+    fig = plt.figure(figsize=(8,8))
+    plt.imshow(clustering_matrix,origin='lower')
+    plt.savefig(f'{args.results_root_dir}/clust_umapcentral_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}.png',ppi=300)
     net_glob, w_glob, net_glob_list, w_glob_list = gen_model(args.target_dataset, dataset_train, args.num_users)
     loss_train, net_glob_list, clustering_matrix = FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, args.num_users, 
                                                              clustering_matrix, args.multi_center, dataset_test, transforms_dict, 
@@ -513,8 +562,7 @@ def main(args, config_file_name):
 if __name__ == '__main__':
     # parse args
     args = args_parser()
-    args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-
+    
     # ----------------------------------
     plt.close('all')
     entries = sorted(os.listdir(f'{args.config_root_dir}/'))
@@ -523,16 +571,17 @@ if __name__ == '__main__':
             continue
         with open(f'{args.config_root_dir}/{entry}') as f:
             args = args_parser()
-            args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
             config_file_name = entry
             print(f'working on the cofig file: {args.config_root_dir}/{entry}')
             parser = argparse.ArgumentParser()
             argparse_dict = vars(args)
             argparse_dict.update(json.load(f))
 
-            t_args = argparse.Namespace()
-            t_args.__dict__.update(argparse_dict)
+            args = argparse.Namespace()
+            args.__dict__.update(argparse_dict)
             #args = parser.parse_args(namespace=t_args)
+            args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
+            
 
-        main(t_args, config_file_name)
+        main(args, config_file_name)
   

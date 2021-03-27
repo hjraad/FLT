@@ -24,7 +24,7 @@ from glob import glob
 # plotting settings
 plot_linewidth = 1.5
 text_size = 12
-marker_step = 5
+marker_step = [120,140,110,130,150] #[16,13,18,14,5]
 marker_size = 7
 legend_linewidth = 1.5
 legened_location = 4
@@ -41,12 +41,19 @@ name_dict = {
     'ifca': 'IFCA'
 }
 
-line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
+# line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
+line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'go-', 'go--', 'mv-', 'mv--', 'bd-', 'bd--','k^--', 'rs--', 'bd--', 'go--', 'mv--']
 
 def visualize(result_directory_name, include_train =True):
     # -----------------------------------
     entries = sorted( glob(f'{result_directory_name}/Scenario*.csv') )
+    plt.rc('font', size=text_size)          # controls default text sizes
+    plt.rc('axes', titlesize=text_size)     # fontsize of the axes title
+    plt.rc('axes', labelsize=text_size)    # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=text_size)    # fontsize of the tick labels
+    plt.rc('ytick', labelsize=text_size)    # fontsize of the tick labels
 
+    plt.rcParams.update({'font.size': text_size})
     # plot loss curve
     fig, ax = plt.subplots()
     
@@ -60,7 +67,7 @@ def visualize(result_directory_name, include_train =True):
             continue
 
         # skipping all models_log files
-        if filename_decoded[-1] == 'allmodels_log.csv':
+        if filename_decoded[-2] == 'allmodels':
             print("skiping log file")
             continue
         
@@ -101,27 +108,40 @@ def visualize(result_directory_name, include_train =True):
             plot_range = range(0,len(df['test_accuracy'])*5,5)
             ax.set_xlim(-5,131)
             ax.set_xticks(np.arange(0,131,10))
-        markers_on = list(np.arange(0, df.shape[0], marker_step))
-        if include_train:
-            ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
-                    label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
-                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+        # markers_on = list(np.arange(0, df.shape[0], marker_step))
+        markers_on = list(np.arange(0, df.shape[0], marker_step[idx]))
 
-        ax.plot(plot_range, df['test_accuracy'], line_style[2*idx], 
-                label=f'{clustering_method}', linewidth =plot_linewidth,
-                # label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+        if include_train:
+            # if clustering_method == 'FLT (full)':
+            #     ax.plot(range(1,len(df['training_accuracy'])*5,5), df['training_accuracy'], line_style[2*idx + 1], 
+            #         label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
+            #         markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+            # else:
+            ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
+                label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
+                markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+
+            # if clustering_method == 'FLT (full)':
+            #     ax.plot(range(1,len(df['test_accuracy'])*5,5), df['test_accuracy'], line_style[2*idx], 
+            #         label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+            #         markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+            # else:
+            ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
+                label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
                 markevery=markers_on, markerfacecolor='none', markersize = marker_size)
         
+        # if clustering_method == 'FLT (full)':
+        #     ax.plot(range(1,len(df['test_accuracy'])*5,5), df['test_accuracy'], line_style[2*idx], 
+        #         label=f'{clustering_method}', linewidth =plot_linewidth, 
+        #         markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+        # else:
+        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
+            label=f'{clustering_method}', linewidth =plot_linewidth, 
+            markevery=markers_on, markerfacecolor='none', markersize = marker_size)
         
     # plt.rcParams.update({'font.size': text_size})
     
-    plt.rc('font', size=text_size)          # controls default text sizes
-    plt.rc('axes', titlesize=text_size)     # fontsize of the axes title
-    plt.rc('axes', labelsize=text_size)    # fontsize of the x and y labels
-    plt.rc('xtick', labelsize=text_size)    # fontsize of the tick labels
-    plt.rc('ytick', labelsize=text_size)    # fontsize of the tick labels
 
-    plt.rcParams.update({'font.size': text_size})
 
     # legend = ax.legend(loc='upper ri')#, shadow=True, fontsize='x-large')
     leg = ax.legend(loc=legened_location, prop={'size': legend_prop_size})
@@ -133,8 +153,8 @@ def visualize(result_directory_name, include_train =True):
     #     text.set_fontsize(legend_text_size)
     ax.grid(color='k', linestyle=':', linewidth=1, axis='y')
     ax.set_yticks(grid_ticks)
-    ax.set_ylabel('Accuracy (%)')
-    ax.set_xlabel('Communication round')
+    plt.ylabel('Accuracy (%)',fontsize=text_size)
+    plt.xlabel('Communication round',fontsize=text_size)
     plt.savefig(f'{result_directory_name}/result.png')
     #plt.show()
 
@@ -200,8 +220,8 @@ if __name__ == '__main__':
     # ----------------------------------
     plt.close('all')
     
-    result_directory_name = f'./../{args.results_root_dir}/main_fed/scenario_5/'
-    folder_list = sorted( glob(f'{result_directory_name}/*/') )
+    result_directory_name = f'./../{args.results_root_dir}/main_fed/'
+    folder_list = sorted( glob(f'{result_directory_name}/*/*/') )
     
     for folder in folder_list:
         print(folder)

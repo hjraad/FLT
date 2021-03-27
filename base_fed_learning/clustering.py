@@ -28,8 +28,12 @@ from sklearn.cluster import KMeans
 import itertools
 import copy
 import umap
+from collections import defaultdict
 
 from tqdm import tqdm
+import scipy
+import scipy.cluster.hierarchy as sch
+from sklearn.decomposition import PCA
 
 from manifold_approximation.models.convAE_128D import ConvAutoencoder
 from manifold_approximation.models.convAE_cifar import ConvAutoencoderCIFAR
@@ -39,7 +43,7 @@ from manifold_approximation.sequential_encoder import Sequential_Encoder
 from manifold_approximation.utils.load_datasets import load_dataset
 
 from sympy.utilities.iterables import multiset_permutations
-from torchsummary import summary
+# from torchsummary import summary
 # ----------------------------------
 # Reproducability
 # ----------------------------------
@@ -70,7 +74,7 @@ def encoder_model_capsul(args):
         # loss
         criterion = nn.BCELoss()
     print(ae_model)
-    summary(ae_model)
+    # summary(ae_model)
     
 
     # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -80,7 +84,7 @@ def encoder_model_capsul(args):
     exp_lr_scheduler = lr_scheduler.StepLR(ae_optimizer, step_size=10, gamma=0.5)
 
     # Load the model ckpt
-    checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt')
+    checkpoint = torch.load(f'{args.model_root_dir}/{args.ae_model_name}_best.pt',  map_location=torch.device(args.device))
     ae_model.load_state_dict(checkpoint['model_state_dict']) 
     
     ae_model_dict = {
@@ -231,8 +235,8 @@ def clustering_encoder(dict_users, dataset_train, ae_model_dict, args):
             
         encoder = Encoder(ae_model_dict['model'], ae_model_dict['name'], 
                           args.model_root_dir, args.manifold_dim, 
-                          user_dataset_train, user_id)
-        
+                          user_dataset_train, user_id, device=args.device)
+         
         encoder.autoencoder()
         #encoder.manifold_approximation_umap()
         #reducer = encoder.umap_reducer
@@ -265,6 +269,51 @@ def clustering_encoder(dict_users, dataset_train, ae_model_dict, args):
 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix
 
+def clustering_pca_kmeans(dict_users, cluster, dataset_train, args):
+    idxs_users = np.random.choice(args.num_users, args.num_users, replace=False)
+    
+    centers = np.empty((0, args.latent_dim), dtype=int)
+    center_dict = {}
+    embedding_matrix = np.zeros((len(dict_users[0])*args.num_users, args.latent_dim))
+    
+    for user_id in tqdm(idxs_users, desc='Clustering in progress ...'):
+        local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[user_id])
+        
+        user_dataset_train = local.ldr_train.dataset
+        
+        user_data_np = np.squeeze(np.array([item[0].view(1, -1).numpy() for item in user_dataset_train]))
+        if args.latent_dim > len(user_dataset_train):
+            user_data_np = np.repeat(user_data_np, np.ceil(args.latent_dim/len(user_dataset_train)),axis=0) 
+        pca = PCA(n_components=args.latent_dim)
+        embedding = pca.fit_transform(user_data_np)
+        
+        kmeans = KMeans(n_clusters=5, random_state=43).fit(embedding)
+        centers = np.vstack((centers, kmeans.cluster_centers_))
+        
+        center_dict[user_id] = kmeans.cluster_centers_
+    
+    clustering_matrix_soft = np.zeros((args.num_users, args.num_users))
+    clustering_matrix = np.zeros((args.num_users, args.num_users))
+
+    c_dict = center_dict
+
+    for idx0 in tqdm(idxs_users, desc='Creating clustering matrix'):
+        c0 = c_dict[idx0]
+        for idx1 in idxs_users:
+            c0 = c_dict[idx0]
+            c1 = c_dict[idx1]
+        
+            distance = min_matching_distance(c0, c1)
+            
+            clustering_matrix_soft[idx0][idx1] = distance
+        
+            if distance < 1.2:
+                clustering_matrix[idx0][idx1] = 1
+            else:
+                clustering_matrix[idx0][idx1] = 0
+                
+    return clustering_matrix, clustering_matrix_soft, centers, c_dict
+
 def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, args):
 
     # idxs_users = np.random.shuffle(np.arange(num_users))
@@ -285,8 +334,7 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
                                      args.nr_epochs_sequential_training, ae_model_dict['name'],
                                      args.model_root_dir, args.log_root_dir, args.manifold_dim, user_dataset_train, 
                                      user_id, args.pre_trained_dataset, dataset_name=args.target_dataset, 
-                                     train_umap=False, use_AE=True)
-        
+                                     train_umap=False, use_AE=True, device=args.device)
         encoder.autoencoder()
         # encoder.manifold_approximation_umap()
         embedding = encoder.ae_embedding_np 
@@ -298,7 +346,7 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
         # use Kmeans to cluster the data into 2 clusters
         #embedding_matrix[user_id*len(dict_users[0]): len(dict_users[0])*(user_id + 1),:] = embedding
         if args.target_dataset == 'FEMNIST':
-            num_center = args.nr_of_clusters
+            num_center = args.nr_of_embedding_clusters
         else:
             cluster_size = cluster.shape[0]
             nr_in_clusters = args.num_users // cluster_size
@@ -321,7 +369,7 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
     for idx in idxs_users:
         c_dict[idx] = umap_reducer.transform(center_dict[idx])
 
-    for idx0 in idxs_users:
+    for idx0 in tqdm(idxs_users):
         c0 = c_dict[idx0]
         for idx1 in idxs_users:
             c0 = c_dict[idx0]
@@ -338,10 +386,76 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
                 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix, c_dict
 
+def filter_cluster_partition(cluster_user_dict, net_local_list):
+    cluster_dict = defaultdict(tuple)
+
+    for i, cluster_members in cluster_user_dict.items():
+        cluster_dict[i] = (net_local_list[cluster_members], 
+                            np.ones((len(cluster_members), len(cluster_members))),
+                            cluster_members)
+    return cluster_dict
+
+def partition_clusters(clustering_matrix, args, nr_clusters=5, method='complete', metric='euclidean'):
+    # clustering
+    fig = plt.figure(figsize=(8,8))
+    ax1 = fig.add_axes([0.09,0.1,0.2,0.6])
+    Y = sch.linkage(clustering_matrix, method=method,metric=metric)
+    Z = sch.dendrogram(Y, orientation='left')
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+    # calculate cluster membership
+    cluster_memberships = sch.fcluster(Y, t=nr_clusters, criterion='maxclust') # ith element in this array is the cluster for i
+    idx = np.array(Z['leaves']) # idx ordered in cluster
+    
+    ax2 = fig.add_axes([0.3,0.71,0.6,0.2])
+    Z2 = sch.dendrogram(Y)
+    ax2.set_xticks([])
+    ax2.set_yticks([])
+    # Plot distance matrix.
+    axmatrix = fig.add_axes([0.3,0.1,0.6,0.6])
+
+    clustering_matrix = clustering_matrix[idx,:]
+    clustering_matrix = clustering_matrix[:,idx]
+    im = axmatrix.matshow(clustering_matrix, aspect='auto', origin='lower', cmap=plt.cm.YlGnBu)
+    axmatrix.set_xticks([])
+    axmatrix.set_yticks([])
+
+    # Plot colorbar.
+    axcolor = fig.add_axes([0.91,0.1,0.02,0.6])
+    plt.colorbar(im, cax=axcolor)
+    fig.savefig(f'{args.results_root_dir}/clust_{args.clustering_method}_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_method_{method}_reconstructed.png')
+
+    # Plot filtered
+    canvas = np.zeros_like(clustering_matrix)
+    for i in range(1,nr_clusters+1):
+        mask = np.ones_like(clustering_matrix)
+        mask[cluster_memberships[idx]!=i,:] = 0
+        mask[:,cluster_memberships[idx]!=i] = 0
+        canvas+=clustering_matrix*mask
+    fig = plt.figure()
+    plt.matshow(canvas,origin='lower')
+    fig.savefig(f'{args.results_root_dir}/clust_{args.clustering_method}_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_method_{method}_filtered.png')
+
+    d_error = np.sum(clustering_matrix-canvas)
+    print(f'Decompostion error: {d_error}, {d_error/np.sum(clustering_matrix)}')
+    # exit()
+    cluster_user_dict = { i : idx[cluster_memberships==i] for i in range(1,nr_clusters+1)}
+
+    # Test
+    collected = []
+    for i, cluster_members_a in cluster_user_dict.items():
+        for j, cluster_members_b in cluster_user_dict.items():
+            assert np.all(cluster_members_a != cluster_members_b) or set(cluster_members_a).intersection(set(cluster_members_b)) != {}, f'clusters {i} and {j} are not disjoint'
+        collected.extend(cluster_members_a)
+    assert np.all(np.arange(0,len(clustering_matrix),1) == np.sort(np.array(collected)))
+
+    return cluster_user_dict
+
 if __name__ == '__main__':
     # parse args
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
+
 
     # args.num_users = 20
     # args.ae_model_name = "model-1607623811-epoch40-latent128"
@@ -372,25 +486,25 @@ if __name__ == '__main__':
 
     # ----------------------------------
     # generate cluster settings    
-    args.nr_of_clusters = 5
-    cluster_length = args.num_users // args.nr_of_clusters
+    args.nr_of_embedding_clusters = 5
+    cluster_length = args.num_users // args.nr_of_embedding_clusters
     
     if args.target_dataset == 'EMNIST': 
-        n_1 = 47 // (args.nr_of_clusters - 1)
+        n_1 = 47 // (args.nr_of_embedding_clusters - 1)
         n_2 = 47 % n_1
-        cluster = np.zeros((args.nr_of_clusters, n_1), dtype='int64')
+        cluster = np.zeros((args.nr_of_embedding_clusters, n_1), dtype='int64')
         # cluster_array = np.random.choice(47, 47, replace=False)
         cluster_array = np.arange(47)
-        for i in range(args.nr_of_clusters - 1):
+        for i in range(args.nr_of_embedding_clusters - 1):
             cluster[i] = cluster_array[i*n_1: i*n_1 + n_1]
-        cluster[args.nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:] 
+        cluster[args.nr_of_embedding_clusters - 1][0:n_2] = cluster_array[-n_2:] 
         
     else:
-        cluster = np.zeros((args.nr_of_clusters, 2), dtype='int64')
+        cluster = np.zeros((args.nr_of_embedding_clusters, 2), dtype='int64')
         cluster_array = np.random.choice(10, 10, replace=False)
-        for i in range(args.nr_of_clusters):
+        for i in range(args.nr_of_embedding_clusters):
             cluster[i] = cluster_array[i*2: i*2 + 2] 
-        # for i in range(args.nr_of_clusters):
+        # for i in range(args.nr_of_embedding_clusters):
     #     cluster[i] = np.random.choice(10, 2, replace=False)
     
     # ---------------------------------- 
@@ -425,15 +539,15 @@ if __name__ == '__main__':
     # ----------------------------------
     plt.figure(1)
     plt.imshow(clustering_matrix,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_perfect_nrclust_nrusers-{args.num_users}-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_perfect_nrclust_nrusers-{args.num_users}-{args.nr_of_embedding_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
     plt.figure(2)
     plt.imshow(clustering_matrix0,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/clustMat_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_embedding_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
     plt.figure(3)
     plt.imshow(-1*clustering_matrix0_soft,cmap=plt.cm.viridis)
-    plt.savefig(f'{args.results_root_dir}/Clustering/softClustMat_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/softClustMat_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_embedding_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
     # nr_of_centers = 2*cluster_length
     # colors = itertools.cycle(["r"] * nr_of_centers +["b"]*nr_of_centers+["g"]*nr_of_centers+["k"]*nr_of_centers+["y"]*nr_of_centers)
@@ -441,7 +555,7 @@ if __name__ == '__main__':
     # for i in range(0,args.num_users):
     #     plt.scatter(centers[i][0][0],centers[i][0][1], color=next(colors))
     #     plt.scatter(centers[i][1][0],centers[i][1][1], color=next(colors))
-    # plt.savefig(f'{args.results_root_dir}/Clustering/centers_{args.clustering_method}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+    # plt.savefig(f'{args.results_root_dir}/Clustering/centers_{args.clustering_method}_nrclust-{args.nr_of_embedding_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     
         # ----------------------------------    
     # plot embedding results in 3D
@@ -466,16 +580,16 @@ if __name__ == '__main__':
     ax.set_yticklabels([])
     ax.set_xticklabels([])
     ax.set_zticklabels([])
-    plt.savefig(f'{args.results_root_dir}/Clustering/ecnoder_pca_plot3d_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+    plt.savefig(f'{args.results_root_dir}/Clustering/ecnoder_pca_plot3d_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_embedding_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
 
 
     if args.clustering_method not in ['umap_central', 'umap']:
         plt.figure(5)
         nr_of_centers = len(dict_users[0])*cluster_length
         colors = itertools.cycle(["r"]*1 + ["b"]*1 + ["g"]*1 + ["k"]*1 + ["y"]*1)
-        for i in range(args.nr_of_clusters):
+        for i in range(args.nr_of_embedding_clusters):
             plt.scatter(embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers, 0], embedding_matrix[i*nr_of_centers:(i+1)*nr_of_centers:, 1], color=next(colors))
-        plt.savefig(f'{args.results_root_dir}/Clustering/embeddingMat_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+        plt.savefig(f'{args.results_root_dir}/Clustering/embeddingMat_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_embedding_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     elif args.clustering_method == 'umap_central':
         plt.figure(5)
         nr_of_centers = len(c_dict[0])*cluster_length
@@ -484,5 +598,5 @@ if __name__ == '__main__':
             plt.scatter(c_dict[i][0][0], c_dict[i][0][1], color=next(colors))
             plt.scatter(c_dict[i][1][0], c_dict[i][1][1], color=next(colors))
         #c_dict
-        plt.savefig(f'{args.results_root_dir}/Clustering/umap_embeding_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
+        plt.savefig(f'{args.results_root_dir}/Clustering/umap_embeding_{args.clustering_method}_nrusers-{args.num_users}_nrclust-{args.nr_of_embedding_clusters}_from-{args.pre_trained_dataset}_to-{args.target_dataset}.jpg')
     plt.show()

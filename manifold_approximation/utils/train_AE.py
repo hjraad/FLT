@@ -12,7 +12,7 @@ import numpy as np
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train_model(model, model_name, dataloaders, dataset_sizes, phases, criterion, optimizer, scheduler, 
-                num_epochs=10, model_save_dir='./', log_save_dir='./', save_flag=True):
+                num_epochs=10, model_save_dir='./', log_save_dir='./', save_flag=True, device='cpu'):
     '''
     Trains the AE model 
     Paramteres:
