@@ -21,10 +21,13 @@ import numpy as np
 import pandas as pd
 from glob import glob
 
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
+
 # plotting settings
 plot_linewidth = 1.5
 text_size = 12
-marker_step = [120,140,110,130,150] #[16,13,18,14,5]
+marker_step = [16,13,18,14,5] #[120,140,110,130,150] #[16,13,18,14,5]
 marker_size = 7
 legend_linewidth = 1.5
 legened_location = 4
@@ -53,7 +56,7 @@ name_dict = {
 }
 
 # line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'bo-', 'bo--', 'gd-', 'gd--', 'mv-', 'mv--']
-line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'go-', 'go--', 'mv-', 'mv--', 'bd-', 'bd--','k^--', 'rs--', 'bd--', 'go--', 'mv--']
+line_style = ['k^-', 'k^--', 'rs-', 'rs--', 'go-', 'go--', 'mv-', 'mv--', 'bd-', 'bd--']
 
 def visualize(result_directory_name, include_train =True):
     # -----------------------------------
@@ -67,7 +70,8 @@ def visualize(result_directory_name, include_train =True):
     plt.rcParams.update({'font.size': text_size})
     # plot loss curve
     fig, ax = plt.subplots()
-    
+    axins = zoomed_inset_axes(ax,2.2,loc='lower left', 
+                        axes_kwargs={"facecolor" : "lightgray"})
         
     for (idx, entry) in enumerate(entries):
         print(idx)
@@ -100,49 +104,81 @@ def visualize(result_directory_name, include_train =True):
         markers_on = list(np.arange(0, df.shape[0], marker_step[idx]))
 
         if include_train:
-            # if clustering_method == 'FLT (full)':
-            #     ax.plot(range(1,len(df['training_accuracy'])*5,5), df['training_accuracy'], line_style[2*idx + 1], 
-            #         label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
-            #         markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-            # else:
-            ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
-                label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
-                markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+            if clustering_method == 'FLT':
+                ax.plot(range(1,len(df['training_accuracy'])*5,5), df['training_accuracy'], line_style[2*idx + 1], 
+                    label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+                axins.plot(range(1,len(df['training_accuracy'])*5,5), df['training_accuracy'], line_style[2*idx + 1], 
+                    label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+            else:
+                ax.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
+                    label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+                axins.plot(range(len(df['training_accuracy'])), df['training_accuracy'], line_style[2*idx + 1], 
+                    label=f'{clustering_method}: (train)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
 
-            # if clustering_method == 'FLT (full)':
-            #     ax.plot(range(1,len(df['test_accuracy'])*5,5), df['test_accuracy'], line_style[2*idx], 
-            #         label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
-            #         markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-            # else:
-            ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
-                label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
-                markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-        
-        # if clustering_method == 'FLT (full)':
+            if clustering_method == 'FLT':
+                ax.plot(range(1,len(df['test_accuracy'])*5,5), df['test_accuracy'], line_style[2*idx], 
+                    label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+                axins.plot(range(1,len(df['test_accuracy'])*5,5), df['test_accuracy'], line_style[2*idx], 
+                    label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+            else:
+                ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
+                    label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+                axins.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
+                    label=f'{clustering_method}: (test)', linewidth =plot_linewidth, 
+                    markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+        # if clustering_method == 'FLT':
         #     ax.plot(range(1,len(df['test_accuracy'])*5,5), df['test_accuracy'], line_style[2*idx], 
         #         label=f'{clustering_method}', linewidth =plot_linewidth, 
         #         markevery=markers_on, markerfacecolor='none', markersize = marker_size)
         # else:
-        ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
-            label=f'{clustering_method}', linewidth =plot_linewidth, 
-            markevery=markers_on, markerfacecolor='none', markersize = marker_size)
-        
-    # plt.rcParams.update({'font.size': text_size})
-    
+        else:
+            ax.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
+                label=f'{clustering_method}', linewidth =plot_linewidth, 
+                markevery=markers_on, markerfacecolor='none', markersize = marker_size)
+            axins.plot(range(len(df['test_accuracy'])), df['test_accuracy'], line_style[2*idx], 
+                label=f'{clustering_method}', linewidth =plot_linewidth, 
+                markevery=markers_on, markerfacecolor='none', markersize = marker_size)
 
-
-    # legend = ax.legend(loc='upper ri')#, shadow=True, fontsize='x-large')
-    leg = plt.legend(loc=legened_location, prop={'size': legend_prop_size})
-    # get the individual lines inside legend and set line width
-    for line in leg.get_lines():
-        line.set_linewidth(legend_linewidth)
     # get label texts inside legend and set font size
     # for text in leg.get_texts():
     #     text.set_fontsize(legend_text_size)
-    plt.grid(color='k', linestyle=':', linewidth=1, axis='y')
+    ax.grid(color='k', linestyle=':', linewidth=1, axis='y')
     ax.set_yticks(grid_ticks)
-    plt.ylabel('Accuracy (%)',fontsize=text_size)
-    plt.xlabel('Communication round',fontsize=text_size)
+    ax.set_ylabel('Accuracy (%)',fontsize=text_size)
+    ax.set_xlabel('Communication round',fontsize=text_size)
+
+    # plt.rcParams.update({'font.size': text_size})
+
+    x1,x2,y1,y2 = 120,155,78,92
+    axins.set_xlim(x1,x2)
+    axins.set_ylim(y1,y2)
+
+    axins.set(xticklabels=[])
+    axins.set(yticklabels=[])
+    axins.tick_params(bottom=False,left=False)
+    # axins.set_zorder(-1)
+    pp,p1,p2 = mark_inset(ax,axins,loc1=2,loc2=4,linewidth=0.7, fc="None", ec='k')
+    pp.set_fill(True)
+    pp.set_facecolor("lightgray")
+    pp.set_edgecolor("k")
+    for bc in [p1,p2]:
+        bc.remove()
+        ax.add_patch(bc)
+        bc.set_zorder(4)
+        bc.set_clip_on(True)
+    # legend = ax.legend(loc='upper ri')#, shadow=True, fontsize='x-large')
+    leg = ax.legend(loc=legened_location, prop={'size': legend_prop_size})
+    # get the individual lines inside legend and set line width
+    for line in leg.get_lines():
+        line.set_linewidth(legend_linewidth)
+
     plt.savefig(f'{result_directory_name}/result.png')
     #plt.show()
 
@@ -214,7 +250,7 @@ if __name__ == '__main__':
     for folder in folder_list:
         print(folder)
         if 'scenario_3' not in folder:
-            visualize(folder, include_train=False)
+            visualize(folder, include_train=True)
         else:
             clustering_methods = ['fedavg', 'local', 'fedsem', 'ucfl_enc1', 'ucfl_enc2']
             result_array = np.empty((0, 6))
