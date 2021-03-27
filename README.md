@@ -1,5 +1,5 @@
 # Federated Learning with Taskonomy (FLT)
-This is the official repository for the paper [Federated Learning with Taskonomy (FLT) for Non-IID Data]() (Hadi Jamali-Rad, Mohammad Abdizadeh, Attila Szabó)
+This is the official repository for [Federated Learning with Taskonomy (FLT) for Non-IID Data]() (Hadi Jamali-Rad, Mohammad Abdizadeh, Attila Szabó)
 
 ## Abstract
 > Classical federated learning approaches incur significant performance degradation in the presence of non-IID client data. A possible direction to address this issue is forming clusters of clients with roughly IID data. Most solutions following this direction are iterative, and relatively slow and prone to convergence issues in discovering underlying cluster structure. 
