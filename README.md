@@ -15,7 +15,7 @@ We consider three abstraction levels:
 The encoder is provided by the server to the clients. This allows them to apply one-shot contractive encoding on their local data, followed by k-means on the outcome and return the results to the server. At server side, UMAP is applied to approximate the arriving clients embeddings. 
 This is followed by applying a distance threshold to determine client dependencies and form an adjacency matrix or a client (task) relatedness graph. In case forming disjoint clusters is of interest, we then use hierarchical clustering [1] to efficiently reorder the adjacency matrix (or corresponding client relatedness graph) into disjoint clusters. We show a) the adjacency matrix and b) the corresponding client relatedness graph (both reordered on the right) in the following figure:
 
-<img src="Figures/graph_adjacency.png" width="400" >
+<img src="Figures/graph_adjacency.png" width="700" >
 
 ### Requirements
 1. Go to the root directory ```cd FLT```
