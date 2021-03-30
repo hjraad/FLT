@@ -3,7 +3,7 @@
     "iid"                 : 0,
     "frac"                : 1,
     "clustering_method"   : "single",
-    "nr_of_embedding_clusters": 5, 
+    "nr_of_embedding_clusters" : 5, 
     "multi_center"        : 1,
     "epochs"              : 150,
     "local_ep"            : 5,
@@ -13,7 +13,7 @@
     "num_channels"        : 1,
     "iter_to_iter_results": 1,
     "target_dataset"      : "FEMNIST",
-    "gpu" :0,
+    "gpu"                 : 0,
     "partition_clusters_flag" : 0
 }
     

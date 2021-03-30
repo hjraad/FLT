@@ -2,8 +2,8 @@
     "scenario"            : 5,
     "iid"                 : 0,
     "frac"                : 1,
-    "clustering_method"   : "kmeans",
-    "nr_of_embedding_clusters" : 5, 
+    "clustering_method"   : "umap_central",
+    "nr_of_embedding_clusters" : 5,
     "multi_center"        : 0,
     "epochs"              : 150,
     "local_ep"            : 5,
@@ -13,9 +13,10 @@
     "num_channels"        : 1,
     "iter_to_iter_results": 1,
     "target_dataset"      : "FEMNIST",
-    "gpu": 0,
-    "partition_clusters_flag" : 1,
-    "nr_of_partition_clusters" : 3,
-    "partition_method" : "ward"
+    "pre_trained_dataset" : "FMNIST",
+    "nr_epochs_sequential_training" : 5,
+    "gpu"                 : 0,
+    "partition_clusters_flag"  : 1,
+    "nr_of_partition_clusters" : 2,
+    "partition_method"    : "ward"
 }
-    
