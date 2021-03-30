@@ -31,7 +31,7 @@ We import the standard FEMNIST dataset of LEAF and construct a network of 200 cl
 
 Convergence graph of test accuracies for Scenario 3, FEMNIST, M=200 (left: MLP, right, CNN). On the right for CNN, note the different range of communication rounds on the top horizontal axis associated with IFCA.
 
-<img src="Figures/scenario_3.png" width="250" ><img src="Figures/scenario_3_cnn.png" width="250" >
+<img src="Figures/scenario_3.png" width="350" ><img src="Figures/scenario_3_cnn.png" width="350" >
 
 #### Scenario 4 
 This experiment presents a large-scale federated learning setting with structured non-IIDness involving both quantity and label distribution skews. The test accuracies at the last communication round T=100 are summarized in the following table.
@@ -43,7 +43,8 @@ This experiment presents a large-scale federated learning setting with structure
 | FLT (ours) | **86.51**| **93.69** | 
 
 Convergence graph of test accuracies for Scenario 4, Structured Non-IID FEMNIST, C=10 for MLP (left) and CNN (right) models.
-<img src="Figures/scenario_4.png" width="250" ><img src="Figures/scenario_4_cnn_local_5.png" width="250" >
+
+<img src="Figures/scenario_4.png" width="350" ><img src="Figures/scenario_4_cnn_local_5.png" width="350" >
 
 ### Requirements
 1. Go to the root directory ```cd FLT```
@@ -76,9 +77,15 @@ and Scenario  4:
 Corresponding author: Hadi Jamali-Rad (h.jamali.rad {at} gmail {dot} com, h.jamalirad {at} tudelft {dot} nl)
 
 **References**
+
 [1] Modern hierarchical, agglomerative clustering algorithms, D. Müllner, 2011.
+
 [2] LEAF: A Benchmark for Federated Settings, S. Caldas, S. M. K. Duddu, P. Wu, T. Li, J. Konecny, H. B. McMahan, V. Smith, and A. Talwalkar, 2018
+
 [3] Communication-efficient learning of deepnetworks from decentralized data, B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas, 2017
+
 [4] An efficient framework for clustered federated learning, A. Gosh, J. Chung, D. Yin, and K. Ramchandran, 2020.
+
 [5] Multi-center federated learning, M. Xie, G. Long, T. Shen, T. Zhou, X. Wang, and J. Jiang, 2020.
+
 <!-- [3] Heterogeneity for the Win: Communication-Efficient Federated Clustering, D. K. Dennis and V. Smith, 2020. 
