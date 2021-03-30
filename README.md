@@ -65,13 +65,15 @@ We present the configs for Scenario 3:
  - ```FLT/configs/scenario_3/Scenario3_3_femnist_fedsem.json```
  - ```FLT/configs/Scenario3_4_femnist_flt_enc2.json``` (enabled by default)
  
- Note: for runs with IFCA we used the original implementation [4]
+Note: for runs with IFCA we used the original implementation [4]
 
 and Scenario  4:
  - ```FLT/configs/scenario_4/Scenario4_1_femnist_fedavg.json```
  - ```FLT/configs/scenario_4/Scenario4_2_femnist_kmeans.json```
  - ```FLT/configs/scenario_4/Scenario3_3_femnist_fedsem.json```
  - ```FLT/configs/scenario_4/Scenario4_4_femnist_flt_enc2.json```
+
+Once the training is finished, accuracies and variances are generated in ```FLT/results/main_fed/scneario_X/<config_filename>.csv```
 
 ### Contact
 Corresponding author: Hadi Jamali-Rad (h.jamali.rad {at} gmail {dot} com, h.jamalirad {at} tudelft {dot} nl)
