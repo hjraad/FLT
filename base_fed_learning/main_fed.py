@@ -214,7 +214,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
         est_multi_center = []
 
     if args.partition_clusters_flag:
-        # clustering_matrix = np.ones_like(clustering_matrix)
+        # hierarchical clustering
         cluster_user_dict = partition_clusters(clustering_matrix, args, nr_clusters=args.nr_of_partition_clusters, method=args.partition_method)
 
     if args.all_clients: 
@@ -249,21 +249,18 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
             plt.savefig(f'{args.results_root_dir}/clust_multicenter_nr_users-{args.num_users}_nr_clusters_{args.nr_of_embedding_clusters}_ep_{args.epochs}_itr_{iter}.png')
             plt.close()
         
-        ##############
-        # Experimental
-        # We extract centers from the clustering matrix 
-        # we still update on each client locally
-        # but only do FedAvg  per cluster
         if args.partition_clusters_flag:
+            # cluster information
             cluster_partitions = filter_cluster_partition(cluster_user_dict, net_local_list)
         else:
+            # 1 big cluster for all for compatibility
             cluster_partitions = {1 : (net_local_list, clustering_matrix, np.arange(0,num_users,1))}
-        #print(clustering_matrix)
+
         for cluster_idx, (net_cluster_list, filtered_clustering_matrix, cluster_users) in cluster_partitions.items():
             print(f'FedAvg over cluster {cluster_idx} with {len(net_cluster_list)} users')
             net_cluster_list = FedAvg(net_cluster_list, filtered_clustering_matrix, dict_users)
 
-            # copy weights to net_glob
+            # copy weights to net_glob indexed globally, from averaged models, indexed locally
             for local_idx, global_idx in enumerate(cluster_users):
                 net_glob_list[global_idx] = copy.deepcopy(net_cluster_list[local_idx])
 

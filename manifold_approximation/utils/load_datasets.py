@@ -384,6 +384,9 @@ def load_dataset(dataset_name, data_root_dir, transforms_dict, batch_size=8, shu
         train_data = datasets.ImageFolder(root=data_root_dir + '/cinic-10/train', transform=transforms_dict['train'])
         test_data = datasets.ImageFolder(root=data_root_dir + '/cinic-10/test', transform=transforms_dict['test'])
     
+    # Dataset to use LEAF data
+    # Data should be put under data/femnist/FEMNIST/train and data/femnist/FEMNIST/test
+    # For comparing with baselines only use _0 and _1 files both in train and test folders
     elif dataset_name == 'FEMNIST':        
         train_data = FEMNIST(data_root_dir + '/femnist/', train=True, download=True, transform=transforms_dict['train'])
         test_data = FEMNIST(data_root_dir + '/femnist/', train=False, download=True, transform=transforms_dict['test'])     

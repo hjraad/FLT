@@ -387,6 +387,19 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix, c_dict
 
 def filter_cluster_partition(cluster_user_dict, net_local_list):
+    """
+    Creates cluster_dict structure for FedAvg, containing ie. weights
+    
+    Arguments:
+        cluster_user_dict (dict(int,list)): cluster ids mapped to user ids
+        net_local_list (list): list of weights
+    
+    Returns:
+        cluster_dict (dict(int,tuple)): dictionary containing weights, 
+            adjacency matrix and members for a cluster
+
+    By: Attila Szabo
+    """
     cluster_dict = defaultdict(tuple)
 
     for i, cluster_members in cluster_user_dict.items():
@@ -395,15 +408,33 @@ def filter_cluster_partition(cluster_user_dict, net_local_list):
                             cluster_members)
     return cluster_dict
 
-def partition_clusters(clustering_matrix, args, nr_clusters=5, method='complete', metric='euclidean'):
-    # clustering
+def partition_clusters(clustering_matrix, args, nr_clusters=5, method='complete', metric='euclidean', plotting=False):
+    """
+    Creates nr_clusters clusters of users based on the clustering_matrix (adjacency matrix).
+
+    Arguments:
+        clustering_matrix (ndarray): adjacency matrix
+        args (namespace): general arguments
+        nr_clusters (int): number of clusters to get back after flattening dendograms
+        method (string): methods for linkage
+        metric (string): metric for linkage
+
+    Returns:
+        cluster_user_dict (dict(int,list)): cluster ids mapped to user ids
+
+    By: Attila Szabo
+    """
+    # clustering with linkage
     fig = plt.figure(figsize=(8,8))
     ax1 = fig.add_axes([0.09,0.1,0.2,0.6])
+    # gives back linkage matrix after hierarchical clustering
     Y = sch.linkage(clustering_matrix, method=method,metric=metric)
+    # creates dendogram for plotting and flattening
     Z = sch.dendrogram(Y, orientation='left')
     ax1.set_xticks([])
     ax1.set_yticks([])
     # calculate cluster membership
+    # fcluster flattens out dendograms to the specified nr_clusters
     cluster_memberships = sch.fcluster(Y, t=nr_clusters, criterion='maxclust') # ith element in this array is the cluster for i
     idx = np.array(Z['leaves']) # idx ordered in cluster
     
@@ -411,7 +442,7 @@ def partition_clusters(clustering_matrix, args, nr_clusters=5, method='complete'
     Z2 = sch.dendrogram(Y)
     ax2.set_xticks([])
     ax2.set_yticks([])
-    # Plot distance matrix.
+
     axmatrix = fig.add_axes([0.3,0.1,0.6,0.6])
 
     clustering_matrix = clustering_matrix[idx,:]
@@ -423,7 +454,8 @@ def partition_clusters(clustering_matrix, args, nr_clusters=5, method='complete'
     # Plot colorbar.
     axcolor = fig.add_axes([0.91,0.1,0.02,0.6])
     plt.colorbar(im, cax=axcolor)
-    fig.savefig(f'{args.results_root_dir}/clust_{args.clustering_method}_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_method_{method}_reconstructed.png')
+    if plotting:
+        fig.savefig(f'{args.results_root_dir}/clust_{args.clustering_method}_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_method_{method}_reconstructed.png')
 
     # Plot filtered
     canvas = np.zeros_like(clustering_matrix)
@@ -434,14 +466,16 @@ def partition_clusters(clustering_matrix, args, nr_clusters=5, method='complete'
         canvas+=clustering_matrix*mask
     fig = plt.figure()
     plt.matshow(canvas,origin='lower')
-    fig.savefig(f'{args.results_root_dir}/clust_{args.clustering_method}_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_method_{method}_filtered.png')
+    if plotting:
+        fig.savefig(f'{args.results_root_dir}/clust_{args.clustering_method}_nr_users-{args.num_users}_nr_of_partition_clusters_{nr_clusters}_method_{method}_filtered.png')
 
     d_error = np.sum(clustering_matrix-canvas)
     print(f'Decompostion error: {d_error}, {d_error/np.sum(clustering_matrix)}')
-    # exit()
+
+    # build cluster id to client id user dict
     cluster_user_dict = { i : idx[cluster_memberships==i] for i in range(1,nr_clusters+1)}
 
-    # Test
+    # Test overlaps within clusters
     collected = []
     for i, cluster_members_a in cluster_user_dict.items():
         for j, cluster_members_b in cluster_user_dict.items():
