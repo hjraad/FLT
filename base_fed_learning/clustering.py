@@ -4,6 +4,7 @@ Created on Mon Nov 23 19:44:39 2020
 @author: Mohammad Abdizadeh & Hadi Jamali-Rad
 @email(s):{moh.abdizadeh, h.jamali.rad}@gmail.com
 """
+from math import exp
 import sys
 sys.path.append("./../")
 sys.path.append("./../../")
@@ -97,7 +98,7 @@ def encoder_model_capsul(args):
     return ae_model_dict
     
 
-def min_matching_distance(center_0, center_1):
+def min_matching_distance(center_0, center_1, args):
     if len(center_0) < len(center_1):
         center_small = center_0
         center_big = center_1
@@ -114,7 +115,10 @@ def min_matching_distance(center_0, center_1):
             for i in range(len(center_small)):
                 summation = summation + (np.linalg.norm(center_small[i] - center_big[p][i])**2)
 
-            dist = np.sqrt(summation)/len(center_small)
+            if args.exp_type == 'standard':
+                dist = np.sqrt(summation)/len(center_small)
+            elif args.exp_type == 'ablation':
+                dist = summation/len(center_small)
             if dist < distance:
                 distance = dist
     
@@ -211,7 +215,7 @@ def clustering_umap(num_users, dict_users, dataset_train, args):
             c0 = centers[idx0]
             c1 = centers[idx1]
 
-            distance = min_matching_distance(c0, c1)
+            distance = min_matching_distance(c0, c1, args.exp_type)
 
             clustering_matrix_soft[idx0][idx1] = distance
         
@@ -303,7 +307,7 @@ def clustering_pca_kmeans(dict_users, cluster, dataset_train, args):
             c0 = c_dict[idx0]
             c1 = c_dict[idx1]
         
-            distance = min_matching_distance(c0, c1)
+            distance = min_matching_distance(c0, c1, args.exp_type)
             
             clustering_matrix_soft[idx0][idx1] = distance
         
@@ -319,6 +323,12 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
     # idxs_users = np.random.shuffle(np.arange(num_users))
     idxs_users = np.random.choice(args.num_users, args.num_users, replace=False)
     
+    if args.exp_type == 'ablation':
+        max_num_center = 2
+        for cluster_index in range(cluster.shape[0]):
+            class_index_range = np.where(cluster[cluster_index] != -1)[0]
+            max_num_center = max(max_num_center, len(class_index_range))
+
     #centers = np.zeros((num_users, max_num_center, 128)) # AE latent size going to be hyperparamter
     centers = np.empty((0, args.latent_dim), dtype=int)
     center_dict = {}
@@ -375,7 +385,7 @@ def clustering_umap_central(dict_users, cluster, dataset_train, ae_model_dict, a
             c0 = c_dict[idx0]
             c1 = c_dict[idx1]
         
-            distance = min_matching_distance(c0, c1)
+            distance = min_matching_distance(c0, c1, args.exp_type)
             
             clustering_matrix_soft[idx0][idx1] = distance
         

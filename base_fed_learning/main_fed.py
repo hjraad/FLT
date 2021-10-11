@@ -73,7 +73,7 @@ def cluster_testdata_dict(dataset, dataset_type, num_users, cluster):
     
     return dict_users
 
-def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, cluster, dataset_split=''):
+def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, cluster, args, dataset_split=''):
     '''
     By: Hadi Jamali-Rad
     Data generation wrapper based on cluster structure 
@@ -104,7 +104,7 @@ def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, clust
             dict_train_users = mnist_iid(dataset_train, num_users)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
         else:
-            dict_train_users = mnist_noniid_cluster(dataset_train, num_users, cluster)
+            dict_train_users = mnist_noniid_cluster(dataset_train, num_users, cluster, args.exp_type)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
     #
     elif dataset_type in ['emnist', 'EMNIST']:     
@@ -118,7 +118,7 @@ def gen_data(iid, dataset_type, data_root_dir, transforms_dict, num_users, clust
             dict_train_users = cifar_iid(dataset_train, num_users)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
         else:
-            dict_train_users = cifar_noniid_cluster(dataset_train, num_users, cluster)
+            dict_train_users = cifar_noniid_cluster(dataset_train, num_users, cluster, args.exp_type)
             dict_test_users = cluster_testdata_dict(dataset_test, dataset_type, num_users, cluster)
     #
     elif dataset_type in ['femnist', 'FEMNIST']:
@@ -281,7 +281,7 @@ def FedMLAlgo(net_glob_list, w_glob_list, dataset_train, dict_users, num_users, 
 
                 dataset_train, dataset_test, dict_users, dict_test_users =\
                     gen_data(args.iid, args.target_dataset, args.data_root_dir, 
-                             transforms_dict, args.num_users, cluster, dataset_split=args.dataset_split)
+                             transforms_dict, args.num_users, cluster, args, dataset_split=args.dataset_split)
 
                 # clustering the clients
                 clustering_matrix = extract_clustering(dict_users, dataset_train, cluster, args, iter)
@@ -359,6 +359,13 @@ def gen_cluster(args):
         for i in range(nr_of_clusters):
             # TODO: should it be np.random.choice(10, 2, replace=False) for a fairer comparison?
             cluster[i] = np.random.choice(10, 10, replace=False)
+    
+    elif args.scenario == 1:
+        cluster_length = args.num_users // args.nr_of_embedding_clusters
+        cluster = np.zeros((args.nr_of_embedding_clusters, 2), dtype='int64')
+        cluster_array = np.random.choice(10, 10, replace=False)
+        for i in range(args.nr_of_embedding_clusters):
+            cluster[i] = cluster_array[i*2: i*2 + 2]
 
     elif args.target_dataset == 'EMNIST':
         nr_of_clusters = args.nr_of_embedding_clusters
@@ -535,7 +542,7 @@ def main(args, config_file_name):
         }
 
     dataset_train, dataset_test, dict_users, dict_test_users = gen_data(args.iid, args.target_dataset, args.data_root_dir, 
-                                                       transforms_dict, args.num_users, cluster, dataset_split=args.dataset_split)
+                                                       transforms_dict, args.num_users, cluster, args, dataset_split=args.dataset_split)
 
     
     #args.num_users = len(dict_users)

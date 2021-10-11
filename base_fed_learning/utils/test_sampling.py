@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib as plt
 import scipy.optimize
 
 np.random.seed(123)
@@ -16,7 +17,7 @@ def func(x, y, C, K, F):
     # K: total to reach (max for the cluster)
     return np.sum(F + np.exp(C*x*(y**2)), axis=0) - K
 
-def sampling_support_EMNIST(nr_clients, nr_clusters, nr_classes, nr_samples):
+def sampling_support_EMNIST(nr_clients, nr_clusters, nr_classes, nr_samples, plot:bool):
     
     # Assgin the labels acc. cluster def.
     # Assign uncorrelated labells into clusters 
@@ -57,8 +58,27 @@ def sampling_support_EMNIST(nr_clients, nr_clusters, nr_classes, nr_samples):
         arr_b = np.empty(0)
     
     final_arr = np.concatenate((arr_a, arr_b))
-    
+
+    if plot:
+        # Plotting the samples vs clients curve for all clusters
+        plt.figure(figsize=(7.5,5))
+        plt.plot(final_arr[:240], label='Cluster 1-9')
+        plt.plot(final_arr[2160:], linestyle='dashed', label='Cluster 10')
+        plt.ylabel('Samples')
+        plt.xlabel('Clients')
+        #plt.title('No. of samples per client across clusters')
+        plt.legend()
+        markers = np.array([final_arr[:240].min(), final_arr[2160:].min(), final_arr[:240].max(), final_arr[2161:].max()])
+        plt.scatter([0,0,240,240], markers, marker='x')
+        plt.annotate(markers[0], (0,markers[0]), textcoords="offset points", xytext=(-2,5), ha='right', fontsize=9)
+        plt.annotate(markers[1], (0,markers[1]), textcoords="offset points", xytext=(-2,-5), ha='right', fontsize=9)
+        plt.annotate(markers[2], (240,markers[2]), textcoords="offset points", xytext=(-5,-5), ha='right', fontsize=9)
+        plt.annotate(markers[3], (240,markers[3]), textcoords="offset points", xytext=(-5,-1), ha='right', fontsize=9)
+
+        plt.show()
+        plt.savefig('./all.png')
+        
     return final_arr
 
-final_arr = sampling_support_EMNIST(nr_clients, nr_clusters, nr_classes, nr_samples)        
+final_arr = sampling_support_EMNIST(nr_clients, nr_clusters, nr_classes, nr_samples, plot=True)        
 print(final_arr)
