@@ -241,7 +241,7 @@ class FLT:
         logger.info(f'Local training for user {user_idx}')
 
         epoch_loss = []
-        for iter in range(self.config.federated.local_ep):
+        for iter in range(self.config.trainer.local_ep):
             batch_loss = []
             for batch_idx, (images, labels) in enumerate(ldr_train):
                 images, labels = images.to(self.device), labels.to(self.device)
@@ -292,7 +292,7 @@ class FLT:
             # hierarchical clustering
             cluster_user_dict = partition_clusters(self.config, clustering_matrix)
 
-        for round in range(self.config.federated.rounds):
+        for round in range(self.config.trainer.rounds):
 
             loss_locals = []
             net_local_list = []

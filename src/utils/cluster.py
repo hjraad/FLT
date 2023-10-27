@@ -26,6 +26,7 @@ from torch.utils.data import DataLoader, Dataset
 from sympy.utilities.iterables import multiset_permutations
 
 from models import get_model
+from datasets.load_dataset import load_dataset
 from datasets.utils import DatasetSplit
 from optim.flt_pretrain import FLTPretrain
 
@@ -53,6 +54,94 @@ def min_matching_distance(center_0, center_1):
                 distance = dist
     
     return distance
+
+def get_extractor(config, device):
+
+    pretrained_dataset_name = config.dataset.pre_trained_dataset
+
+    if pretrained_dataset_name in ['CIFAR10', 'CIFAR100', 'CIFAR20']:
+        model_args = {
+                        'num_hiddens': config.model.num_hiddens,
+                        'num_residual_layers': config.model.num_residual_layers, 
+                        'num_residual_hiddens': config.model.num_residual_hiddens,
+                        'latent_size': config.model.latent_dim,
+                        }
+        
+    else:
+        model_args = {
+            'latent_size': config.model.latent_dim,
+            }
+
+    model_name = config.model.extractor_backbone
+
+    logger.info(f'Using extractor {model_name}')
+
+    extractor = get_model(model_name)(model_args)
+
+    import_path = Path(config.project.path).joinpath('flt_artifacts').joinpath(model_name + '_' + pretrained_dataset_name + '.tar')
+    if not Path.exists(import_path):
+        logger.info(f'Extractor not found! Pre-training extractor.')
+        trainer = FLTPretrain(config, extractor, model_name, pretrained_dataset_name, device)
+        extractor = trainer.train()
+
+    else:
+        logger.info(f'Loading pre-trained extractor.')
+        extractor_dict = extractor.state_dict()
+        loaded_dict = torch.load(import_path)
+        extractor_dict.update(loaded_dict)
+        extractor.load_state_dict(extractor_dict)
+
+    if config.trainer.finetune_epochs > 0:
+        trainer = FLTPretrain(config, extractor, model_name, config.dataset.name, device)
+        extractor = trainer.finetune()
+
+    return extractor
+
+def manifold_approximation_umap(config, use_AE, device):
+
+    # check if manifold approximation is needed
+    if use_AE and config.model.manifold_dim == config.model.latent_dim:
+        raise AssertionError("We don't need manifold learning, AE dim = 2 !")
+    
+    pretrained_dataset_name = config.pre_trained_dataset.name.upper()
+    
+    dataset, _, _= load_dataset(pretrained_dataset_name, 
+                                config.dataset.path, 
+                                dataset_split=config.dataset.dataset_split)
+    
+    import_path = Path(config.project.path).joinpath('flt_artifacts') # .joinpath('umap_reducer_' + pretrained_dataset_name + '.p')
+    if use_AE: 
+        ae_model = get_extractor(config, device)
+        ae_model = ae_model.to(device)
+
+        trainloader = DataLoader(dataset['train'], batch_size = config.dataset.train_batch_size)
+        embeddings = []
+        for batch_idx, (images, labels) in enumerate(trainloader):
+            images = images.to(device)
+            _, x_comp = ae_model(images)
+            embeddings.append(x_comp.cpu().detach().numpy())
+        
+        embeddings = np.concatenate(embeddings, axis=0)
+        
+        logger.info('Using AE for E2E encoding ...')
+        umap_data = embeddings
+        umap_model_address = import_path.joinpath('umap_reducer_' + pretrained_dataset_name + '_' + config.model.extractor_backbone + '.p')
+    else:
+        data_list = [data[0] for data in dataset['train']]
+        data_tensor = torch.cat(data_list, dim=0)
+        data_2D_np = torch.reshape(data_tensor, (data_tensor.shape[0], -1)).numpy()
+
+        logger.info('AE not used in this scenario ...')
+        umap_data = data_2D_np
+        umap_model_address = import_path.joinpath('umap_reducer_' + pretrained_dataset_name + '.p')
+        
+
+    logger.info('Training UMAP on AE embedding ...')
+    umap_reducer = umap.UMAP(n_components=config.model.manifold_dim, random_state=config.project.seed)
+    _ = umap_reducer.fit_transform(umap_data)
+    pickle.dump(umap_reducer, open(umap_model_address, 'wb'))
+
+    return umap_reducer
 
 def clustering_single(num_users):
     clustering_matrix = np.ones((num_users, num_users))
@@ -87,9 +176,26 @@ def clustering_perfect(config, dict_users, dataset_train, cluster):
                 
     return clustering_matrix
 
-def clustering_umap(config, dict_users, dataset_train, args):
-    reducer_loaded = pickle.load( open( f'{args.model_root_dir}/umap_reducer_EMNIST.p', "rb" ) )
-    reducer = reducer_loaded
+def clustering_umap(config, dict_users, dataset_train, device):
+
+    use_AE = False #TODO: Remove hard-coding
+
+    pretrained_dataset_name = config.dataset.pre_trained_dataset
+    import_path = Path(config.project.path).joinpath('flt_artifacts')
+    
+    if use_AE:
+        umap_model_address = import_path.joinpath('umap_reducer_' + pretrained_dataset_name + '_' + config.model.extractor_backbone + '.p')
+    else:
+        umap_model_address = import_path.joinpath('umap_reducer_' + pretrained_dataset_name + '.p')
+    
+    if not Path.exists(umap_model_address):
+        logger.info(f'Reducer not found! Creating reducer.')
+        reducer = manifold_approximation_umap(config, use_AE, device)
+
+    else:
+        logger.info(f'Loading pre-trained extractor.')
+        with open(umap_model_address, 'rb') as fp:
+            reducer = pickle.load(fp)
 
     idxs_users = np.arange(config.federated.num_users)
     
@@ -325,6 +431,10 @@ def get_extractor(config, device):
         extractor_dict.update(loaded_dict)
         extractor.load_state_dict(extractor_dict)
 
+    if config.trainer.finetune_epochs > 0:
+        trainer = FLTPretrain(config, extractor, model_name, config.dataset.name, device)
+        extractor = trainer.finetune()
+
     return extractor
 
 def extract_clustering(config, dict_users, dataset_train, cluster, iter, device):
@@ -354,16 +464,18 @@ def extract_clustering(config, dict_users, dataset_train, cluster, iter, device)
         plt.close()
 
     elif config.federated.clustering_method == 'umap':
-        clustering_matrix, _, _ = clustering_umap(config, dict_users, dataset_train)
+        clustering_matrix, _, _ = clustering_umap(config, dict_users, dataset_train, device)
 
     elif config.federated.clustering_method == 'encoder':
         ae_model = get_extractor(config, device)
+        ae_model = ae_model.to(device)
 
         clustering_matrix, _, _, _ =\
             clustering_encoder(config, dict_users, dataset_train, ae_model, device)
 
     elif config.federated.clustering_method == 'umap_central':
         ae_model = get_extractor(config, device)
+        ae_model = ae_model.to(device)
         clustering_matrix, clustering_matrix_soft, _, _, _ =\
                 clustering_umap_central(config, dict_users, cluster, dataset_train, ae_model, device)
 

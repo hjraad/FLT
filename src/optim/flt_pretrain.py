@@ -118,9 +118,11 @@ class FLTPretrain():
 
         return self.net
 
-    def finetune(self, model):
+    def finetune(self):
         """Training loop
         """
+
+        model = self.net
         model = model.to(self.device)
         
         # Set mode to train model
@@ -136,7 +138,7 @@ class FLTPretrain():
         trainloader = DataLoader(self.dataset['train'], batch_size = self.batch_size)
         testloader = DataLoader(self.dataset['test'], batch_size = self.batch_size)
 
-        finetune_epochs = 5
+        finetune_epochs = self.config.trainer.finetune_epochs
         min_loss = 0
         best_state_dict = None
 

@@ -1,52 +1,53 @@
 dataset:
-  name: mnist
-  pre_trained_dataset: emnist
-  path: ../data
-  dataset_split: 'balanced'
-  train_batch_size: 32
-  eval_batch_size: 32
-  num_workers: 8
-  num_classes: 10
-  num_channels: 1
+  name: FEMNIST # name of dataset
+  pre_trained_dataset: EMNIST # data on which the initial model has been pretrained, e.g. EMNIST, FMNIST
+  path: ../data # data location
+  dataset_split: balanced # type of split for EMNIST
+  train_batch_size: 10 # local batch size: B
+  eval_batch_size: 128 # test batch size
+  num_workers: 8 # number of workers for data loader
+  num_classes: 10 # number of classes
+  num_channels: 3 # number of channels of imges
 
 federated:
-  num_users: 20
-  rounds: 10
-  local_ep: 2
-  frac: 1
-  change_dataset_flag: False
-  change_dataset_epoch: 0
-  iid: False
-  scenario: 2
-  nr_of_embedding_clusters: 5
-  multi_center: 0
-  partition_clusters_flag: 0
-  partition_method: ward
-  nr_of_partition_clusters: 3
-  cluster_overlap: 20
-  flag_with_overlap: False
-  clustering_method: umap_central
-  method: flt
-  weithed_evaluation: False
+  method: flt # name of the trainer class
+  iid: False # whether i.i.d or not
+  scenario: 1 # simulation scenario
+  num_users: 40 # number of users: K
+  frac: 0.2 # the fraction of clients: C
+  clustering_method: umap_central # clustering method: single, local, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central
+  nr_of_embedding_clusters: 5 # number of clusters
+  flag_with_overlap: False # clustering with overlapped labels
+  cluster_overlap: 0 # percentage of the cluster overlap
+  partition_clusters_flag: False # Whether to perform hierarchical clustering
+  nr_of_partition_clusters: 1 # Target clusters for hierarchical clustering
+  partition_method: none # Hierarchical clustering method
+  multi_center: False # generate results for multi_center paper
+  weithed_evaluation: False # enable weithed accuracy evaluation
+  change_dataset_flag: False # generating results for a scenario where the dataset is changed
+  change_dataset_epoch: 5 # epoch number where the dataset is changed
 
 model:
-  name: cnn
-  lr: 0.001
-  momentum: 0.1
-  latent_dim: 128
-  extractor_backbone: convae # <"convae", "convaeres">
-  num_hiddens: 128 # use only with convaeres
-  num_residual_layers: 2 # use only with convaeres
-  num_residual_hiddens: 32 # use only with convaeres
+  name: mlp # model name
+  lr: 0.01 # learning rate
+  momentum: 0.5 # SGD momentum
+  manifold_dim: 2 # manifold dimension
+  latent_dim: 128 # latent dimension
+  extractor_backbone: convae # Autoencoder model name: convae or convaeres
+  num_hiddens: 128 # number of hidden layers. use only with convaeres
+  num_residual_layers: 2 # number of residual hidden layers. use only with convaeres
+  num_residual_hiddens: 32 # number of residual layers in the stack. use only with convaeres
 
 project:
-  seed: 0
-  experiment_name: test
+  seed: 0 # random seed
+  experiment_name: test # experiment name
   path: ../outputs
-  verbose: True
-  iter_to_iter_results: True
+  verbose: True # verbose print
+  iter_to_iter_results: True # generate results for each iteration
 
 trainer:
-  max_epochs: 1
-  pretrain_epochs: 2
-  accelerator: cpu # <"cpu", "gpu", "auto">
+  rounds: 50 # rounds of training
+  local_ep: 1 # the number of local epochs: E
+  pretrain_epochs: 2 # number of epochs for training the encoder
+  finetune_epochs: 2 # number of epochs for fine-tuning the encoder
+  accelerator: cuda # <"cpu", "gpu", "auto">
