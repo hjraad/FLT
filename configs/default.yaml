@@ -1,0 +1,52 @@
+dataset:
+  name: mnist
+  pre_trained_dataset: emnist
+  path: ../data
+  dataset_split: 'balanced'
+  train_batch_size: 32
+  eval_batch_size: 32
+  num_workers: 8
+  num_classes: 10
+  num_channels: 1
+
+federated:
+  num_users: 20
+  rounds: 10
+  local_ep: 2
+  frac: 1
+  change_dataset_flag: False
+  change_dataset_epoch: 0
+  iid: False
+  scenario: 2
+  nr_of_embedding_clusters: 5
+  multi_center: 0
+  partition_clusters_flag: 0
+  partition_method: ward
+  nr_of_partition_clusters: 3
+  cluster_overlap: 20
+  flag_with_overlap: False
+  clustering_method: umap_central
+  method: flt
+  weithed_evaluation: False
+
+model:
+  name: cnn
+  lr: 0.001
+  momentum: 0.1
+  latent_dim: 128
+  extractor_backbone: convae # <"convae", "convaeres">
+  num_hiddens: 128 # use only with convaeres
+  num_residual_layers: 2 # use only with convaeres
+  num_residual_hiddens: 32 # use only with convaeres
+
+project:
+  seed: 0
+  experiment_name: test
+  path: ../outputs
+  verbose: True
+  iter_to_iter_results: True
+
+trainer:
+  max_epochs: 1
+  pretrain_epochs: 2
+  accelerator: cpu # <"cpu", "gpu", "auto">

@@ -5,7 +5,7 @@ This is the official repository for [Federated Learning with Taskonomy for Non-I
 Classical federated learning approaches incur significant performance degradation in the presence of non-IID client data. A possible direction to address this issue is forming clusters of clients with roughly IID data. Most solutions following this direction are iterative, and relatively slow and prone to convergence issues in discovering underlying cluster structure. We introduce federated learning with taskonomy (FLT) that generalizes this direction by learning the task-relatedness between clients for more efficient federated aggregation of heterogeneous data. In a one-off process, the server provides the clients with a pretrained encoder to compress their data into a latent representation, and transmit the signature of their data back to the server. The server then learns the task-relatedness among clients via manifold learning, and performs a generalization of federated averaging. FLT can flexibly handle generic client relatedness as well as decomposing it into (disjoint) cluster formation. We demonstrate that FLT not only outperforms the existing state-of-the-art baselines but also offers improved fairness across clients.
 
 ### Architecture
-<img src="Figures/architecture.png" width="500" >
+<img src="figures/architecture.png" width="500" >
 
 We consider three abstraction levels: 
 - **data level**,
@@ -15,7 +15,7 @@ We consider three abstraction levels:
 The encoder is provided by the server to the clients. This allows them to apply one-shot contractive encoding on their local data, followed by k-means on the outcome and return the results to the server. At server side, UMAP is applied to approximate the arriving clients embeddings. 
 This is followed by applying a distance threshold to determine client dependencies and form an adjacency matrix or a client (task) relatedness graph. In case forming disjoint clusters is of interest, we then use hierarchical clustering [1] to efficiently reorder the adjacency matrix (or corresponding client relatedness graph) into disjoint clusters. We show a) the adjacency matrix and b) the corresponding client relatedness graph (both reordered on the right) in the following figure:
 
-<img src="Figures/graph_adjacency.png" width="700" >
+<img src="figures/graph_adjacency.png" width="700" >
 
 ### Results
 
@@ -31,7 +31,7 @@ We import the standard FEMNIST dataset of LEAF and construct a network of 200 cl
 
 Convergence graph of test accuracies for Scenario 3, FEMNIST, M=200 (left: MLP, right, CNN). On the right for CNN, note the different range of communication rounds on the top horizontal axis associated with IFCA.
 
-<img src="Figures/scenario_3.png" width="350" ><img src="Figures/scenario_3_cnn.png" width="350" >
+<img src="figures/scenario_3.png" width="350" ><img src="figures/scenario_3_cnn.png" width="350" >
 
 #### Scenario 4 
 This experiment presents a large-scale federated learning setting with structured non-IIDness involving both quantity and label distribution skews. The test accuracies at the last communication round T=100 are summarized in the following table.
@@ -44,7 +44,7 @@ This experiment presents a large-scale federated learning setting with structure
 
 Convergence graph of test accuracies for Scenario 4, Structured Non-IID FEMNIST, C=10 for MLP (left) and CNN (right) models.
 
-<img src="Figures/scenario_4.png" width="350" ><img src="Figures/scenario_4_cnn_local_5.png" width="350" >
+<img src="figures/scenario_4.png" width="350" ><img src="figures/scenario_4_cnn_local_5.png" width="350" >
 
 ### Requirements
 1. Go to the root directory ```cd FLT```
@@ -53,27 +53,37 @@ Convergence graph of test accuracies for Scenario 4, Structured Non-IID FEMNIST,
 4. Install the requirements ```pip install -r requirements.txt```
 
 ### Run the experiments
-The main script should be run from the right directory as follows
-```cd base_fed_learning```
-```python main_fed.py```
+The main script should be run from the right directory with the corresponding config file path as follows
 
-The script loads the configuration files to run directly under the ```FLT/configs/``` folder in alphabetical order. Please move the config files based on the desired experiment. The default settings are defined in ```FLT/base_fed_learning/utils/options.py```
+```
+cd src
+python main.py --config <path-to-config-file>
+```
+For example, to run experiment using the config ```FLT/configs/scenario_3/femnist_fedavg.yaml```
+```
+cd src
+python main.py --config ../configs/scenario_3/femnist_fedavg.yaml
+```
+
+Note: The path for the data files, ouputput files and other hyperparameters can be modified from within the config file.
+
+<!-- The script loads the configuration files to run directly under the ```FLT/configs/``` folder in alphabetical order. Please move the config files based on the desired experiment. The default settings are defined in ```FLT/base_fed_learning/utils/options.py``` -->
 
 We present the configs for Scenario 3:
- - ```FLT/configs/scenario_3/Scenario3_1_femnist_fedavg.json```
- - ```FLT/configs/scenario_3/Scenario3_2_femnist_kmeans.json```
- - ```FLT/configs/scenario_3/Scenario3_3_femnist_fedsem.json```
- - ```FLT/configs/Scenario3_4_femnist_flt_enc2.json``` (enabled by default)
+ - ```FLT/configs/scenario_3/femnist_fedavg.yaml```
+ - ```FLT/configs/scenario_3/femnist_kmeans.yaml```
+ - ```FLT/configs/scenario_3/femnist_fedsem.yaml```
+ - ```FLT/configs/scenario_3/femnist_flt_enc2.yaml```
  
 Note: for runs with IFCA we used the original implementation [4]
 
 and Scenario  4:
- - ```FLT/configs/scenario_4/Scenario4_1_femnist_fedavg.json```
- - ```FLT/configs/scenario_4/Scenario4_2_femnist_kmeans.json```
- - ```FLT/configs/scenario_4/Scenario3_3_femnist_fedsem.json```
- - ```FLT/configs/scenario_4/Scenario4_4_femnist_flt_enc2.json```
+ - ```FLT/configs/scenario_4/femnist_fedavg.yaml```
+ - ```FLT/configs/scenario_4/femnist_kmeans.yaml```
+ - ```FLT/configs/scenario_4/femnist_fedsem.yaml```
+ - ```FLT/configs/scenario_4/femnist_flt_enc2.yaml```
 
-Once the training is finished, accuracies and variances are generated in ```FLT/results/main_fed/scneario_X/<config_filename>.csv```
+Once the training is finished, accuracies and variances are generated in ```FLT/outputs/<exp_name>/results.csv```
 
 ### Contact
 Corresponding author: Hadi Jamali-Rad (h.jamali.rad {at} gmail {dot} com, h.jamalirad {at} tudelft {dot} nl)
