@@ -6,7 +6,7 @@ dataset:
   train_batch_size: 10 # local batch size: B
   eval_batch_size: 128 # test batch size
   num_workers: 8 # number of workers for data loader
-  num_classes: 62 # number of classes
+  num_classes: 10 # number of classes
   num_channels: 1 # number of channels of imges
 
 federated:
@@ -50,4 +50,4 @@ trainer:
   local_ep: 5 # the number of local epochs: E
   pretrain_epochs: 25 # number of epochs for training the encoder
   finetune_epochs: 2 # number of epochs for fine-tuning the encoder
-  accelerator: cuda # <"cpu", "gpu", "auto">
+  accelerator: cpu # <"cpu", "gpu", "auto">

@@ -263,8 +263,8 @@ def load_dataset(dataset_name, data_root_dir, dataset_split=''):
     # Data should be put under data/femnist/FEMNIST/train and data/femnist/FEMNIST/test
     # For comparing with baselines only use _0 and _1 files both in train and test folders
     elif dataset_name == 'FEMNIST':        
-        train_data = FEMNIST(data_root_dir + '/femnist/', train=True, download=True, transform=transforms_dict['train'])
-        test_data = FEMNIST(data_root_dir + '/femnist/', train=False, download=True, transform=transforms_dict['test'])     
+        train_data = FEMNIST(data_root_dir, train=True, download=True, transform=transforms_dict['train'])
+        test_data = FEMNIST(data_root_dir, train=False, download=True, transform=transforms_dict['test'])     
 
     else:
         raise ValueError(f'{dataset_name} not implemented.')
