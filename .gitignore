@@ -263,55 +263,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Misc
-**/*.tgz
-**/*.tar
-**/*.tar.gz
-**/*.bmp
-**/*.py.save
-**/*.pyx
-**/*.m
-**/*.pdf
-**/*.hh
-**/*.cc
-**/*.mat
-**/*.xml
-**/*.h5
-**/*.h5
-**/*.pb
-**/*.pth
-**/*.jpg
-**/*.JPG
-**/*.png
-**/*.PNG
-**/*.csv
-**/*.pkl
-**/*.avi
-**/*.AVI
-**/*.mp4
-**/*.MP4
-**/*.7z
-**/*.json
-**/*.JSON
-**/*.xlsx*
-**/*.XLS*
-**/*.xls*
-**/*.txt
-**/*.TXT
-**/*.ckpt*
-**/*.meta
-**/*.index
-**/*.data-*
-**/checkpoint
-**/*.pbtxt
-**/*.zip
-**/*.npy
-**/*.tfrecord
-**/*.eps
-**/*.pyc
-**/*.so
-**/*.pt
-
 # Other files
 data
 data/*
