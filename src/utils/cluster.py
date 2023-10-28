@@ -291,9 +291,7 @@ def clustering_pca_kmeans(config, dict_users, cluster, dataset_train):
     embedding_matrix = np.zeros((len(dict_users[0])*config.federated.num_users, config.model.latent_dim))
     
     for user_id in tqdm(idxs_users, desc='Clustering in progress ...'):
-        user_dataset_train = DataLoader(DatasetSplit(dataset_train, dict_users[user_id]), 
-                                 batch_size=config.dataset.train_batch_size, 
-                                 shuffle=True)
+        user_dataset_train = DatasetSplit(dataset_train, dict_users[user_id])
         
         user_data_np = np.squeeze(np.array([item[0].view(1, -1).numpy() for item in user_dataset_train]))
         if config.model.latent_dim > len(user_dataset_train):
@@ -457,7 +455,7 @@ def extract_clustering(config, dict_users, dataset_train, cluster, iter, device)
     elif config.federated.clustering_method == 'perfect':
         clustering_matrix = clustering_perfect(config, dict_users, dataset_train, cluster)
 
-        fig_path = export_path.joinpath(f'clust_perfect_nr_users-{config.federated.num_users}_nr_clusters_{config.federated.nr_of_embedding_clusters}_ep_{config.trainer.max_epochs}_itr_{iter}.png')
+        fig_path = export_path.joinpath(f'clust_perfect_nr_users-{config.federated.num_users}_nr_clusters_{config.federated.nr_of_embedding_clusters}_ep_{config.trainer.rounds}_itr_{iter}.png')
         plt.figure()
         plt.matshow(clustering_matrix)
         plt.savefig(fig_path)
@@ -479,7 +477,7 @@ def extract_clustering(config, dict_users, dataset_train, cluster, iter, device)
         clustering_matrix, clustering_matrix_soft, _, _, _ =\
                 clustering_umap_central(config, dict_users, cluster, dataset_train, ae_model, device)
 
-        fig_path = export_path.joinpath(f'clust_umapcentral_nr_users-{config.federated.num_users}_nr_clusters_{config.federated.nr_of_embedding_clusters}_ep_{config.trainer.max_epochs}_itr_{iter}.png')
+        fig_path = export_path.joinpath(f'clust_umapcentral_nr_users-{config.federated.num_users}_nr_clusters_{config.federated.nr_of_embedding_clusters}_ep_{config.trainer.rounds}_itr_{iter}.png')
         plt.figure()
         plt.matshow(clustering_matrix,origin='lower')
         plt.savefig(fig_path)
@@ -489,7 +487,7 @@ def extract_clustering(config, dict_users, dataset_train, cluster, iter, device)
         clustering_matrix, clustering_matrix_soft, _, _ =\
                 clustering_pca_kmeans(config, dict_users, cluster, dataset_train)
         
-        fig_path = export_path.joinpath(f'clust_umapcentral_nr_users-{config.federated.num_users}_nr_clusters_{config.federated.nr_of_embedding_clusters}_ep_{config.trainer.max_epochs}_itr_{iter}.png')
+        fig_path = export_path.joinpath(f'clust_umapcentral_nr_users-{config.federated.num_users}_nr_clusters_{config.federated.nr_of_embedding_clusters}_ep_{config.trainer.rounds}_itr_{iter}.png')
         plt.figure()
         plt.matshow(clustering_matrix,origin='lower')
         plt.savefig(fig_path)
@@ -624,7 +622,7 @@ def clustering_multi_center(config, net_local_list, multi_center_initialization_
         clustering_matrix[ii,ind_inter_cluster] = 1
 
     plt.figure()
-    fig_path = export_path.joinpath(f'clust_multicenter_nr_users-{config.federated.num_users}_nr_clusters_{config.federated.nr_of_embedding_clusters}_ep_{config.trainer.max_epochs}_itr_{iter}.png')
+    fig_path = export_path.joinpath(f'clust_multicenter_nr_users-{config.federated.num_users}_nr_clusters_{config.federated.nr_of_embedding_clusters}_ep_{config.trainer.rounds}_itr_{iter}.png')
     plt.imshow(clustering_matrix)
     plt.savefig(fig_path)
     plt.close()

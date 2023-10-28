@@ -44,7 +44,8 @@ class FLT:
         cluster, cluster_length = self.gen_cluster()
 
         datasets, dataset_sizes, class_names = load_dataset(self.config.dataset.name.upper(), 
-                                                            self.config.dataset.path)
+                                                            self.config.dataset.path,
+                                                            self.config.dataset.dataset_split)
         
         dataset_train = datasets['train']
         dataset_test = datasets['test']
@@ -220,7 +221,7 @@ class FLT:
         net.train()
 
         # copy weights
-        net_list = [copy.deepcopy(net) for i in range(self.config.federated.num_users)]
+        net_list = np.array([copy.deepcopy(net) for i in range(self.config.federated.num_users)])
 
         return net_list
 
@@ -292,10 +293,17 @@ class FLT:
             # hierarchical clustering
             cluster_user_dict = partition_clusters(self.config, clustering_matrix)
 
+        if self.config.federated.all_clients:
+            logger.info("Aggregation over all clients")
+            net_local_list = self.net_list.tolist()
+
         for round in range(self.config.trainer.rounds):
 
             loss_locals = []
-            net_local_list = []
+
+            if not self.config.federated.all_clients:
+                net_local_list = []
+
             m = max(int(self.config.federated.frac *  self.config.federated.num_users), 1)
             idxs_users = np.random.choice(range(self.config.federated.num_users), m, replace=False)
             logger.info(f"Local update started for {len(idxs_users)} users")
@@ -303,10 +311,17 @@ class FLT:
             for idx in idxs_users:
                 
                 net, loss = self.localUpdate(user_idx=idx)
-                net_local_list.append(copy.deepcopy(net))
+
+                if self.config.federated.all_clients:
+                    net_local_list[idx] = copy.deepcopy(net)
+                else:
+                    net_local_list.append(copy.deepcopy(net))
+
                 loss_locals.append(copy.deepcopy(loss))
 
             logger.info(f"Local update finished for {len(idxs_users)} users")
+
+            net_local_list = np.array(net_local_list)
 
             # update global weights
             if self.config.federated.multi_center:
