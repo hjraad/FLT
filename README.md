@@ -53,9 +53,19 @@ Convergence graph of test accuracies for Scenario 4, Structured Non-IID FEMNIST,
 4. Install the requirements ```pip install -r requirements.txt```
 
 ### Run the experiments
-The main script should be run from the right directory as follows
-```cd base_fed_learning```
-```python main_fed.py```
+
+**Pre-requistes:** Before the encoder can be used for feature extraction in FLT, it needs to be pre-trained. To train the convolutional encoder the dataset name and other necessary hyperparameters corresponding to the scenario should be updated in ```FLT/manifold_approximation/train_convAE.py```. The script for pretraining should be executed from the correct directory as follows
+```
+cd manifold_approximation
+python train_convAE.py
+```
+The script will train the encoder and store the model in ```FLT/model_weights```.
+
+The main script for running the experiments should be executed from the ```FLT/base_fed_learning``` directory as follows
+```
+cd base_fed_learning
+python main_fed.py
+```
 
 The script loads the configuration files to run directly under the ```FLT/configs/``` folder in alphabetical order. Please move the config files based on the desired experiment. The default settings are defined in ```FLT/base_fed_learning/utils/options.py```
 
