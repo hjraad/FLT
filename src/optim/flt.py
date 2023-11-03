@@ -201,12 +201,14 @@ class FLT:
 
     def gen_model(self):
 
+        print(self.config.model.name)
+
         img_size = self.trainset[0][0].shape
 
         # build model
-        if self.config.model.name == 'cnn' and (self.config.dataset.name in ['cifar10', 'CIFAR10']):
+        if self.config.model.name == 'cnn' and (self.config.dataset.name.lower() in ['cifar10', 'cinic10']):
             net = CNNCifar(self.config).to(self.device)
-        elif self.config.model.name == 'cnn' and (self.config.dataset.name in ['mnist', 'MNIST', 'FEMNIST']):
+        elif self.config.model.name == 'cnn' and (self.config.dataset.name.lower() in ['mnist', 'femnist']):
             net = CNNMnist(self.config).to(self.device)
         elif self.config.model.name == 'mlp':
             len_in = 1
@@ -262,7 +264,7 @@ class FLT:
 
     def fedMLAlgo(self):
 
-        export_path = Path(self.config.project.path).joinpath(self.config.project.experiment_name)
+        export_path = Path(self.config.project.path + '/scenario' + str(self.config.federated.scenario)).joinpath(self.config.project.experiment_name)
         if not Path.exists(export_path):
             Path.mkdir(export_path, exist_ok=True)
 

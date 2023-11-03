@@ -27,18 +27,16 @@ def get_parser() -> ArgumentParser:
         ArgumentParser: The parser object.
     """
     parser = ArgumentParser()
-    parser.add_argument("--config", type=str, required=False, help="Path to a model config file")
+    parser.add_argument("--scenario", type=int, required=False, default=-1, help="Scenario to execute")
+    parser.add_argument("--config", type=str, required=False, default=None, help="Path to a model config file")
     parser.add_argument("--log-level", type=str, default="INFO", help="<DEBUG, INFO, WARNING, ERROR>")
 
     return parser
 
 
-def main(args: Namespace):
+def run_experiment(config):
 
-    config_path = Path(args.config)
-    config = OmegaConf.load(config_path)
-
-    log_path = Path(config.project.path + '/' + config.project.experiment_name)
+    log_path = Path(config.project.path + '/scenario' + str(config.federated.scenario) + '/' + config.project.experiment_name)
     if not Path.exists(log_path):
         Path.mkdir(log_path, exist_ok=True, parents=True)
 
@@ -81,6 +79,34 @@ def main(args: Namespace):
     logger.info(f'Running on {device}.')
 
     get_method(config.federated.method)(config, device)
+
+    handlers = logger.handlers[:]
+    for handler in handlers:
+        logger.removeHandler(handler)
+        handler.close()
+
+def main(args: Namespace):
+
+    if args.scenario == -1 and args.config is None:
+        raise ValueError('Either scenario or config path needs to be mentioned.')
+    elif args.scenario != -1 and args.config is not None:
+        raise ValueError('Both scenario or config path cannot be provided.')
+
+    if args.config is not None:
+        config_path = Path(args.config)
+        config = OmegaConf.load(config_path)
+
+        run_experiment(config)
+
+    else:
+        root_path = Path(f'../configs/scenario_{args.scenario}')
+        all_configs = [x for x in root_path.glob('**/*') if x.is_file()]
+
+        for config_path in all_configs:
+            print(f'Running {config_path.stem}')
+            torch.cuda.empty_cache()
+            config = OmegaConf.load(config_path)
+            run_experiment(config)
 
 if __name__ == '__main__':
 

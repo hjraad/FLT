@@ -397,7 +397,7 @@ def get_extractor(config, device):
 
     pretrained_dataset_name = config.dataset.pre_trained_dataset
 
-    if pretrained_dataset_name in ['CIFAR10', 'CIFAR100', 'CIFAR20']:
+    if pretrained_dataset_name.lower() in ['cifar10', 'cifar100', 'cifar20']:
         model_args = {
                         'num_hiddens': config.model.num_hiddens,
                         'num_residual_layers': config.model.num_residual_layers, 
@@ -439,7 +439,7 @@ def extract_clustering(config, dict_users, dataset_train, cluster, iter, device)
 
     logger.info(f'Extracting clusters')
 
-    export_path = Path(config.project.path).joinpath(config.project.experiment_name)
+    export_path = Path(config.project.path + '/scenario' + str(config.federated.scenario)).joinpath(config.project.experiment_name)
     export_path = export_path.joinpath('plots')
     if not Path.exists(export_path):
         Path.mkdir(export_path, exist_ok=True)
@@ -508,7 +508,7 @@ def partition_clusters(config, clustering_matrix, metric='euclidean', plotting=F
 
     By: Attila Szabo
     """
-    export_path = Path(config.project.path).joinpath(config.project.experiment_name)
+    export_path = Path(config.project.path + '/scenario' + str(config.federated.scenario)).joinpath(config.project.experiment_name)
     export_path = export_path.joinpath('plots')
     if not Path.exists(export_path):
         Path.mkdir(export_path, exist_ok=True)
@@ -590,7 +590,7 @@ def clustering_multi_center(config, net_local_list, multi_center_initialization_
 
         return len(flat_list)
     
-    export_path = Path(config.project.path).joinpath(config.project.experiment_name)
+    export_path = Path(config.project.path + '/scenario' + str(config.federated.scenario)).joinpath(config.project.experiment_name)
     export_path = export_path.joinpath('plots')
     if not Path.exists(export_path):
         Path.mkdir(export_path, exist_ok=True)

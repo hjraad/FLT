@@ -51,4 +51,4 @@ trainer:
   local_ep: 1 # the number of local epochs: E
   pretrain_epochs: 2 # number of epochs for training the encoder
   finetune_epochs: 2 # number of epochs for fine-tuning the encoder
-  accelerator: cuda # <"cpu", "gpu", "auto">
+  accelerator: auto # <"cpu", "gpu", "auto">

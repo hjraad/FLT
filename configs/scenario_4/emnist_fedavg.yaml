@@ -41,7 +41,7 @@ model:
 
 project:
   seed: 0 # random seed
-  experiment_name: sc4_emnist_fedavg # experiment name
+  experiment_name: emnist_fedavg # experiment name
   path: ../outputs
   verbose: True # verbose print
   iter_to_iter_results: True # generate results for each iteration

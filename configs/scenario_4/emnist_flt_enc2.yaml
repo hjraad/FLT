@@ -29,7 +29,7 @@ federated:
   change_dataset_epoch: 5 # epoch number where the dataset is changed
 
 model:
-  name: cnn # model name
+  name: cnn_leaf # model name
   lr: 0.01 # learning rate
   momentum: 0.5 # SGD momentum
   manifold_dim: 2 # manifold dimension
@@ -41,7 +41,7 @@ model:
 
 project:
   seed: 0 # random seed
-  experiment_name: sc4_emnist_flt_enc2 # experiment name
+  experiment_name: emnist_flt_enc2 # experiment name
   path: ../outputs
   verbose: True # verbose print
   iter_to_iter_results: True # generate results for each iteration
@@ -51,4 +51,4 @@ trainer:
   local_ep: 1 # the number of local epochs: E
   pretrain_epochs: 25 # number of epochs for training the encoder
   finetune_epochs: 5 # number of epochs for fine-tuning the encoder
-  accelerator: cuda # <"cpu", "gpu", "auto">
+  accelerator: cpu # <"cpu", "gpu", "auto">
