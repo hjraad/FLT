@@ -1,5 +1,5 @@
 dataset:
-  name: FEMNIST # name of dataset
+  name: MNIST # name of dataset
   pre_trained_dataset: EMNIST # data on which the initial model has been pretrained, e.g. EMNIST, FMNIST
   path: ../data # data location
   dataset_split: balanced # type of split for EMNIST
@@ -12,7 +12,7 @@ dataset:
 federated:
   method: flt # name of the trainer class
   iid: False # whether i.i.d or not
-  scenario: 5 # simulation scenario
+  scenario: 2 # simulation scenario
   num_users: 20 # number of users: K
   frac: 1 # the fraction of clients: C
   all_clients: True # aggregation over all clients
@@ -41,13 +41,13 @@ model:
 
 project:
   seed: 0 # random seed
-  experiment_name: femnist_fedsem # experiment name
+  experiment_name: mnist_fedsem # experiment name
   path: ../outputs
   verbose: True # verbose print
   iter_to_iter_results: True # generate results for each iteration
 
 trainer:
-  rounds: 150 # rounds of training
+  rounds: 100 # rounds of training
   local_ep: 5 # the number of local epochs: E
   pretrain_epochs: 25 # number of epochs for training the encoder
   finetune_epochs: 2 # number of epochs for fine-tuning the encoder

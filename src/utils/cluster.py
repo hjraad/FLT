@@ -17,6 +17,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.cluster.hierarchy as sch
 
+import time
+
 from tqdm import tqdm
 from pathlib import Path
 from collections import defaultdict
@@ -43,7 +45,8 @@ def min_matching_distance(center_0, center_1):
     distance = np.inf
     if len(center_small) > 0:
         s = set(range(len(center_big)))
-        for p in multiset_permutations(s):
+        print(s)
+        for p in tqdm(multiset_permutations(s)):
             summation = 0
 
             for i in range(len(center_small)):
@@ -358,7 +361,7 @@ def clustering_umap_central(config, dict_users, cluster, dataset_train, ae_model
             cluster_size = cluster.shape[0]
             nr_in_clusters = config.federated.num_users // cluster_size
             cluster_index = (user_id//nr_in_clusters)
-            class_index_range = np. where(cluster[cluster_index] != -1)[0]
+            class_index_range = np.where(cluster[cluster_index] != -1)[0]
             num_center = len(class_index_range)
 
         kmeans = KMeans(n_clusters=num_center, random_state=43).fit(embeddings)

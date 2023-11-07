@@ -99,14 +99,16 @@ def main(args: Namespace):
         run_experiment(config)
 
     else:
-        root_path = Path(f'../configs/scenario_{args.scenario}')
-        all_configs = [x for x in root_path.glob('**/*') if x.is_file()]
+        for scenario in range(3):
+            # root_path = Path(f'../configs/scenario_{args.scenario}')
+            root_path = Path(f'../configs/scenario_{scenario + 1}')
+            all_configs = [x for x in root_path.glob('**/*') if x.is_file()]
 
-        for config_path in all_configs:
-            print(f'Running {config_path.stem}')
-            torch.cuda.empty_cache()
-            config = OmegaConf.load(config_path)
-            run_experiment(config)
+            for config_path in all_configs:
+                print(f'Running {config_path.stem}')
+                torch.cuda.empty_cache()
+                config = OmegaConf.load(config_path)
+                run_experiment(config)
 
 if __name__ == '__main__':
 

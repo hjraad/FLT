@@ -1,26 +1,26 @@
 dataset:
-  name: FEMNIST # name of dataset
-  pre_trained_dataset: FMNIST # data on which the initial model has been pretrained, e.g. EMNIST, FMNIST
+  name: CIFAR10 # name of dataset
+  pre_trained_dataset: CIFAR20 # data on which the initial model has been pretrained, e.g. EMNIST, FMNIST
   path: ../data # data location
   dataset_split: balanced # type of split for EMNIST
   train_batch_size: 10 # local batch size: B
   eval_batch_size: 128 # test batch size
   num_workers: 8 # number of workers for data loader
   num_classes: 10 # number of classes
-  num_channels: 1 # number of channels of imges
+  num_channels: 3 # number of channels of imges
 
 federated:
   method: flt # name of the trainer class
   iid: False # whether i.i.d or not
-  scenario: 5 # simulation scenario
-  num_users: 200 # number of users: K
+  scenario: 1 # simulation scenario
+  num_users: 20 # number of users: K
   frac: 1 # the fraction of clients: C
   all_clients: True # aggregation over all clients
   clustering_method: umap_central # clustering method: single, local, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central
   nr_of_embedding_clusters: 5 # number of clusters
   flag_with_overlap: False # clustering with overlapped labels
   cluster_overlap: 0 # percentage of the cluster overlap
-  partition_clusters_flag: True # Whether to perform hierarchical clustering
+  partition_clusters_flag: False # Whether to perform hierarchical clustering
   nr_of_partition_clusters: 2 # Target clusters for hierarchical clustering
   partition_method: ward # Hierarchical clustering method
   multi_center: False # generate results for multi_center paper
@@ -34,21 +34,21 @@ model:
   momentum: 0.5 # SGD momentum
   manifold_dim: 2 # manifold dimension
   latent_dim: 128 # latent dimension
-  extractor_backbone: convae # Autoencoder model name: convae or convaeres
+  extractor_backbone: convaeres # Autoencoder model name: convae or convaeres
   num_hiddens: 128 # number of hidden layers. use only with convaeres
   num_residual_layers: 2 # number of residual hidden layers. use only with convaeres
   num_residual_hiddens: 32 # number of residual layers in the stack. use only with convaeres
 
 project:
   seed: 0 # random seed
-  experiment_name: sc3_femnist_flt_enc2 # experiment name
+  experiment_name: cifar10_flt_enc2 # experiment name
   path: ../outputs
   verbose: True # verbose print
   iter_to_iter_results: True # generate results for each iteration
 
 trainer:
-  rounds: 150 # rounds of training
+  rounds: 10 # rounds of training
   local_ep: 5 # the number of local epochs: E
   pretrain_epochs: 25 # number of epochs for training the encoder
   finetune_epochs: 5 # number of epochs for fine-tuning the encoder
-  accelerator: cuda # <"cpu", "gpu", "auto">
+  accelerator: auto # <"cpu", "cuda", "auto">
