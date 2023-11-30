@@ -13,8 +13,8 @@ federated:
   method: flt # name of the trainer class
   iid: False # whether i.i.d or not
   scenario: 2 # simulation scenario
-  num_users: 20 # number of users: K
-  frac: 1 # the fraction of clients: C
+  num_users: 100 # number of users: K
+  frac: 0.2 # the fraction of clients: C
   all_clients: True # aggregation over all clients
   clustering_method: single # clustering method: single, local, perfect, umap_mo, umap, encoder, sequential_encoder, umap_central
   nr_of_embedding_clusters: 5 # number of clusters

@@ -3,7 +3,7 @@
 # Created Date: 23-Nov-2020
 # 
 # Refactored By: Sayak Mukherjee
-# Last Update: 27-Oct-2023
+# Last Update: 30-Nov-2023
 # ---------------------------------------------------------------------------
 # File contains model classes for the extractors.
 # ---------------------------------------------------------------------------
@@ -97,16 +97,16 @@ class Encoder(nn.Module):
         x = self._batchnorm_2(x)
         
         x = self._conv_3(x)
-        #x = self._batchnorm_3(x)
+        x = self._batchnorm_3(x)
         x = self._residual_stack(x)
         
         x = self._conv_4(x)
         x = F.relu(x)
-        #x = self._batchnorm_4(x)
+        x = self._batchnorm_4(x)
         
         x = self._conv_5(x)
         x = F.relu(x)
-        #x = self._batchnorm_5(x)
+        x = self._batchnorm_5(x)
 
         x = x.view(-1, 8*8*self.num_hiddens//16)
         x_comp = self.fc1(x)

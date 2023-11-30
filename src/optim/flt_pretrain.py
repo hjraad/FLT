@@ -3,7 +3,7 @@
 # Created Date: 23-Nov-2020
 # 
 # Refactored By: Sayak Mukherjee
-# Last Update: 20-Oct-2023
+# Last Update: 30-Nov-2023
 # ---------------------------------------------------------------------------
 # File contains the code for pretraining the feature extractor.
 # ---------------------------------------------------------------------------
@@ -79,7 +79,7 @@ class FLTPretrain():
                 loss.backward()
                 optimizer.step()
 
-                exp_lr_scheduler.step()
+                # exp_lr_scheduler.step()
                 
                 train_loss.append(loss.item())
 

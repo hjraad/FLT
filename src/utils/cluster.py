@@ -3,7 +3,7 @@
 # Created Date: 23-Nov-2020
 # 
 # Refactored By: Sayak Mukherjee
-# Last Update: 27-Oct-2023
+# Last Update: 30-Nov-2023
 # ---------------------------------------------------------------------------
 # File contains the code for clustering clients.
 # ---------------------------------------------------------------------------
@@ -395,48 +395,6 @@ def clustering_umap_central(config, dict_users, cluster, dataset_train, ae_model
                 clustering_matrix[idx0][idx1] = 0
                 
     return clustering_matrix, clustering_matrix_soft, centers, embedding_matrix, c_dict
-
-def get_extractor(config, device):
-
-    pretrained_dataset_name = config.dataset.pre_trained_dataset
-
-    if pretrained_dataset_name.lower() in ['cifar10', 'cifar100', 'cifar20']:
-        model_args = {
-                        'num_hiddens': config.model.num_hiddens,
-                        'num_residual_layers': config.model.num_residual_layers, 
-                        'num_residual_hiddens': config.model.num_residual_hiddens,
-                        'latent_size': config.model.latent_dim,
-                        }
-        
-    else:
-        model_args = {
-            'latent_size': config.model.latent_dim,
-            }
-
-    model_name = config.model.extractor_backbone
-
-    logger.info(f'Using extractor {model_name}')
-
-    extractor = get_model(model_name)(model_args)
-
-    import_path = Path(config.project.path).joinpath('flt_artifacts').joinpath(model_name + '_' + pretrained_dataset_name + '.tar')
-    if not Path.exists(import_path):
-        logger.info(f'Extractor not found! Pre-training extractor.')
-        trainer = FLTPretrain(config, extractor, model_name, pretrained_dataset_name, device)
-        extractor = trainer.train()
-
-    else:
-        logger.info(f'Loading pre-trained extractor.')
-        extractor_dict = extractor.state_dict()
-        loaded_dict = torch.load(import_path)
-        extractor_dict.update(loaded_dict)
-        extractor.load_state_dict(extractor_dict)
-
-    if config.trainer.finetune_epochs > 0:
-        trainer = FLTPretrain(config, extractor, model_name, config.dataset.name, device)
-        extractor = trainer.finetune()
-
-    return extractor
 
 def extract_clustering(config, dict_users, dataset_train, cluster, iter, device):
 

@@ -75,6 +75,15 @@ Execute the following steps to set up the environment
 3. Activate the environment: ```conda activate flt```
 4. Install the requirements: ```pip install -r requirements.txt```
 
+### <mark>Download CINIC10</mark>
+
+To run experiments using the CINIC10 dataset execute the following steps
+
+1. Go to the root directory: ```cd FLT``` 
+3. Create a new directory: ```mkdir -p data/cinic10```
+3. Download dataset: ```wget https://datashare.is.ed.ac.uk/bitstream/handle/10283/3192/CINIC-10.tar.gz```
+4. Extract the archive: ```tar -xf CINIC-10.tar.gz -C data/cinic10``` 
+
 ### <mark>Scenario 1</mark>
 
 Execute the following steps to get the results shown below
@@ -85,7 +94,15 @@ Execute the following steps to get the results shown below
 4. <span style="color:red">**[Optional]**</span> Update the experimental config: The paths can be modified within the config files in ```FLT/configs/scenario_1```
 5. Run the main script with the experiment config: ```python main.py --scenario 1```
 
-Once the training is finished, results are generated in ```FLT/outputs/scenario4```
+Once the training is finished, results are generated in ```FLT/outputs/scenario_1```
+
+| Method | Cifar10 | MNIST |
+| :-----| :---: | :---: |
+| FedAvg [3]| 34.44 | 97.94 |
+| FedSem [5]| 89.62 | 96.95 |
+| PCA + KMeans | 87.23 | 65.76 |
+| FLT Enc1 (ours) | 92.43 | 97.94 |
+| FLT Enc2 (ours) | 92.53| 97.94 |
 
 ### <mark>Scenario 2</mark>
 
@@ -97,7 +114,15 @@ Execute the following steps to get the results shown below
 4. <span style="color:red">**[Optional]**</span> Update the experimental config: The paths can be modified within the config files in ```FLT/configs/scenario_2```
 5. Run the main script with the experiment config: ```python main.py --scenario 2```
 
-Once the training is finished, results are generated in ```FLT/outputs/scenario4```
+Once the training is finished, results are generated in ```FLT/outputs/scenario_2```
+
+| Method | Cifar10 | MNIST |
+| :-----| :---: | :---: |
+| FedAvg [3]| 43.80 | 84.15 |
+| FedSem [5]| 80.48 | 96.57 |
+| PCA + KMeans | - | 92.93 |
+| FLT Enc1 (ours) | - | 99.35 |
+| FLT Enc2 (ours) | - | 99.34 |
 
 ### <mark>Single Experiment</mark>
 

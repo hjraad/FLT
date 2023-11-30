@@ -3,7 +3,7 @@
 # Created Date: 23-Nov-2020
 # 
 # Refactored By: Sayak Mukherjee
-# Last Update: 27-Oct-2023
+# Last Update: 30-Nov-2023
 # ---------------------------------------------------------------------------
 # File contains the dataset samplers.
 # ---------------------------------------------------------------------------
@@ -258,7 +258,7 @@ def cluster_testdata_dict(dataset, dataset_type, num_users, cluster):
     cluster_size = cluster.shape[0]
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
 
-    if dataset_type in ['cifar', 'CIFAR10']:
+    if dataset_type in ['cifar', 'CIFAR10', 'cinic10', 'CINIC10']:
         labels = np.array(dataset.targets)
     else:
         labels = dataset.train_labels.numpy()

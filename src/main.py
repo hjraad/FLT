@@ -3,7 +3,7 @@
 # Created Date: 23-Nov-2020
 # 
 # Refactored By: Sayak Mukherjee
-# Last Update: 13-Oct-2023
+# Last Update: 30-Nov-2023
 # ---------------------------------------------------------------------------
 # File contains the main function which is the starting point.
 # ---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ def main(args: Namespace):
         run_experiment(config)
 
     else:
-        for scenario in range(3):
+        for scenario in range(2):
             # root_path = Path(f'../configs/scenario_{args.scenario}')
             root_path = Path(f'../configs/scenario_{scenario + 1}')
             all_configs = [x for x in root_path.glob('**/*') if x.is_file()]
@@ -108,7 +108,10 @@ def main(args: Namespace):
                 print(f'Running {config_path.stem}')
                 torch.cuda.empty_cache()
                 config = OmegaConf.load(config_path)
-                run_experiment(config)
+                try:
+                    run_experiment(config)
+                except:
+                    print(f'In exception: {config_path.stem}')
 
 if __name__ == '__main__':
 

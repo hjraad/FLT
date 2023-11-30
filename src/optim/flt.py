@@ -3,7 +3,7 @@
 # Created Date: 23-Nov-2020
 # 
 # Refactored By: Sayak Mukherjee
-# Last Update: 27-Oct-2023
+# Last Update: 30-Nov-2023
 # ---------------------------------------------------------------------------
 # File contains the code for FLT.
 # ---------------------------------------------------------------------------
@@ -81,7 +81,7 @@ class FLT:
                                                                  self.config.federated.num_users, 
                                                                  cluster)
         #       
-        elif self.config.dataset.name in ['cifar', 'CIFAR10']:
+        elif self.config.dataset.name in ['cifar', 'CIFAR10', 'cinic10', 'CINIC10']:
             if self.config.federated.iid:
                 dict_train_users = sampling.cifar_iid(dataset_train, 
                                                       self.config.federated.num_users)
@@ -132,6 +132,7 @@ class FLT:
             cluster[nr_of_clusters - 1][0:n_2] = cluster_array[-n_2:]
 
         elif self.config.federated.scenario == 1:
+            assert self.config.federated.nr_of_embedding_clusters == 5
             cluster_length = self.config.federated.num_users // self.config.federated.nr_of_embedding_clusters
 
             cluster = np.zeros((self.config.federated.nr_of_embedding_clusters, 2), dtype='int64')
@@ -217,8 +218,6 @@ class FLT:
         return evaluation_index_range
 
     def gen_model(self):
-
-        print(self.config.model.name)
 
         img_size = self.trainset[0][0].shape
 
