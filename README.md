@@ -75,15 +75,6 @@ Execute the following steps to set up the environment
 3. Activate the environment: ```conda activate flt```
 4. Install the requirements: ```pip install -r requirements.txt```
 
-### <mark>Download CINIC10</mark>
-
-To run experiments using the CINIC10 dataset execute the following steps
-
-1. Go to the root directory: ```cd FLT``` 
-3. Create a new directory: ```mkdir -p data/cinic10```
-3. Download dataset: ```wget https://datashare.is.ed.ac.uk/bitstream/handle/10283/3192/CINIC-10.tar.gz```
-4. Extract the archive: ```tar -xf CINIC-10.tar.gz -C data/cinic10``` 
-
 ### <mark>Scenario 1</mark>
 
 Execute the following steps to get the results shown below
