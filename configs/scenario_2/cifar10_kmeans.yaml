@@ -20,7 +20,7 @@ federated:
   nr_of_embedding_clusters: 5 # number of clusters
   flag_with_overlap: False # clustering with overlapped labels
   cluster_overlap: 0 # percentage of the cluster overlap
-  partition_clusters_flag: True # Whether to perform hierarchical clustering
+  partition_clusters_flag: False # Whether to perform hierarchical clustering
   nr_of_partition_clusters: 3 # Target clusters for hierarchical clustering
   partition_method: ward # Hierarchical clustering method
   multi_center: False # generate results for multi_center paper
@@ -40,7 +40,7 @@ model:
   num_residual_hiddens: 32 # number of residual layers in the stack. use only with convaeres
 
 project:
-  seed: 0 # random seed
+  seed: 321 # random seed
   experiment_name: cifar10_kmeans # experiment name
   path: ../outputs
   verbose: True # verbose print

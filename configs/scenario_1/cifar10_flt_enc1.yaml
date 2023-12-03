@@ -40,7 +40,7 @@ model:
   num_residual_hiddens: 32 # number of residual layers in the stack. use only with convaeres
 
 project:
-  seed: 0 # random seed
+  seed: 321 # random seed
   experiment_name: cifar10_flt_enc1 # experiment name
   path: ../outputs
   verbose: True # verbose print
@@ -49,6 +49,6 @@ project:
 trainer:
   rounds: 100 # rounds of training
   local_ep: 5 # the number of local epochs: E
-  pretrain_epochs: 60 # number of epochs for training the encoder
+  pretrain_epochs: 30 # number of epochs for training the encoder
   finetune_epochs: 0 # number of epochs for fine-tuning the encoder
   accelerator: auto # <"cpu", "cuda", "auto">

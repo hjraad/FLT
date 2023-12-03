@@ -22,7 +22,7 @@ federated:
   cluster_overlap: 0 # percentage of the cluster overlap
   partition_clusters_flag: False # Whether to perform hierarchical clustering
   nr_of_partition_clusters: 1 # Target clusters for hierarchical clustering
-  partition_method: none # Hierarchical clustering method
+  partition_method: ward # Hierarchical clustering method
   multi_center: False # generate results for multi_center paper
   weithed_evaluation: False # enable weithed accuracy evaluation
   change_dataset_flag: False # generating results for a scenario where the dataset is changed
@@ -40,7 +40,7 @@ model:
   num_residual_hiddens: 32 # number of residual layers in the stack. use only with convaeres
 
 project:
-  seed: 0 # random seed
+  seed: 321 # random seed
   experiment_name: cifar10_flt_enc1 # experiment name
   path: ../outputs
   verbose: True # verbose print
@@ -49,6 +49,6 @@ project:
 trainer:
   rounds: 100 # rounds of training
   local_ep: 5 # the number of local epochs: E
-  pretrain_epochs: 60 # number of epochs for training the encoder
+  pretrain_epochs: 30 # number of epochs for training the encoder
   finetune_epochs: 0 # number of epochs for fine-tuning the encoder
   accelerator: auto # <"cpu", "cuda", "auto">

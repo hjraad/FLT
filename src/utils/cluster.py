@@ -45,7 +45,6 @@ def min_matching_distance(center_0, center_1):
     distance = np.inf
     if len(center_small) > 0:
         s = set(range(len(center_big)))
-        print(s)
         for p in tqdm(multiset_permutations(s)):
             summation = 0
 
@@ -510,7 +509,7 @@ def partition_clusters(config, clustering_matrix, metric='euclidean', plotting=F
     plt.colorbar(im, cax=axcolor)
     if plotting:
         fig_path = export_path.joinpath(f'clust_{config.federated.clustering_method}_nr_users-{config.federated.num_users}_nr_of_partition_clusters_{nr_clusters}_method_{method}_reconstructed.png')
-        fig.savefig(fig_path)
+        plt.savefig(fig_path)
 
     # Plot filtered
     canvas = np.zeros_like(clustering_matrix)

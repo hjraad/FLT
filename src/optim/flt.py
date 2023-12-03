@@ -309,7 +309,7 @@ class FLT:
 
         if self.config.federated.partition_clusters_flag:
             # hierarchical clustering
-            cluster_user_dict = partition_clusters(self.config, clustering_matrix)
+            cluster_user_dict = partition_clusters(self.config, clustering_matrix, plotting=True)
 
         if self.config.federated.all_clients:
             logger.info("Aggregation over all clients")

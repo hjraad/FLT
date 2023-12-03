@@ -89,11 +89,11 @@ Once the training is finished, results are generated in ```FLT/outputs/scenario_
 
 | Method | Cifar10 | MNIST |
 | :-----| :---: | :---: |
-| FedAvg [3]| 34.44 | 97.94 |
-| FedSem [5]| 89.62 | 96.95 |
-| PCA + KMeans | 87.23 | 65.76 |
-| FLT Enc1 (ours) | 92.43 | 97.94 |
-| FLT Enc2 (ours) | 92.53| 97.94 |
+| FedAvg [3]| 34.35 | 98.17 |
+| FedSem [5]| 80.49 | 94.09 |
+| PCA + KMeans | 80.18 | 74.90 |
+| FLT Enc1 (ours) | 87.29 | 98.17 |
+| FLT Enc2 (ours) | 87.10 | 98.17 |
 
 ### <mark>Scenario 2</mark>
 
@@ -109,11 +109,11 @@ Once the training is finished, results are generated in ```FLT/outputs/scenario_
 
 | Method | Cifar10 | MNIST |
 | :-----| :---: | :---: |
-| FedAvg [3]| 43.80 | 84.15 |
-| FedSem [5]| 80.48 | 96.57 |
-| PCA + KMeans | - | 92.93 |
-| FLT Enc1 (ours) | - | 99.35 |
-| FLT Enc2 (ours) | - | 99.34 |
+| FedAvg [3]| 45.83 | 80.31 |
+| FedSem [5]| 74.25 | 92.86 |
+| PCA + KMeans | 68.08 | 94.31 |
+| FLT Enc1 (ours) | 78.12 | 99.36 |
+| FLT Enc2 (ours) | 76.43 | 99.36 |
 
 ### <mark>Single Experiment</mark>
 
@@ -129,7 +129,7 @@ The corresponding config file would be ```FLT/configs/scenario_1/mnist_flt_enc1.
 1. Go to the root directory: ```cd FLT```
 2. Go to the source directory: ```cd src```
 3. Activate the environment: ```conda activate flt```
-4. <span style="color:red">**[Optional]**</span> Update the experimental config: The paths can be modified within the config file ```FLT/configs/scenario_3/femnist_fedavg.yaml```
+4. <span style="color:red">**[Optional]**</span> Update the experimental config: The paths can be modified within the config file ```FLT/configs/scenario_1/mnist_flt_enc1.yaml```
 5. Run the main script with the experiment config: ```python main.py --config ../configs/scenario_1/mnist_flt_enc1.yaml```
 
 Once the training is finished, accuracies and variances are generated in ```FLT/outputs/scenario1/mnist_flt_enc1/results.csv```
