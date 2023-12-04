@@ -48,7 +48,7 @@ project:
 
 trainer:
   rounds: 100 # rounds of training
-  local_ep: 5 # the number of local epochs: E
+  local_ep: 1 # the number of local epochs: E
   pretrain_epochs: 30 # number of epochs for training the encoder
   finetune_epochs: 0 # number of epochs for fine-tuning the encoder
   accelerator: auto # <"cpu", "cuda", "auto">

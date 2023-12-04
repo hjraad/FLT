@@ -142,6 +142,27 @@ class FLTPretrain():
         min_loss = 0
         best_state_dict = None
 
+        # performance before finetuning
+        with torch.no_grad():
+            test_loss = [] 
+
+            for batch_idx, (images, _) in enumerate(testloader):
+
+                images = images.to(self.device)
+
+                x_recon, _ = model(images)
+
+                loss = criterion(x_recon, images)
+                
+                test_loss.append(loss.item())
+
+        self.logger.info(f'Before pre-training | Test Loss: {sum(test_loss)/len(test_loss)}')
+        curr_loss = sum(test_loss)/len(test_loss)
+
+        min_loss = curr_loss
+        best_state_dict = model.state_dict()
+
+        # start finetuning
         logger.info(f'Finetuning extractor on {self.pretrain_dataset} dataset.')
 
         for iter in range(finetune_epochs):
@@ -190,6 +211,7 @@ class FLTPretrain():
                     min_loss = curr_loss
                     best_state_dict = self.net.state_dict()
 
+        self.logger.info(f'Using model with test loss {min_loss}')
         model.load_state_dict(best_state_dict)
 
         return model

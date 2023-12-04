@@ -1,6 +1,6 @@
 dataset:
   name: MNIST # name of dataset
-  pre_trained_dataset: EMNIST # data on which the initial model has been pretrained, e.g. EMNIST, FMNIST
+  pre_trained_dataset: FMNIST # data on which the initial model has been pretrained, e.g. EMNIST, FMNIST
   path: ../data # data location
   dataset_split: balanced # type of split for EMNIST
   train_batch_size: 10 # local batch size: B

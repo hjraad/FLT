@@ -90,10 +90,10 @@ Once the training is finished, results are generated in ```FLT/outputs/scenario_
 | Method | Cifar10 | MNIST |
 | :-----| :---: | :---: |
 | FedAvg [3]| 34.35 | 98.17 |
-| FedSem [5]| 80.49 | 94.09 |
 | PCA + KMeans | 80.18 | 74.90 |
+| FedSem [5]| 80.49 | 94.09 |
 | FLT Enc1 (ours) | 87.29 | 98.17 |
-| FLT Enc2 (ours) | 87.10 | 98.17 |
+| FLT Enc2 (ours) | 87.13 | 98.21 |
 
 ### <mark>Scenario 2</mark>
 
@@ -109,11 +109,11 @@ Once the training is finished, results are generated in ```FLT/outputs/scenario_
 
 | Method | Cifar10 | MNIST |
 | :-----| :---: | :---: |
-| FedAvg [3]| 45.83 | 80.31 |
+| FedAvg [3]| 45.83 | 76.37 |
+| PCA + KMeans | 68.08 | 88.48 |
 | FedSem [5]| 74.25 | 92.86 |
-| PCA + KMeans | 68.08 | 94.31 |
-| FLT Enc1 (ours) | 78.12 | 99.36 |
-| FLT Enc2 (ours) | 76.43 | 99.36 |
+| FLT Enc1 (ours) | 78.12 | 98.12 |
+| FLT Enc2 (ours) | 78.80 | 98.20 |
 
 ### <mark>Single Experiment</mark>
 
