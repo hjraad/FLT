@@ -1,7 +1,7 @@
 # Federated Learning with Taskonomy (FLT)
 This is the official repository for our paper "Federated Learning with Taskonomy for Non-IID Data".
 
-> [**Federated Learning with Taskonomy for Non-IID Data**](http://people.eecs.berkeley.edu/~xdwang/projects/CutLER/)            
+> **Federated Learning with Taskonomy for Non-IID Data**            
 > Hadi Jamali-Rad, Mohammad Abdizadeh, Anuj Singh              
 > IEEE Transactions on Neural Networks and Learning Systems (TNNLS), 2022            
 
