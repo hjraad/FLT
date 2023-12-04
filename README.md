@@ -1,7 +1,13 @@
 # Federated Learning with Taskonomy (FLT)
-This is the official repository for our paper "Federated Learning with Taskonomy for Non-IID Data" in IEEE Transactions on Neural Networks and learning Systems (TNNLS), Hadi Jamali-Rad, Mohammad Abdizadeh, Anuj Singh, 2022. 
+This is the official repository for our paper "Federated Learning with Taskonomy for Non-IID Data".
 
-See here [[Paper]](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9739132), and [[Supplemenetary Material]](https://ieeexplore.ieee.org/ielx7/5962385/6104215/9739132/supp1-3152581.pdf?arnumber=9739132).
+> [**Federated Learning with Taskonomy for Non-IID Data**](http://people.eecs.berkeley.edu/~xdwang/projects/CutLER/)            
+> Hadi Jamali-Rad, Mohammad Abdizadeh, Anuj Singh              
+> IEEE Transactions on Neural Networks and Learning Systems (TNNLS), 2022            
+
+[[`Paper`](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9739132)] [[`Supplemenetary Material`](https://ieeexplore.ieee.org/ielx7/5962385/6104215/9739132/supp1-3152581.pdf?arnumber=9739132)]
+
+
 
 ## Intro
 Classical federated learning approaches incur significant performance degradation in the presence of non-IID client data. A possible direction to address this issue is forming clusters of clients with roughly IID data. Most solutions following this direction are iterative, and relatively slow and prone to convergence issues in discovering underlying cluster structure. We introduce federated learning with taskonomy (FLT) that generalizes this direction by learning the task-relatedness between clients for more efficient federated aggregation of heterogeneous data. In a one-off process, the server provides the clients with a pretrained encoder to compress their data into a latent representation, and transmit the signature of their data back to the server. The server then learns the task-relatedness among clients via manifold learning, and performs a generalization of federated averaging. FLT can flexibly handle generic client relatedness as well as decomposing it into (disjoint) cluster formation. We demonstrate that FLT not only outperforms the existing state-of-the-art baselines but also offers improved fairness across clients.
